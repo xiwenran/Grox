@@ -72,16 +72,16 @@ export function PermissionCard({ block, sessionId }: { block: PermissionBlock; s
         {!resolved && <span className="h-1 w-1 animate-pulse-dot rounded-full bg-gold" />}
       </div>
 
-      <p className="mt-2 text-[12px] text-fg2">{block.req.description}</p>
+      <p className="mt-2 text-[14px] text-fg2">{block.req.description}</p>
 
       {block.req.payload && (
         <div className="mt-2.5 rounded-[5px] border border-line2 bg-void px-3 py-2">
-          <pre className={`${expanded ? "max-h-[60vh]" : "max-h-36"} overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-fg2 select-text`}>{block.req.payload}</pre>
+          <pre className={`${expanded ? "max-h-[60vh]" : "max-h-36"} overflow-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-relaxed text-fg2 select-text`}>{block.req.payload}</pre>
           {block.req.payload.length > 240 && (
             <button
               onClick={() => setExpanded((value) => !value)}
               aria-expanded={expanded}
-              className="mt-2 font-mono text-[9px] text-gold hover:text-fg"
+              className="mt-2 font-mono text-[12px] text-gold hover:text-fg"
             >
               {expanded
                 ? language === "zh-CN" ? "收起完整脚本" : "Collapse script"
@@ -105,11 +105,11 @@ export function PermissionCard({ block, sessionId }: { block: PermissionBlock; s
                 key={opt}
                 onClick={() => resolvePermission(block.id, opt)}
                 aria-keyshortcuts={String(i + 1)}
-                className={`flex h-7 items-center gap-2 rounded-[4px] px-3 text-[11.5px] transition-colors ${styles}`}
+                className={`flex h-7 items-center gap-2 rounded-[4px] px-3 text-[13px] transition-colors ${styles}`}
               >
                 {optionLabels[opt]}
                 <kbd
-                  className={`font-mono text-[9.5px] ${opt === "allow_once" ? "text-base/70" : "text-faint"}`}
+                  className={`font-mono text-[13px] ${opt === "allow_once" ? "text-base/70" : "text-faint"}`}
                 >
                   {i + 1}
                 </kbd>

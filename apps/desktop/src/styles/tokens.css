@@ -98,20 +98,22 @@ html {
   /* ── UI scale (single source of truth) ───────────────────────────────
      Follows Obsidian「规范/桌面工作台 UI 视觉规范」§3 / §2.3 / §2.5.
      Type (only these sizes may appear):
-       cap 12 (说明 / 分组小标签) · body 13 (正文 / 控件 / 条目)
-       nav 14 (导航 / 配置栏小标题) · section 15 (卡片区块标题)
-       title 17 (页头标题) · stat 24 (大数字 / 首页大字)
+       (2026-11 enlarged per user feedback — 13px body read far too small)
+       badge 12 (徽标 / 角标) · cap 13 (说明 / 分组小标签)
+       body 14 (正文 / 控件 / 条目) · nav 15 (导航 / 侧栏条目)
+       section 16 (卡片区块标题) · title 18 (页头标题) · stat 26 (大数字)
      Weight: 400 body · 500 item titles / selected nav · 600 bold (never 700)
      Radius: control 10 · list/menu 14 · card 12 · dialog 18 · pill 999
      Space:  tier-1 4/6/8/10/12 · tier-2 14/18/20/24                     */
-  --fs-xs: 12px;
-  --fs-sm: 13px;
-  --fs-base: 13px;
-  --fs-nav: 14px;
-  --fs-section: 15px;
-  --fs-title: 17px;
-  --fs-title-lg: 17px;
-  --fs-hero: 24px;
+  --fs-2xs: 12px;
+  --fs-xs: 13px;
+  --fs-sm: 14px;
+  --fs-base: 14px;
+  --fs-nav: 15px;
+  --fs-section: 16px;
+  --fs-title: 18px;
+  --fs-title-lg: 18px;
+  --fs-hero: 26px;
   --fw-regular: 400;
   --fw-item: 500;
   --fw-bold: 600;
@@ -138,11 +140,11 @@ html {
    * Transcript-only integer tiers (default = md).
    * Compact type + tight leading for long Chinese replies; chrome untouched.
    */
-  --grox-prose-size: 13px; /* = --fs-base (规范正文 13 / 1.55) */
+  --grox-prose-size: 15px; /* chat prose (md default) */
   --grox-prose-leading: 1.55; /* = --lh-prose */
-  --grox-user-size: 13px;
-  --grox-process-size: 12px; /* = --fs-xs (说明) */
-  --grox-code-size: 12px;
+  --grox-user-size: 15px;
+  --grox-process-size: 13px; /* tool / process rows */
+  --grox-code-size: 13px;
   /*
    * Reading column (narrow / medium / wide)
    * ---------------------------------------
@@ -158,32 +160,32 @@ html {
 }
 
 html[data-font="sm"] {
-  --grox-prose-size: 12px;
-  --grox-prose-leading: 1.55;
-  --grox-user-size: 12px;
-  --grox-process-size: 12px;
-  --grox-code-size: 12px;
-}
-html[data-font="md"] {
-  --grox-prose-size: 13px;
-  --grox-prose-leading: 1.55;
-  --grox-user-size: 13px;
-  --grox-process-size: 12px;
-  --grox-code-size: 12px;
-}
-html[data-font="lg"] {
   --grox-prose-size: 14px;
-  --grox-prose-leading: 1.6;
+  --grox-prose-leading: 1.55;
   --grox-user-size: 14px;
   --grox-process-size: 13px;
   --grox-code-size: 13px;
 }
-html[data-font="xl"] {
+html[data-font="md"] {
   --grox-prose-size: 15px;
-  --grox-prose-leading: 1.65;
+  --grox-prose-leading: 1.55;
   --grox-user-size: 15px;
   --grox-process-size: 13px;
   --grox-code-size: 13px;
+}
+html[data-font="lg"] {
+  --grox-prose-size: 16px;
+  --grox-prose-leading: 1.6;
+  --grox-user-size: 16px;
+  --grox-process-size: 14px;
+  --grox-code-size: 14px;
+}
+html[data-font="xl"] {
+  --grox-prose-size: 17px;
+  --grox-prose-leading: 1.65;
+  --grox-user-size: 17px;
+  --grox-process-size: 14px;
+  --grox-code-size: 14px;
 }
 
 /* Density: column width only (padding/gap fixed). */
@@ -224,7 +226,7 @@ body {
 /* Settings: fixed chrome scale — independent of transcript font tier. */
 .settings-shell {
   --grox-font-weight: 400;
-  font-size: 13px; /* fixed chrome scale = --fs-base */
+  font-size: 14px; /* fixed chrome scale = --fs-base */
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
@@ -237,7 +239,7 @@ body {
    calc offsets here — that broke fixed-height rows and blurred glyphs. */
 .lbl,
 .chip {
-  font-size: var(--grox-component-font-size, 12px);
+  font-size: var(--grox-component-font-size, 13px);
 }
 
 /* Transcript-only scaling surfaces */
@@ -1484,7 +1486,7 @@ html[data-reduce-motion="1"] .plan-spinner {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     color: var(--color-fg2);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.45;
     -webkit-line-clamp: 3;
   }
@@ -1680,27 +1682,19 @@ html[data-reduce-motion="1"] .grok-face * {
   border-radius: var(--radius-card);
 }
 
-/* Type scale (规范 §3.2): every ad-hoc size snaps onto the six allowed
-   sizes — 12 说明 · 13 正文/控件 · 14 导航 · 15 区块标题 · 17 页头 · 24 大数字.
-   No intermediate values (12.5, 14.5 …) survive. */
-.text-\[8px\], .text-\[8\.5px\], .text-\[9px\], .text-\[9\.5px\],
-.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\],
-.text-\[12px\], .text-xs {
+/* Type scale: component sources now carry their final integer sizes
+   (12 徽标 · 13 说明/工具行 · 14 正文 · 15 导航 · 16 区块 · 18 页头 · 26 大数字),
+   so only Tailwind's named sizes are snapped onto the tokens here. */
+.text-xs {
   font-size: var(--fs-xs);
 }
-.text-\[12\.5px\], .text-\[13px\], .text-sm {
+.text-sm {
   font-size: var(--fs-sm);
 }
-.text-\[14px\] {
-  font-size: var(--fs-nav);
-}
-.text-\[15px\], .text-\[16px\] {
-  font-size: var(--fs-section);
-}
-.text-\[17px\], .text-\[18px\], .text-lg, .text-xl {
+.text-lg, .text-xl {
   font-size: var(--fs-title);
 }
-.text-\[26px\], .text-\[28px\], .text-2xl {
+.text-2xl {
   font-size: var(--fs-hero);
 }
 /* Bold is 600 everywhere, item titles 500 (规范: never the default 700). */
@@ -1708,8 +1702,7 @@ html[data-reduce-motion="1"] .grok-face * {
   font-weight: var(--fw-bold);
 }
 /* Code / logs keep a compact monospace size. */
-pre.text-\[9\.5px\], pre.text-\[10\.5px\], pre.text-\[11px\],
-.font-mono.select-text.text-\[10\.5px\], .code-mono {
+pre.text-\[13px\], .code-mono {
   font-size: var(--fs-xs);
 }
 
@@ -1940,4 +1933,14 @@ input:focus-visible,
 textarea:focus-visible,
 [contenteditable]:focus-visible {
   outline: none;
+}
+
+/* Account quota card: soft track + fill, no lines. */
+.quota-card__track {
+  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+.quota-card__fill {
+  background: var(--color-fg);
+  opacity: 0.72;
+  transition: width 240ms var(--ease-mission);
 }

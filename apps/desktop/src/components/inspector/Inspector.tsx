@@ -52,7 +52,7 @@ export function Inspector() {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`relative h-7 rounded-[10px] px-2.5 text-[12px] transition-[color,background-color,box-shadow] ${
+            className={`relative h-7 rounded-[10px] px-2.5 text-[14px] transition-[color,background-color,box-shadow] ${
               tab === t.id ? "bg-raise text-fg shadow-[var(--sh3)]" : "text-dim hover:bg-raise/60 hover:text-fg"
             }`}
           >
@@ -81,7 +81,7 @@ export function Inspector() {
 
 const Empty = ({ text }: { text: string }) => (
   <div className="flex h-full items-center justify-center">
-    <span className="lbl !text-[9.5px]">{text}</span>
+    <span className="lbl !text-[13px]">{text}</span>
   </div>
 );
 
@@ -107,15 +107,15 @@ function FilesTab({ session }: { session?: Session }) {
     <div>
       {hunks.length > 0 ? <>
         <div className="mb-2 flex items-center gap-2 px-1">
-          <span className="lbl !text-[9.5px]">{workspaceDiffReady ? (zh ? "工作区差异" : "WORKING TREE DIFF") : (zh ? "会话差异" : "SESSION DIFF")}</span>
-          <span className="tnum text-[9.5px] text-diff-add-fg">+{add}</span>
-          <span className="tnum text-[9.5px] text-diff-del-fg">−{del}</span>
+          <span className="lbl !text-[13px]">{workspaceDiffReady ? (zh ? "工作区差异" : "WORKING TREE DIFF") : (zh ? "会话差异" : "SESSION DIFF")}</span>
+          <span className="tnum text-[13px] text-diff-add-fg">+{add}</span>
+          <span className="tnum text-[13px] text-diff-del-fg">−{del}</span>
         </div>
         <DiffView diff={hunks} />
-      </> : <div className="mb-3 rounded-[4px] border border-line bg-raise px-3 py-3 text-[10px] leading-relaxed text-dim">
+      </> : <div className="mb-3 rounded-[4px] border border-line bg-raise px-3 py-3 text-[13px] leading-relaxed text-dim">
         {zh ? "当前工作区没有可显示的未提交差异。" : "No uncommitted working-tree diff is available."}
       </div>}
-      <div className="mb-2 mt-4 px-1"><span className="lbl !text-[9.5px]">{t("projectResources")}</span></div>
+      <div className="mb-2 mt-4 px-1"><span className="lbl !text-[13px]">{t("projectResources")}</span></div>
       <div className="space-y-px">
         {tree.map((node) => <FileTreeNode key={node.path} node={node} workspace={workspace} onOpen={(path) => void openPreview(path)} />)}
       </div>
@@ -164,7 +164,7 @@ function FileTreeNode({ node, onOpen, workspace }: { node: FileNode; onOpen(path
   if (node.isDir) {
     return (
       <details className="group/tree">
-        <summary className="flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-[3px] px-1 font-mono text-[10px] text-mute hover:bg-high hover:text-fg2 [&::-webkit-details-marker]:hidden">
+        <summary className="flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-[3px] px-1 font-mono text-[13px] text-mute hover:bg-high hover:text-fg2 [&::-webkit-details-marker]:hidden">
           <Icon name="chevronRight" size={8} className="text-faint transition-transform group-open/tree:rotate-90" />
           <Icon name="folder" size={10} className="text-dim" />
           <span className="truncate">{node.name}</span>
@@ -179,7 +179,7 @@ function FileTreeNode({ node, onOpen, workspace }: { node: FileNode; onOpen(path
   return <div onContextMenu={(event) => { event.preventDefault(); setMenuOpen(true); }} className="group/file relative flex h-7 items-center rounded-[3px] pr-1 hover:bg-high">
     <button
       onClick={() => previewable && onOpen(node.path)}
-      className={`flex h-7 min-w-0 flex-1 items-center gap-1.5 px-1 pl-[15px] text-left font-mono text-[10px] ${previewable ? "text-mute hover:bg-high hover:text-fg2" : "cursor-default text-faint"}`}
+      className={`flex h-7 min-w-0 flex-1 items-center gap-1.5 px-1 pl-[15px] text-left font-mono text-[13px] ${previewable ? "text-mute hover:bg-high hover:text-fg2" : "cursor-default text-faint"}`}
       title={node.path}
     >
       <Icon name="file" size={9} className="shrink-0 text-faint" />
@@ -261,14 +261,14 @@ function FileActionMenu({
         <FileAction label={zh ? "在 Finder 中显示" : "Reveal in Finder"} icon="folder" onClick={() => void run(() => revealWorkspaceFile(workspace, path))} />
         <FileAction label={zh ? "复制路径" : "Copy path"} icon="copy" onClick={() => void copyPath()} />
         {previewable && !/\.(png|jpe?g|gif|webp|svg|bmp|mp4|m4v|webm|mov|mp3|m4a|wav|ogg|oga|flac|pdf)$/i.test(path) && <FileAction label={zh ? "复制文件内容" : "Copy contents"} icon="copy" onClick={() => void copyContent()} />}
-        {notice && <p className="border-t border-line px-2 py-1.5 font-mono text-[8.5px] leading-relaxed text-red">{notice}</p>}
+        {notice && <p className="border-t border-line px-2 py-1.5 font-mono text-[12px] leading-relaxed text-red">{notice}</p>}
       </div>}
     </div>
   );
 }
 
 function FileAction({ label, icon, onClick }: { label: string; icon: "panelRight" | "external" | "folder" | "copy"; onClick(): void }) {
-  return <button onClick={onClick} className="flex h-7 w-full items-center gap-2 rounded-[3px] px-2 text-left font-mono text-[9.5px] text-mute hover:bg-high hover:text-fg2"><Icon name={icon} size={10} className="text-faint" /><span className="truncate">{label}</span></button>;
+  return <button onClick={onClick} className="flex h-7 w-full items-center gap-2 rounded-[3px] px-2 text-left font-mono text-[13px] text-mute hover:bg-high hover:text-fg2"><Icon name={icon} size={10} className="text-faint" /><span className="truncate">{label}</span></button>;
 }
 
 /* ── TASKS ─────────────────────────────────────────────────────────────── */
@@ -295,12 +295,12 @@ function TasksTab({ session }: { session: Session }) {
       {latest?.type === "plan" && <div className="space-y-1">
       {latest.steps.map((s: PlanStep, i: number) => (
         <div key={s.id} className="flex items-start gap-2.5 rounded-[4px] border border-line bg-raise px-3 py-2.5">
-          <span className="tnum mt-0.5 text-[9.5px] text-faint">{String(i + 1).padStart(2, "0")}</span>
+          <span className="tnum mt-0.5 text-[13px] text-faint">{String(i + 1).padStart(2, "0")}</span>
           <div className="min-w-0 flex-1">
-            <p className={`text-[11.5px] leading-snug ${s.status === "completed" ? "text-dim line-through decoration-line3" : "text-fg2"}`}>
+            <p className={`text-[13px] leading-snug ${s.status === "completed" ? "text-dim line-through decoration-line3" : "text-fg2"}`}>
               {s.content}
             </p>
-            <p className={`lbl mt-1 !text-[9.5px] ${s.status === "in_progress" ? "!text-gold" : s.status === "completed" ? "!text-green" : ""}`}>
+            <p className={`lbl mt-1 !text-[13px] ${s.status === "in_progress" ? "!text-gold" : s.status === "completed" ? "!text-green" : ""}`}>
               {capWord(s.status)}
             </p>
           </div>
@@ -355,17 +355,17 @@ function WorkflowCard({ workflow, onAction }: { workflow: WorkflowRun; onAction(
         >
           <Icon name="chevronRight" size={9} className={`shrink-0 text-faint transition-transform ${expanded ? "rotate-90" : ""}`} />
           <Icon name="search" size={11} className={statusTone} />
-          <p className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-fg2">{workflow.name}</p>
-          <span className={`font-mono text-[8.5px] tracking-[0.08em] ${statusTone}`}>{capWord(workflow.status)}</span>
+          <p className="min-w-0 flex-1 truncate font-mono text-[13px] text-fg2">{workflow.name}</p>
+          <span className={`font-mono text-[12px] tracking-[0.08em] ${statusTone}`}>{capWord(workflow.status)}</span>
         </button>
-        {workflow.objective && <p className={`mt-1.5 text-[10.5px] leading-relaxed text-mute ${expanded ? "line-clamp-3" : "truncate"}`}>{workflow.objective}</p>}
-        <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[8px] text-faint">
+        {workflow.objective && <p className={`mt-1.5 text-[13px] leading-relaxed text-mute ${expanded ? "line-clamp-3" : "truncate"}`}>{workflow.objective}</p>}
+        <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[12px] text-faint">
           <span className="rounded-[3px] border border-line2 px-1.5 py-0.5">{workflow.foreground ? "FOREGROUND" : "BACKGROUND"}</span>
           {workflow.currentPhase && <span className="rounded-[3px] border border-line2 px-1.5 py-0.5">{workflow.currentPhase}</span>}
           <span className="max-w-[180px] truncate rounded-[3px] border border-line2 px-1.5 py-0.5" title={workflow.runId}>RUN · {workflow.runId}</span>
           <span className="rounded-[3px] border border-line2 px-1.5 py-0.5">REV {workflow.revision}</span>
         </div>
-        {!expanded && <p className="mt-2 font-mono text-[8.5px] text-dim">
+        {!expanded && <p className="mt-2 font-mono text-[12px] text-dim">
           {workflow.phases.length} {zh ? "个阶段" : "PHASES"} · {workflow.agents.length} {zh ? "个子代理" : "SUBAGENTS"} · {workflow.events.length} {zh ? "条记录" : "EVENTS"}
         </p>}
       </div>
@@ -377,12 +377,12 @@ function WorkflowCard({ workflow, onAction }: { workflow: WorkflowRun; onAction(
             return (
             <div key={`${phase.title}-${index}`} className="flex items-center gap-2">
               <span className={`h-1.5 w-1.5 rounded-full ${phase.state === "done" ? "bg-green" : phase.state === "active" ? "animate-pulse-dot bg-acc" : unreached ? "bg-gold/70" : "bg-faint"}`} />
-              <span className={`text-[9.5px] ${phase.state === "active" ? "text-fg2" : "text-dim"}`}>{phase.title}</span>
-              {unreached && <span className="font-mono text-[8px] text-gold">{zh ? "未进入" : "NOT REACHED"}</span>}
+              <span className={`text-[13px] ${phase.state === "active" ? "text-fg2" : "text-dim"}`}>{phase.title}</span>
+              {unreached && <span className="font-mono text-[12px] text-gold">{zh ? "未进入" : "NOT REACHED"}</span>}
             </div>
             );
           })}
-          {unreachedPhases.length > 0 && <p className="pt-1 text-[8.5px] leading-relaxed text-gold">
+          {unreachedPhases.length > 0 && <p className="pt-1 text-[12px] leading-relaxed text-gold">
             {zh
               ? `CLI 在「${workflow.currentPhase}」阶段结束，后续 ${unreachedPhases.map((phase) => phase.title).join(" / ")} 未执行；这通常对应 Partial 结果，不是界面漏报。`
               : `The CLI ended in ${workflow.currentPhase}; later phases were not reached. This commonly indicates a partial result, not missing UI state.`}
@@ -390,7 +390,7 @@ function WorkflowCard({ workflow, onAction }: { workflow: WorkflowRun; onAction(
         </div>
       )}
 
-      {expanded && <div className="grid grid-cols-2 gap-x-3 gap-y-1 px-3 py-2 font-mono text-[8.5px] text-dim">
+      {expanded && <div className="grid grid-cols-2 gap-x-3 gap-y-1 px-3 py-2 font-mono text-[12px] text-dim">
         <span>{zh ? "活跃代理" : "ACTIVE AGENTS"}</span><span className="text-right text-fg2">{workflow.activeAgents}</span>
         <span>{zh ? "已用代理" : "AGENTS USED"}</span><span className="text-right text-fg2">{workflow.agentsUsed}{workflow.agentBudget !== undefined ? ` / ${workflow.agentBudget}` : ""}</span>
         <span>{zh ? "剩余 / 保留" : "REMAINING / HELD"}</span><span className="text-right text-fg2">{workflow.agentsRemaining ?? "—"} / {workflow.agentsReserved}</span>
@@ -400,7 +400,7 @@ function WorkflowCard({ workflow, onAction }: { workflow: WorkflowRun; onAction(
 
       {expanded && workflow.agents.length > 0 && (
         <div className="border-t border-line px-3 py-2">
-          <p className="mb-1 text-[8.5px] leading-relaxed text-dim">{zh ? "子代理（展开单个代理可查看公开输出、思考片段与工具调用）" : "SUBAGENTS · expand one for its public output, thought chunks, and tool calls"}</p>
+          <p className="mb-1 text-[12px] leading-relaxed text-dim">{zh ? "子代理（展开单个代理可查看公开输出、思考片段与工具调用）" : "SUBAGENTS · expand one for its public output, thought chunks, and tool calls"}</p>
           <div className="space-y-1">
             {workflow.agents.map((agent) => <WorkflowAgentRow key={agent.agentId} agent={agent} trace={workflow.agentTraces?.find((item) => item.agentId === agent.agentId || item.label === agent.label)} zh={zh} />)}
           </div>
@@ -409,13 +409,13 @@ function WorkflowCard({ workflow, onAction }: { workflow: WorkflowRun; onAction(
 
       {expanded && workflow.events.length > 0 && (
         <div className="border-t border-line px-3 py-2">
-          <p className="mb-1.5 font-mono text-[8.5px] tracking-[0.1em] text-faint">{zh ? "运行记录" : "RUN LOG"}</p>
+          <p className="mb-1.5 font-mono text-[12px] tracking-[0.1em] text-faint">{zh ? "运行记录" : "RUN LOG"}</p>
           <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
             {[...workflow.events].reverse().map((entry, index) => (
-              <div key={`${entry.timestamp ?? "event"}-${index}`} className="border-l border-line3 pl-2 text-[9px] leading-relaxed text-mute">
+              <div key={`${entry.timestamp ?? "event"}-${index}`} className="border-l border-line3 pl-2 text-[12px] leading-relaxed text-mute">
                 <p className="font-mono text-fg2">{entry.event}</p>
                 {entry.detail && <p className="mt-0.5 whitespace-pre-wrap break-words text-dim">{entry.detail}</p>}
-                {entry.timestamp && <p className="mt-0.5 font-mono text-[8px] text-faint">{entry.timestamp.replace("T", " ").replace("Z", "")}</p>}
+                {entry.timestamp && <p className="mt-0.5 font-mono text-[12px] text-faint">{entry.timestamp.replace("T", " ").replace("Z", "")}</p>}
               </div>
             ))}
           </div>
@@ -423,10 +423,10 @@ function WorkflowCard({ workflow, onAction }: { workflow: WorkflowRun; onAction(
       )}
 
       {expanded && (workflow.currentAgentLabel || workflow.pauseMessage || workflow.resultSummary) && (
-        <div className="border-t border-line px-3 py-2 text-[9.5px] leading-relaxed text-mute">
+        <div className="border-t border-line px-3 py-2 text-[13px] leading-relaxed text-mute">
           {workflow.currentAgentLabel && <p>{zh ? "正在运行：" : "Running: "}{workflow.currentAgentLabel}</p>}
           {workflow.pauseMessage && <p className="mt-1 text-gold">{workflow.pauseMessage}</p>}
-          {workflow.resultSummary && <div className="mt-2 rounded-[3px] border border-line2 bg-high/45 p-2"><p className="mb-1 font-mono text-[8.5px] tracking-[0.1em] text-acc">{zh ? "研究结果摘要" : "RESEARCH SUMMARY"}</p><p className="whitespace-pre-wrap break-words text-fg2">{workflow.resultSummary}</p></div>}
+          {workflow.resultSummary && <div className="mt-2 rounded-[3px] border border-line2 bg-high/45 p-2"><p className="mb-1 font-mono text-[12px] tracking-[0.1em] text-acc">{zh ? "研究结果摘要" : "RESEARCH SUMMARY"}</p><p className="whitespace-pre-wrap break-words text-fg2">{workflow.resultSummary}</p></div>}
         </div>
       )}
 
@@ -436,13 +436,13 @@ function WorkflowCard({ workflow, onAction }: { workflow: WorkflowRun; onAction(
             onClick={() => onAction(paused ? "resume" : "pause")}
             disabled={workflow.status === "budget_limited"}
             title={workflow.status === "budget_limited" ? (zh ? "代理预算耗尽，需要通过 workflow 工具提高 agent_budget" : "Agent budget exhausted; raise agent_budget through the workflow tool") : undefined}
-            className="flex-1 rounded-[3px] border border-line2 px-2 py-1 font-mono text-[8.5px] text-mute hover:border-line3 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex-1 rounded-[3px] border border-line2 px-2 py-1 font-mono text-[12px] text-mute hover:border-line3 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
           >
             {workflow.status === "budget_limited"
               ? (zh ? "需要提高预算" : "RAISE BUDGET")
               : paused ? (zh ? "恢复" : "RESUME") : (zh ? "暂停" : "PAUSE")}
           </button>
-          <button onClick={() => onAction("stop")} className="flex-1 rounded-[3px] border border-red/30 px-2 py-1 font-mono text-[8.5px] text-red hover:bg-red/10">
+          <button onClick={() => onAction("stop")} className="flex-1 rounded-[3px] border border-red/30 px-2 py-1 font-mono text-[12px] text-red hover:bg-red/10">
             {zh ? "停止" : "STOP"}
           </button>
         </div>
@@ -463,8 +463,8 @@ function WorkflowAgentRow({
   const summary = (
     <>
       <span className={`h-1.5 w-1.5 rounded-full ${agent.state === "running" ? "animate-pulse-dot bg-acc" : agent.state === "complete" || agent.state === "done" ? "bg-green" : agent.state === "failed" ? "bg-red" : "bg-faint"}`} />
-      <div className="min-w-0 flex-1"><p className="truncate font-mono text-[9px] text-fg2">{agent.label}</p><p className="truncate text-[8.5px] text-dim">{[agent.phase, agent.model].filter(Boolean).join(" · ") || agent.state}</p></div>
-      <span className="text-right font-mono text-[8px] leading-relaxed text-faint">{agent.tokensUsed !== undefined ? `${fmtTokens(agent.tokensUsed)} tok` : ""}{agent.durationMs !== undefined ? <><br />{fmtDuration(agent.durationMs)}</> : null}</span>
+      <div className="min-w-0 flex-1"><p className="truncate font-mono text-[12px] text-fg2">{agent.label}</p><p className="truncate text-[12px] text-dim">{[agent.phase, agent.model].filter(Boolean).join(" · ") || agent.state}</p></div>
+      <span className="text-right font-mono text-[12px] leading-relaxed text-faint">{agent.tokensUsed !== undefined ? `${fmtTokens(agent.tokensUsed)} tok` : ""}{agent.durationMs !== undefined ? <><br />{fmtDuration(agent.durationMs)}</> : null}</span>
     </>
   );
   if (!trace) return <div className="grid grid-cols-[7px_minmax(0,1fr)_auto] items-center gap-2 rounded-[3px] bg-high/45 px-2 py-1.5">{summary}</div>;
@@ -475,16 +475,16 @@ function WorkflowAgentRow({
         {summary}
       </summary>
       <div className="border-t border-line px-2 py-2">
-        <p className="mb-1.5 break-all font-mono text-[8px] text-faint">{trace.childSessionId} · {trace.entries.length} {zh ? "条公开记录" : "PUBLIC ENTRIES"}</p>
+        <p className="mb-1.5 break-all font-mono text-[12px] text-faint">{trace.childSessionId} · {trace.entries.length} {zh ? "条公开记录" : "PUBLIC ENTRIES"}</p>
         <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
-          {trace.entries.length === 0 ? <p className={`text-[9px] ${agent.state === "failed" ? "text-red" : "text-dim"}`}>{agent.state === "failed" ? (zh ? "该子代理在产生公开记录前失败；这不是隐藏的思考内容。" : "This subagent failed before producing public entries; this is not hidden reasoning.") : (zh ? "该子代理尚未产生可回放的公开明细。" : "This subagent has not produced replayable public detail yet.")}</p> : trace.entries.map((entry) => (
-            <div key={entry.id} className="border-l border-line3 pl-2 text-[9px] leading-relaxed">
-              <p className={`font-mono text-[8px] ${entry.kind === "thinking" ? "text-gold" : entry.kind === "tool" ? "text-acc" : "text-fg2"}`}>
+          {trace.entries.length === 0 ? <p className={`text-[12px] ${agent.state === "failed" ? "text-red" : "text-dim"}`}>{agent.state === "failed" ? (zh ? "该子代理在产生公开记录前失败；这不是隐藏的思考内容。" : "This subagent failed before producing public entries; this is not hidden reasoning.") : (zh ? "该子代理尚未产生可回放的公开明细。" : "This subagent has not produced replayable public detail yet.")}</p> : trace.entries.map((entry) => (
+            <div key={entry.id} className="border-l border-line3 pl-2 text-[12px] leading-relaxed">
+              <p className={`font-mono text-[12px] ${entry.kind === "thinking" ? "text-gold" : entry.kind === "tool" ? "text-acc" : "text-fg2"}`}>
                 {entry.kind === "thinking" ? (zh ? "思考" : "THINKING") : entry.kind === "tool" ? `TOOL · ${entry.title ?? "tool"}` : entry.kind === "output" ? (zh ? "输出" : "OUTPUT") : (entry.title ?? "EVENT")}
                 {entry.status && <span className="ml-1 text-faint">· {entry.status}</span>}
               </p>
               {entry.detail && <p className="mt-0.5 whitespace-pre-wrap break-words text-dim">{entry.detail}</p>}
-              {entry.timestamp && <p className="mt-0.5 font-mono text-[8px] text-faint">{new Date(entry.timestamp).toLocaleString()}</p>}
+              {entry.timestamp && <p className="mt-0.5 font-mono text-[12px] text-faint">{new Date(entry.timestamp).toLocaleString()}</p>}
             </div>
           ))}
         </div>
@@ -523,7 +523,7 @@ function PreviewTab() {
         <button type="button" onClick={() => setFrameKey((key) => key + 1)} className="flex h-6 w-6 items-center justify-center text-dim hover:text-fg" title={zh ? "重新载入" : "Reload"}>
           <Icon name="refresh" size={11} />
         </button>
-        <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="http://localhost:5173" className="h-6 min-w-0 flex-1 rounded-[3px] border border-line bg-raise px-2 font-mono text-[9.5px] text-fg2 outline-none focus:border-line3" />
+        <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="http://localhost:5173" className="h-6 min-w-0 flex-1 rounded-[3px] border border-line bg-raise px-2 font-mono text-[13px] text-fg2 outline-none focus:border-line3" />
         {preview.url && (
           <button type="button" onClick={() => {
             setNavigationError("");
@@ -537,14 +537,14 @@ function PreviewTab() {
           </button>
         )}
       </form>
-      {navigationError && <p role="alert" className="shrink-0 border-b border-red/25 bg-red/5 px-3 py-2 font-mono text-[9px] leading-relaxed text-red">{navigationError}</p>}
+      {navigationError && <p role="alert" className="shrink-0 border-b border-red/25 bg-red/5 px-3 py-2 font-mono text-[12px] leading-relaxed text-red">{navigationError}</p>}
       {preview.status === "ready" && preview.url ? (
         <iframe key={`${preview.url}-${frameKey}`} src={preview.url} title="Project preview" className="min-h-0 flex-1 border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-modals" />
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-5 text-center">
           <span className={`h-2 w-2 rounded-full ${preview.status === "starting" ? "animate-pulse-dot bg-acc" : preview.status === "error" ? "bg-red" : "bg-faint"}`} />
           <div>
-            <p className="text-[11px] text-fg2">
+            <p className="text-[13px] text-fg2">
               {preview.status === "starting"
                 ? (zh ? "正在启动项目预览…" : "Starting project preview…")
                 : preview.status === "detected"
@@ -553,11 +553,11 @@ function PreviewTab() {
                     ? (zh ? "预览启动失败" : "Preview failed")
                     : (zh ? "未检测到可预览的前端项目" : "No previewable frontend detected")}
             </p>
-            {preview.framework && <p className="mt-1 font-mono text-[9.5px] text-acc">{preview.framework}</p>}
-            {preview.error && <p className="mt-2 max-w-[260px] font-mono text-[9.5px] leading-relaxed text-red">{preview.error}</p>}
-            {preview.command && <p className="mt-2 max-w-[260px] truncate font-mono text-[9px] text-faint">{preview.command}</p>}
+            {preview.framework && <p className="mt-1 font-mono text-[13px] text-acc">{preview.framework}</p>}
+            {preview.error && <p className="mt-2 max-w-[260px] font-mono text-[13px] leading-relaxed text-red">{preview.error}</p>}
+            {preview.command && <p className="mt-2 max-w-[260px] truncate font-mono text-[12px] text-faint">{preview.command}</p>}
           </div>
-          <button onClick={() => void refresh(true)} className="rounded-[3px] border border-line2 bg-raise px-3 py-1.5 text-[10px] text-fg2 hover:border-line3 hover:text-fg">
+          <button onClick={() => void refresh(true)} className="rounded-[3px] border border-line2 bg-raise px-3 py-1.5 text-[13px] text-fg2 hover:border-line3 hover:text-fg">
             {preview.command
               ? (zh ? `执行 ${preview.command}` : `Run ${preview.command}`)
               : (zh ? "检测并启动" : "Detect & start")}
@@ -579,8 +579,8 @@ function UsageTab({ session }: { session: Session }) {
       {/* context gauge */}
       <div>
         <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="lbl !text-[9.5px]">{t("context")}</span>
-          <span className="tnum text-[10px] text-fg2">
+          <span className="lbl !text-[13px]">{t("context")}</span>
+          <span className="tnum text-[13px] text-fg2">
             {fmtTokens(u.contextUsed)} / {fmtTokens(u.contextMax)}
           </span>
         </div>
@@ -601,8 +601,8 @@ function UsageTab({ session }: { session: Session }) {
       />
 
       <div className="rounded-[4px] border border-line bg-raise p-2.5">
-        <p className="lbl !text-[9.5px] !text-faint">{t("sessionId")}</p>
-        <p className="tnum mt-1 break-all text-[10px] text-mute select-text">{session.id}</p>
+        <p className="lbl !text-[13px] !text-faint">{t("sessionId")}</p>
+        <p className="tnum mt-1 break-all text-[13px] text-mute select-text">{session.id}</p>
       </div>
     </div>
   );
@@ -611,8 +611,8 @@ function UsageTab({ session }: { session: Session }) {
 function Readout({ label, value, tone = "text-fg2" }: { label: string; value: string; tone?: string }) {
   return (
     <div className="flex items-baseline justify-between border-b border-line pb-1.5">
-      <span className="lbl !text-[9.5px]">{label}</span>
-      <span className={`tnum text-[11px] ${tone}`}>{value}</span>
+      <span className="lbl !text-[13px]">{label}</span>
+      <span className={`tnum text-[13px] ${tone}`}>{value}</span>
     </div>
   );
 }

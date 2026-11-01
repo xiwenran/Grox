@@ -179,7 +179,7 @@ export function RewindMenu({
     <div ref={rootRef} className="relative">
       <button
         onClick={() => open ? close() : void showPoints()}
-        className={`flex h-7 items-center justify-center gap-1.5 rounded-[5px] border transition-colors ${variant === "request" ? "border-transparent px-1.5 text-[9px] text-acc hover:text-fg" : variant === "changes" ? "border-transparent px-2 text-[10.5px] text-fg2 hover:bg-high hover:text-fg" : "border-line2 bg-high/45 px-2 text-[9.5px] font-medium text-mute hover:border-gold/35 hover:bg-high hover:text-gold"} ${open ? "border-gold/35 bg-high text-gold" : ""}`}
+        className={`flex h-7 items-center justify-center gap-1.5 rounded-[5px] border transition-colors ${variant === "request" ? "border-transparent px-1.5 text-[12px] text-acc hover:text-fg" : variant === "changes" ? "border-transparent px-2 text-[13px] text-fg2 hover:bg-high hover:text-fg" : "border-line2 bg-high/45 px-2 text-[13px] font-medium text-mute hover:border-gold/35 hover:bg-high hover:text-gold"} ${open ? "border-gold/35 bg-high text-gold" : ""}`}
         title={variant === "changes" ? (language === "zh-CN" ? "撤销本轮文件修改" : "Undo file changes from this turn") : (language === "zh-CN" ? "选择历史节点回退并编辑" : "Choose a checkpoint to rewind and edit")}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -198,7 +198,7 @@ export function RewindMenu({
           >
           <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
             {busy ? <BlackHole size={13} spin /> : <Icon name="branch" size={12} className="text-gold" />}
-            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-fg2">
+            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg2">
               {stage === "points" && (language === "zh-CN" ? "回退到哪一轮？" : "Rewind to which turn?")}
               {stage === "loading" && (language === "zh-CN" ? "正在读取历史节点…" : "Loading rewind checkpoints…")}
               {stage === "mode" && (language === "zh-CN" ? "选择恢复范围" : "Choose what to restore")}
@@ -210,16 +210,16 @@ export function RewindMenu({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
-            {stage === "loading" && <div className="flex min-h-32 flex-col items-center justify-center gap-3"><BlackHole size={28} spin /><p className="text-[10px] text-mute">{language === "zh-CN" ? "从 grok-build 读取官方 checkpoint" : "Reading official grok-build checkpoints"}</p></div>}
+            {stage === "loading" && <div className="flex min-h-32 flex-col items-center justify-center gap-3"><BlackHole size={28} spin /><p className="text-[13px] text-mute">{language === "zh-CN" ? "从 grok-build 读取官方 checkpoint" : "Reading official grok-build checkpoints"}</p></div>}
             {stage === "points" && points.map((item) => (
               <button
                 key={item.prompt_index}
                 onClick={() => selectPoint(item)}
                 className="mb-1 grid w-full min-w-0 grid-cols-[54px_minmax(0,1fr)_auto] items-center gap-2 rounded-[5px] border border-transparent px-2.5 py-2 text-left hover:border-line2 hover:bg-high"
               >
-                <span className="font-mono text-[9.5px] text-faint">#{item.prompt_index + 1}</span>
-                <span className="min-w-0 truncate text-[11px] text-fg2" title={item.prompt_preview}>{item.prompt_preview || (language === "zh-CN" ? "无预览" : "No preview")}</span>
-                <span className="shrink-0 font-mono text-[9px] text-dim">{item.has_file_changes ? (language === "zh-CN" ? `${item.num_file_snapshots} 文件` : `${item.num_file_snapshots} files`) : (language === "zh-CN" ? "仅对话" : "chat")}</span>
+                <span className="font-mono text-[13px] text-faint">#{item.prompt_index + 1}</span>
+                <span className="min-w-0 truncate text-[13px] text-fg2" title={item.prompt_preview}>{item.prompt_preview || (language === "zh-CN" ? "无预览" : "No preview")}</span>
+                <span className="shrink-0 font-mono text-[12px] text-dim">{item.has_file_changes ? (language === "zh-CN" ? `${item.num_file_snapshots} 文件` : `${item.num_file_snapshots} files`) : (language === "zh-CN" ? "仅对话" : "chat")}</span>
               </button>
             ))}
 
@@ -233,7 +233,7 @@ export function RewindMenu({
                     return (
                       <button key={value} disabled={disabled} onClick={() => void selectMode(value)} className="grid w-full grid-cols-[18px_minmax(0,1fr)_14px] items-center gap-2 rounded-[5px] border border-line px-2.5 py-2 text-left hover:border-line3 hover:bg-high disabled:cursor-not-allowed disabled:opacity-35">
                         <Icon name={value === "conversation_only" ? "command" : value === "files_only" ? "file" : "layers"} size={11} className="text-dim" />
-                        <span className="min-w-0"><span className="block truncate text-[11px] text-fg2">{language === "zh-CN" ? item.zh : item.en}</span><span className="block truncate text-[9.5px] text-faint" title={language === "zh-CN" ? item.zhHint : item.enHint}>{language === "zh-CN" ? item.zhHint : item.enHint}</span></span>
+                        <span className="min-w-0"><span className="block truncate text-[13px] text-fg2">{language === "zh-CN" ? item.zh : item.en}</span><span className="block truncate text-[13px] text-faint" title={language === "zh-CN" ? item.zhHint : item.enHint}>{language === "zh-CN" ? item.zhHint : item.enHint}</span></span>
                         <Icon name="chevronRight" size={9} className="text-faint" />
                       </button>
                     );
@@ -242,34 +242,34 @@ export function RewindMenu({
               </div>
             )}
 
-            {(stage === "previewing" || stage === "executing") && <div className="flex min-h-32 flex-col items-center justify-center gap-3 text-center"><BlackHole size={30} spin /><p className="text-[10px] text-mute">{stage === "previewing" ? (language === "zh-CN" ? "只读预览，不会修改对话或文件" : "Read-only preview; nothing is changed yet") : (language === "zh-CN" ? "正在恢复官方 checkpoint，请勿关闭应用" : "Restoring the official checkpoint; keep the app open")}</p></div>}
+            {(stage === "previewing" || stage === "executing") && <div className="flex min-h-32 flex-col items-center justify-center gap-3 text-center"><BlackHole size={30} spin /><p className="text-[13px] text-mute">{stage === "previewing" ? (language === "zh-CN" ? "只读预览，不会修改对话或文件" : "Read-only preview; nothing is changed yet") : (language === "zh-CN" ? "正在恢复官方 checkpoint，请勿关闭应用" : "Restoring the official checkpoint; keep the app open")}</p></div>}
 
             {stage === "confirm" && point && preview && (
               <div className="p-1">
                 <SelectedPoint point={point} language={language} />
                 <div className="mt-2 rounded-[5px] border border-gold/25 bg-gold/5 p-2.5">
-                  <p className="text-[11px] text-fg2">
+                  <p className="text-[13px] text-fg2">
                     {mode === "files_only"
                       ? (language === "zh-CN" ? `将撤销第 ${point.prompt_index + 1} 轮产生的文件修改` : `File changes from turn ${point.prompt_index + 1} will be reverted`)
                       : (language === "zh-CN" ? `将从第 ${point.prompt_index + 1} 轮开始移除 ${totalRemoved} 轮对话` : `${totalRemoved} turn(s) from turn ${point.prompt_index + 1} will be removed`)}
                   </p>
-                  <p className="mt-1 text-[9.5px] text-mute">{mode === "files_only" ? (language === "zh-CN" ? `${labels.zh} · 对话保持不变` : `${labels.en} · the conversation remains unchanged`) : (language === "zh-CN" ? `${labels.zh} · 回退后会把所选请求放回输入框供你编辑` : `${labels.en} · the selected request returns to the composer for editing`)}</p>
+                  <p className="mt-1 text-[13px] text-mute">{mode === "files_only" ? (language === "zh-CN" ? `${labels.zh} · 对话保持不变` : `${labels.en} · the conversation remains unchanged`) : (language === "zh-CN" ? `${labels.zh} · 回退后会把所选请求放回输入框供你编辑` : `${labels.en} · the selected request returns to the composer for editing`)}</p>
                 </div>
                 {(preview.clean_files.length > 0 || preview.conflicts.length > 0) && (
-                  <div className="mt-2 max-h-28 overflow-y-auto rounded-[5px] border border-line p-2 font-mono text-[9px]">
+                  <div className="mt-2 max-h-28 overflow-y-auto rounded-[5px] border border-line p-2 font-mono text-[12px]">
                     {preview.clean_files.map((path) => <p key={`clean-${path}`} className="truncate text-dim" title={path}>RESTORE · {path}</p>)}
                     {preview.conflicts.map((item) => <p key={`conflict-${item.path}`} className="truncate text-red" title={item.path}>CONFLICT · {item.path}</p>)}
                   </div>
                 )}
-                {preview.conflicts.length > 0 && <p className="mt-2 text-[9.5px] text-red">{language === "zh-CN" ? "检测到外部文件修改；继续将按官方 force 流程覆盖这些冲突。" : "External file changes detected; continuing uses the official force flow."}</p>}
+                {preview.conflicts.length > 0 && <p className="mt-2 text-[13px] text-red">{language === "zh-CN" ? "检测到外部文件修改；继续将按官方 force 流程覆盖这些冲突。" : "External file changes detected; continuing uses the official force flow."}</p>}
                 <div className="mt-3 flex justify-end gap-2">
-                  <button onClick={() => setStage("mode")} className="rounded-[5px] border border-line2 px-3 py-1.5 text-[10px] text-mute hover:bg-high hover:text-fg2">{language === "zh-CN" ? "返回" : "Back"}</button>
-                  <button onClick={() => void execute()} className="rounded-[5px] border border-gold/40 bg-gold/10 px-3 py-1.5 text-[10px] text-gold hover:bg-gold/15">{mode === "files_only" ? (language === "zh-CN" ? "确认回退文件" : "Rewind files") : (language === "zh-CN" ? "确认回退并编辑" : "Rewind and edit")}</button>
+                  <button onClick={() => setStage("mode")} className="rounded-[5px] border border-line2 px-3 py-1.5 text-[13px] text-mute hover:bg-high hover:text-fg2">{language === "zh-CN" ? "返回" : "Back"}</button>
+                  <button onClick={() => void execute()} className="rounded-[5px] border border-gold/40 bg-gold/10 px-3 py-1.5 text-[13px] text-gold hover:bg-gold/15">{mode === "files_only" ? (language === "zh-CN" ? "确认回退文件" : "Rewind files") : (language === "zh-CN" ? "确认回退并编辑" : "Rewind and edit")}</button>
                 </div>
               </div>
             )}
 
-            {error && <p role="alert" className="m-1 rounded-[5px] border border-red/25 bg-red/5 px-2.5 py-2 text-[10px] text-red">{error}</p>}
+            {error && <p role="alert" className="m-1 rounded-[5px] border border-red/25 bg-red/5 px-2.5 py-2 text-[13px] text-red">{error}</p>}
           </div>
           </div>
         </RewindSurface>
@@ -281,9 +281,9 @@ export function RewindMenu({
 function SelectedPoint({ point, language }: { point: RewindPoint; language: string }) {
   return (
     <div className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-2 rounded-[5px] border border-line2 bg-panel/60 px-2.5 py-2">
-      <span className="font-mono text-[9.5px] text-gold">#{point.prompt_index + 1}</span>
-      <span className="min-w-0 truncate text-[10.5px] text-fg2" title={point.prompt_preview}>{point.prompt_preview || (language === "zh-CN" ? "无预览" : "No preview")}</span>
-      <span className="font-mono text-[9px] text-faint">{point.has_file_changes ? (language === "zh-CN" ? `${point.num_file_snapshots} 文件` : `${point.num_file_snapshots} files`) : "CHAT"}</span>
+      <span className="font-mono text-[13px] text-gold">#{point.prompt_index + 1}</span>
+      <span className="min-w-0 truncate text-[13px] text-fg2" title={point.prompt_preview}>{point.prompt_preview || (language === "zh-CN" ? "无预览" : "No preview")}</span>
+      <span className="font-mono text-[12px] text-faint">{point.has_file_changes ? (language === "zh-CN" ? `${point.num_file_snapshots} 文件` : `${point.num_file_snapshots} files`) : "CHAT"}</span>
     </div>
   );
 }

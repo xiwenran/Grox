@@ -133,7 +133,7 @@ function OptionRow({ groupLabel, rowLabel, values, active, onSelect, last = fals
   };
   return (
     <div className={last ? "" : "mb-3 border-b border-line pb-3"}>
-      <p className="lbl mb-1.5 !text-[9px]" id={`prompt-option-${groupLabel}`}>{rowLabel}</p>
+      <p className="lbl mb-1.5 !text-[12px]" id={`prompt-option-${groupLabel}`}>{rowLabel}</p>
       <div role="radiogroup" aria-labelledby={`prompt-option-${groupLabel}`} className="grid gap-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
         {values.map(([value, text]) => (
           <button
@@ -142,7 +142,7 @@ function OptionRow({ groupLabel, rowLabel, values, active, onSelect, last = fals
             aria-checked={active === value}
             onClick={() => onSelect(value)}
             onKeyDown={onKeyDown}
-            className={`min-w-0 truncate rounded-full border px-2.5 py-1.5 font-mono text-[9.5px] ${active === value ? "border-acc-dim bg-acc-wash text-acc" : "border-line2 text-dim hover:text-fg2"}`}
+            className={`min-w-0 truncate rounded-full border px-2.5 py-1.5 font-mono text-[13px] ${active === value ? "border-acc-dim bg-acc-wash text-acc" : "border-line2 text-dim hover:text-fg2"}`}
             title={text}
           >
             {text}

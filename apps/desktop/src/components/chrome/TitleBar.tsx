@@ -80,7 +80,7 @@ export function TitleBar() {
         data-tauri-drag-region
         className="pointer-events-none flex min-w-0 flex-1 items-center justify-center px-3"
       >
-        <div className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden whitespace-nowrap text-[12px]">
+        <div className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden whitespace-nowrap text-[14px]">
           {activeId && breadcrumbCwd && breadcrumbTitle !== null ? (
             <>
               <span className="lbl max-w-[35%] shrink-0 truncate">{baseName(breadcrumbCwd)}</span>
@@ -222,7 +222,7 @@ function DefaultOpenMenu({ language }: { language: "zh-CN" | "en-US" }) {
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-[60] w-52 overflow-hidden rounded-[7px] border border-line3 bg-raise p-1.5 shadow-2xl" role="menu">
-          <p className="px-2 pb-1.5 pt-1 font-mono text-[8.5px] tracking-[0.12em] text-faint">{zh ? "文件默认打开应用" : "Default file application"}</p>
+          <p className="px-2 pb-1.5 pt-1 font-mono text-[12px] tracking-[0.12em] text-faint">{zh ? "文件默认打开应用" : "Default file application"}</p>
           {applications.map((item) => (
             <button
               key={item.id}
@@ -233,7 +233,7 @@ function DefaultOpenMenu({ language }: { language: "zh-CN" | "en-US" }) {
                 setApplication(item);
                 setOpen(false);
               }}
-              className={`flex h-8 w-full items-center gap-2 rounded-[4px] px-2 text-left text-[10.5px] transition-colors ${application.id === item.id ? "bg-acc-wash text-fg" : "text-mute hover:bg-high hover:text-fg2"}`}
+              className={`flex h-8 w-full items-center gap-2 rounded-[4px] px-2 text-left text-[13px] transition-colors ${application.id === item.id ? "bg-acc-wash text-fg" : "text-mute hover:bg-high hover:text-fg2"}`}
             >
               <span className={application.id === item.id ? "text-acc" : "text-dim"}>{appIcon(item, 15)}</span>
               <span className="flex-1">{label(item)}</span>
@@ -252,7 +252,7 @@ function WinBtn({ onClick, label, danger }: { onClick: () => void; label: string
       type="button"
       data-tauri-drag-region="false"
       onClick={onClick}
-      className={`flex h-8 w-11 items-center justify-center text-[10px] text-mute transition-colors ${
+      className={`flex h-8 w-11 items-center justify-center text-[13px] text-mute transition-colors ${
         danger ? "hover:bg-red hover:text-base" : "hover:bg-high hover:text-fg"
       }`}
     >

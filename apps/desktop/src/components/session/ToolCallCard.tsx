@@ -95,24 +95,24 @@ export function ToolCallCard({ block }: { block: ToolBlock }) {
         {/* header */}
         <button onClick={() => setOpen((v) => !v)} className="flex h-7 w-full items-center gap-1.5 text-left">
           <Icon name={meta.icon} size={12} className={`shrink-0 ${meta.tone}`} />
-          <span className="max-w-[42%] truncate font-mono text-[10.5px] text-fg2">{title}</span>
+          <span className="max-w-[42%] truncate font-mono text-[13px] text-fg2">{title}</span>
           {call.readOnly && (
-            <span className="shrink-0 rounded-[3px] border border-line2 px-1 py-0.5 font-mono text-[8px] tracking-[0.08em] text-faint">
+            <span className="shrink-0 rounded-[3px] border border-line2 px-1 py-0.5 font-mono text-[12px] tracking-[0.08em] text-faint">
               {language === "zh-CN" ? "只读" : "READ ONLY"}
             </span>
           )}
           {call.detail && (
-            <span className="min-w-0 flex-1 truncate font-mono text-[9.5px] text-mute">
+            <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-mute">
               {call.detail}
             </span>
           )}
           {failure && (
-            <span title={failure} className="min-w-0 flex-1 truncate font-mono text-[9.5px] text-red/80">
+            <span title={failure} className="min-w-0 flex-1 truncate font-mono text-[13px] text-red/80">
               {failure}
             </span>
           )}
           <StatusChip call={call} language={language} />
-          <span className="tnum shrink-0 text-[9.5px] text-faint">
+          <span className="tnum shrink-0 text-[13px] text-faint">
             {call.status === "done" || call.status === "error" || call.status === "cancelled" ? fmtDuration(duration) : ""}
           </span>
           <Icon
@@ -131,10 +131,10 @@ export function ToolCallCard({ block }: { block: ToolBlock }) {
             {call.images && <ToolImages images={call.images} />}
             {!call.diff && !call.terminal && !call.locations && searchTools && <SearchToolsSummary preview={searchTools} />}
             {!call.diff && !call.terminal && !call.locations && !searchTools && call.output && (
-              <pre className="max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[10.5px] leading-relaxed text-mute select-text">{call.output}</pre>
+              <pre className="max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-mute select-text">{call.output}</pre>
             )}
             {!call.diff && !call.terminal && !call.output && !call.locations && busy && (
-              <p className="font-mono text-[10.5px] text-faint">
+              <p className="font-mono text-[13px] text-faint">
                 {call.status === "awaiting_permission"
                   ? language === "zh-CN" ? "等待用户批准…" : "holding for operator approval…"
                   : language === "zh-CN" ? "执行中…" : "working…"}
@@ -158,7 +158,7 @@ function SearchToolsSummary({ preview }: { preview: SearchToolsPreview }) {
 
   return (
     <div className="rounded-[5px] border border-line2 bg-void/70 px-2.5 py-2">
-      <p className="mb-2 font-mono text-[10px] font-medium text-fg2">
+      <p className="mb-2 font-mono text-[13px] font-medium text-fg2">
         {language === "zh-CN" ? `发现 ${preview.resultCount} 个搜索工具` : `Found ${preview.resultCount} search tools`}
       </p>
       <div className="space-y-2">
@@ -167,12 +167,12 @@ function SearchToolsSummary({ preview }: { preview: SearchToolsPreview }) {
           if (tools.length === 0) return null;
           return (
             <section key={group.server}>
-              <p className="mb-1 font-mono text-[9px] tracking-[0.1em] text-faint">{group.server}</p>
+              <p className="mb-1 font-mono text-[12px] tracking-[0.1em] text-faint">{group.server}</p>
               <div className="space-y-1">
                 {tools.map((tool) => (
                   <div key={tool.name} className="rounded-[3px] border border-line bg-raise/35 px-2 py-1.5">
-                    <p className="font-mono text-[10px] text-fg2 select-text">{tool.name}</p>
-                    {tool.description && <p className="mt-0.5 text-[10px] leading-relaxed text-mute">{tool.description}</p>}
+                    <p className="font-mono text-[13px] text-fg2 select-text">{tool.name}</p>
+                    {tool.description && <p className="mt-0.5 text-[13px] leading-relaxed text-mute">{tool.description}</p>}
                   </div>
                 ))}
               </div>
@@ -180,7 +180,7 @@ function SearchToolsSummary({ preview }: { preview: SearchToolsPreview }) {
           );
         })}
       </div>
-      {omitted > 0 && <p className="mt-2 text-[9.5px] text-faint">{language === "zh-CN" ? `另有 ${omitted} 个工具，请展开原始输出查看。` : `${omitted} more tools are available in raw output.`}</p>}
+      {omitted > 0 && <p className="mt-2 text-[13px] text-faint">{language === "zh-CN" ? `另有 ${omitted} 个工具，请展开原始输出查看。` : `${omitted} more tools are available in raw output.`}</p>}
     </div>
   );
 }
@@ -263,30 +263,30 @@ function StatusChip({ call, language }: { call: ToolCall; language: "zh-CN" | "e
       return (
         <span className="flex shrink-0 items-center gap-1.5">
           <span className="h-1 w-1 animate-pulse-dot rounded-full bg-acc" />
-          <span className="lbl lbl-acc !text-[9.5px]">{language === "zh-CN" ? "执行中" : "RUNNING"}</span>
+          <span className="lbl lbl-acc !text-[13px]">{language === "zh-CN" ? "执行中" : "RUNNING"}</span>
         </span>
       );
     case "awaiting_permission":
-      return <span className="lbl shrink-0 !text-[9.5px] !text-gold">{language === "zh-CN" ? "待批准" : "GATED"}</span>;
+      return <span className="lbl shrink-0 !text-[13px] !text-gold">{language === "zh-CN" ? "待批准" : "GATED"}</span>;
     case "done":
       return <Icon name="check" size={11} className="shrink-0 text-dim" />;
     case "error":
-      return <span className="lbl shrink-0 !text-[9.5px] !text-red">{language === "zh-CN" ? "失败" : "FAILED"}</span>;
+      return <span className="lbl shrink-0 !text-[13px] !text-red">{language === "zh-CN" ? "失败" : "FAILED"}</span>;
     case "cancelled":
-      return <span className="lbl shrink-0 !text-[9.5px] !text-faint">{language === "zh-CN" ? "已取消" : "CANCELLED"}</span>;
+      return <span className="lbl shrink-0 !text-[13px] !text-faint">{language === "zh-CN" ? "已取消" : "CANCELLED"}</span>;
     default:
-      return <span className="lbl shrink-0 !text-[9.5px]">{language === "zh-CN" ? "排队中" : "QUEUED"}</span>;
+      return <span className="lbl shrink-0 !text-[13px]">{language === "zh-CN" ? "排队中" : "QUEUED"}</span>;
   }
 }
 
 function RawPayload({ label, value }: { label: string; value: string }) {
   return (
     <details className="group/raw mt-2 rounded-[4px] border border-line bg-void/60">
-      <summary className="flex h-6 cursor-pointer items-center gap-1.5 px-2 font-mono text-[9px] tracking-[0.12em] text-faint hover:text-mute">
+      <summary className="flex h-6 cursor-pointer items-center gap-1.5 px-2 font-mono text-[12px] tracking-[0.12em] text-faint hover:text-mute">
         <Icon name="chevronRight" size={8} className="transition-transform group-open/raw:rotate-90" />
         {label}
       </summary>
-      <pre className="max-h-48 overflow-auto whitespace-pre-wrap border-t border-line px-2 py-1.5 font-mono text-[9.5px] leading-relaxed text-mute select-text">{value}</pre>
+      <pre className="max-h-48 overflow-auto whitespace-pre-wrap border-t border-line px-2 py-1.5 font-mono text-[13px] leading-relaxed text-mute select-text">{value}</pre>
     </details>
   );
 }
@@ -301,16 +301,16 @@ function TerminalView({ call }: { call: ToolCall }) {
     <div className="overflow-hidden rounded-[5px] border border-line2 bg-void">
       <div className="flex items-center gap-2 border-b border-line px-3 py-1.5">
         <span className="text-acc select-none">$</span>
-        <span className="flex-1 truncate font-mono text-[10.5px] text-fg select-text">{t.cmd}</span>
+        <span className="flex-1 truncate font-mono text-[13px] text-fg select-text">{t.cmd}</span>
         {t.exitCode !== undefined && (
-          <span className={`lbl !text-[9.5px] ${t.exitCode === 0 ? "!text-green" : "!text-red"}`}>
+          <span className={`lbl !text-[13px] ${t.exitCode === 0 ? "!text-green" : "!text-red"}`}>
             EXIT {t.exitCode}
           </span>
         )}
         {running && <span className="h-1 w-1 animate-pulse-dot rounded-full bg-fg" />}
       </div>
       {t.lines.length > 0 && (
-        <div className="max-h-56 overflow-y-auto px-3 py-2 font-mono text-[10.5px] leading-[1.7] select-text">
+        <div className="max-h-56 overflow-y-auto px-3 py-2 font-mono text-[13px] leading-[1.7] select-text">
           {t.lines.map((line, i) => (
             <TermLine key={i} line={line} />
           ))}
@@ -346,7 +346,7 @@ function Locations({ paths }: { paths: string[] }) {
       {paths.map((p, i) => (
         <button
           key={i}
-          className="flex w-full items-center gap-2 text-left font-mono text-[10.5px] hover:text-fg select-text"
+          className="flex w-full items-center gap-2 text-left font-mono text-[13px] hover:text-fg select-text"
           onClick={() => void openPreview(p)}
         >
           <Icon name="file" size={10} className="text-faint" />
@@ -375,7 +375,7 @@ function ToolImages({ images }: { images: NonNullable<ToolCall["images"]> }) {
         {rendered.map((image, index) => (
           <button key={`${image.src}-${index}`} onClick={() => setActive(index)} className="group/image relative overflow-hidden rounded-[4px] border border-line2 bg-void text-left" title={language === "zh-CN" ? "点击预览图片" : "Preview image"}>
             <img src={image.src} alt="Tool output" className="max-h-44 w-full object-contain transition-transform duration-200 group-hover/image:scale-[1.015]" />
-            <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-void/80 px-2 py-1 font-mono text-[8.5px] text-faint opacity-0 backdrop-blur-sm transition-opacity group-hover/image:opacity-100">{language === "zh-CN" ? "点击预览" : "PREVIEW"}</span>
+            <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-void/80 px-2 py-1 font-mono text-[12px] text-faint opacity-0 backdrop-blur-sm transition-opacity group-hover/image:opacity-100">{language === "zh-CN" ? "点击预览" : "PREVIEW"}</span>
           </button>
         ))}
       </div>

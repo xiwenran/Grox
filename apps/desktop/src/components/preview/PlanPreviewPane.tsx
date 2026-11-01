@@ -71,12 +71,12 @@ export function PlanPreviewPane() {
             <Icon name="file" size={12} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-mono text-[10.5px] text-fg2">plan.md</p>
-            <p className="font-mono text-[8.5px] tracking-[0.08em] text-faint">
+            <p className="truncate font-mono text-[13px] text-fg2">plan.md</p>
+            <p className="font-mono text-[12px] tracking-[0.08em] text-faint">
               {review ? (language === "zh-CN" ? "等待审阅" : "AWAITING REVIEW") : revising ? (language === "zh-CN" ? "正在修订" : "REVISING") : (language === "zh-CN" ? "计划预览" : "PLAN PREVIEW")}
             </p>
           </div>
-          {total > 0 && <span className="tnum text-[9.5px] text-gold">{done}/{total}</span>}
+          {total > 0 && <span className="tnum text-[13px] text-gold">{done}/{total}</span>}
           <button onClick={() => close(false)} className="flex h-6 w-6 items-center justify-center text-dim hover:text-fg" title={language === "zh-CN" ? "关闭计划预览" : "Close plan preview"} aria-label={language === "zh-CN" ? "关闭计划预览" : "Close plan preview"}>
             <Icon name="x" size={12} />
           </button>
@@ -89,7 +89,7 @@ export function PlanPreviewPane() {
         )}
 
         <div className="min-h-0 flex-1 overflow-auto bg-base">
-          <article className="mx-auto max-w-[760px] p-5 text-[13px] leading-relaxed text-fg2">
+          <article className="mx-auto max-w-[760px] p-5 text-[14px] leading-relaxed text-fg2">
             <Markdown text={content} />
           </article>
         </div>
@@ -98,7 +98,7 @@ export function PlanPreviewPane() {
           {review ? (
             editing ? (
               <div className="animate-fade-up">
-                <label className="lbl !text-[9px] !text-gold">{language === "zh-CN" ? "计划修改要求" : "REVISION NOTES"}</label>
+                <label className="lbl !text-[12px] !text-gold">{language === "zh-CN" ? "计划修改要求" : "REVISION NOTES"}</label>
                 <textarea
                   autoFocus
                   value={feedback}
@@ -109,11 +109,11 @@ export function PlanPreviewPane() {
                   }}
                   rows={3}
                   placeholder={language === "zh-CN" ? "说明需要补充、删减或调整的内容…" : "Describe what should be added, removed, or changed…"}
-                  className="mt-2 block w-full resize-none rounded-[5px] border border-line2 bg-base px-3 py-2 text-[12px] leading-relaxed text-fg placeholder:text-faint focus:border-gold/50 focus:outline-none"
+                  className="mt-2 block w-full resize-none rounded-[5px] border border-line2 bg-base px-3 py-2 text-[14px] leading-relaxed text-fg placeholder:text-faint focus:border-gold/50 focus:outline-none"
                 />
                 <div className="mt-2 flex items-center gap-2">
-                  <button onClick={() => setEditing(false)} className="h-8 rounded-[4px] border border-line2 px-3 text-[11px] text-mute hover:border-line3 hover:text-fg">{language === "zh-CN" ? "取消" : "Cancel"}</button>
-                  <button onClick={requestChanges} disabled={!feedback.trim() || Boolean(submitting)} className="ml-auto flex h-8 items-center gap-2 rounded-[4px] bg-gold px-3 text-[11px] font-medium text-base disabled:opacity-40">
+                  <button onClick={() => setEditing(false)} className="h-8 rounded-[4px] border border-line2 px-3 text-[13px] text-mute hover:border-line3 hover:text-fg">{language === "zh-CN" ? "取消" : "Cancel"}</button>
+                  <button onClick={requestChanges} disabled={!feedback.trim() || Boolean(submitting)} className="ml-auto flex h-8 items-center gap-2 rounded-[4px] bg-gold px-3 text-[13px] font-medium text-base disabled:opacity-40">
                     {submitting === "revise" && <span className="plan-spinner" />}
                     {language === "zh-CN" ? "发送修改要求" : "Request changes"}
                   </button>
@@ -121,24 +121,24 @@ export function PlanPreviewPane() {
               </div>
             ) : (
               <div>
-                <p className="mb-2.5 text-[10.5px] leading-relaxed text-dim">{language === "zh-CN" ? "确认后 Grok 将退出只读计划模式并开始实施。" : "Approval exits read-only plan mode and starts implementation."}</p>
+                <p className="mb-2.5 text-[13px] leading-relaxed text-dim">{language === "zh-CN" ? "确认后 Grok 将退出只读计划模式并开始实施。" : "Approval exits read-only plan mode and starts implementation."}</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditing(true)} disabled={Boolean(submitting)} className="flex h-8 flex-1 items-center justify-center gap-2 rounded-[4px] border border-line3 text-[11px] text-fg2 hover:border-gold/50 hover:text-gold disabled:opacity-40">
+                  <button onClick={() => setEditing(true)} disabled={Boolean(submitting)} className="flex h-8 flex-1 items-center justify-center gap-2 rounded-[4px] border border-line3 text-[13px] text-fg2 hover:border-gold/50 hover:text-gold disabled:opacity-40">
                     <Icon name="edit" size={11} />{language === "zh-CN" ? "要求修改" : "Request changes"}
                   </button>
-                  <button onClick={approve} disabled={Boolean(submitting)} className="flex h-8 flex-1 items-center justify-center gap-2 rounded-[4px] bg-acc text-[11px] font-medium text-base hover:bg-acc-deep disabled:opacity-60">
+                  <button onClick={approve} disabled={Boolean(submitting)} className="flex h-8 flex-1 items-center justify-center gap-2 rounded-[4px] bg-acc text-[13px] font-medium text-base hover:bg-acc-deep disabled:opacity-60">
                     {submitting === "approve" ? <span className="plan-spinner" /> : <Icon name="check" size={11} />}{language === "zh-CN" ? "确认并实施" : "Approve & build"}
                   </button>
                 </div>
               </div>
             )
           ) : revising ? (
-            <div className="flex items-center gap-3 py-1 text-[10.5px] text-dim">
+            <div className="flex items-center gap-3 py-1 text-[13px] text-dim">
               <span className="plan-spinner !border-gold/25 !border-t-gold" />
               <span>{language === "zh-CN" ? "Grok 正在根据你的意见更新计划…" : "Grok is revising the plan from your feedback…"}</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 py-1 text-[10px] text-faint"><Icon name="check" size={10} className="text-green" />{language === "zh-CN" ? "计划已保存在当前任务中" : "Plan saved in this mission"}</div>
+            <div className="flex items-center gap-2 py-1 text-[13px] text-faint"><Icon name="check" size={10} className="text-green" />{language === "zh-CN" ? "计划已保存在当前任务中" : "Plan saved in this mission"}</div>
           )}
         </footer>
       </aside>

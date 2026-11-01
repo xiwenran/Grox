@@ -346,7 +346,7 @@ export function EnvironmentSummary() {
           className="absolute right-0 top-[calc(100%+9px)] z-50 max-h-[calc(100vh-52px)] w-[min(380px,calc(100vw-20px))] overflow-y-auto rounded-[10px] border border-line2 bg-panel shadow-[0_20px_60px_rgba(0,0,0,0.58)] animate-fade-up"
         >
           <div className="flex h-11 items-center border-b border-line px-4">
-            <span className="lbl !text-[10px] !tracking-[0.12em]">{zh ? "环境信息" : "ENVIRONMENT"}</span>
+            <span className="lbl !text-[13px] !tracking-[0.12em]">{zh ? "环境信息" : "ENVIRONMENT"}</span>
             <button
               onClick={() => void loadSummary()}
               className="ml-auto flex h-7 w-7 items-center justify-center text-dim hover:bg-high hover:text-fg"
@@ -359,7 +359,7 @@ export function EnvironmentSummary() {
 
           <div className="p-3">
             <SummaryRow icon="edit" label={zh ? "变更" : "Changes"}>
-              <span className="ml-auto flex items-center gap-1.5 font-mono text-[10.5px]">
+              <span className="ml-auto flex items-center gap-1.5 font-mono text-[13px]">
                 <span className="text-dim">{summary?.changedFiles ?? 0}</span>
                 <span className="text-green">+{summary?.added ?? 0}</span>
                 <span className="text-red">−{summary?.removed ?? 0}</span>
@@ -369,14 +369,14 @@ export function EnvironmentSummary() {
             <button onClick={() => void openProjectInExplorer()} className="summary-row w-full" title={workspace}>
               <Icon name="folder" size={14} className="text-mute" />
               <span className="min-w-0 flex-1 truncate text-left">{zh ? "本地" : "Local"}</span>
-              <span className="max-w-[72px] truncate text-[10px] text-dim">{baseName(workspace)}</span>
-              <span className="max-w-[150px] truncate font-mono text-[9px] text-faint">{workspace}</span>
+              <span className="max-w-[72px] truncate text-[13px] text-dim">{baseName(workspace)}</span>
+              <span className="max-w-[150px] truncate font-mono text-[12px] text-faint">{workspace}</span>
               <Icon name="external" size={10} className="text-faint" />
             </button>
 
             <SummaryRow icon="clock" label={zh ? "会话 journal" : "Session journal"}>
               <span
-                className={`ml-auto font-mono text-[9.5px] ${journalStatus?.unreadableCount ? "text-red" : journalStatus?.migrationPending ? "text-gold" : "text-dim"}`}
+                className={`ml-auto font-mono text-[13px] ${journalStatus?.unreadableCount ? "text-red" : journalStatus?.migrationPending ? "text-gold" : "text-dim"}`}
                 title={journalStatus?.latestSavedAt
                   ? `${zh ? "最近写入" : "Latest write"}: ${new Date(journalStatus.latestSavedAt).toLocaleString()}`
                   : undefined}
@@ -393,7 +393,7 @@ export function EnvironmentSummary() {
 
             <SummaryRow icon="bolt" label={zh ? "Agent 运行时" : "Agent runtime"}>
               <span
-                className={`ml-auto font-mono text-[9.5px] ${runtimeStatus?.ready ? "text-green" : runtimeStatus?.running ? "text-gold" : "text-dim"}`}
+                className={`ml-auto font-mono text-[13px] ${runtimeStatus?.ready ? "text-green" : runtimeStatus?.running ? "text-gold" : "text-dim"}`}
                 title={runtimeStatus
                   ? [
                       runtimeStatus.running ? (zh ? "进程运行中" : "Process running") : (zh ? "按需启动" : "Starts on demand"),
@@ -497,7 +497,7 @@ export function EnvironmentSummary() {
                   <Icon name="dot" size={14} className="text-mute" />
                   <span>{zh ? "提交或推送" : "Commit or push"}</span>
                   {(summary.ahead > 0 || summary.behind > 0) && (
-                    <span className="ml-auto font-mono text-[9px] text-faint">↑{summary.ahead} ↓{summary.behind}</span>
+                    <span className="ml-auto font-mono text-[12px] text-faint">↑{summary.ahead} ↓{summary.behind}</span>
                   )}
                   <Icon name="chevronDown" size={9} className={`ml-auto text-faint transition-transform ${commitOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -514,7 +514,7 @@ export function EnvironmentSummary() {
                       }}
                       placeholder={zh ? "提交说明…" : "Commit message…"}
                       maxLength={200}
-                      className="h-8 w-full rounded-[4px] border border-line2 bg-raise px-2.5 text-[10.5px] text-fg2 outline-none focus:border-line3"
+                      className="h-8 w-full rounded-[4px] border border-line2 bg-raise px-2.5 text-[13px] text-fg2 outline-none focus:border-line3"
                     />
                     <div className="mt-2 flex justify-end gap-1.5">
                       <button disabled={!commitMessage.trim() || busy !== null} onClick={commit} className="summary-action">
@@ -530,14 +530,14 @@ export function EnvironmentSummary() {
                 <button disabled={!compareAvailable} onClick={openCompare} className="summary-row w-full disabled:opacity-35">
                   <Icon name="github" size={14} className="text-mute" />
                   <span>{zh ? "比较分支" : "Compare branch"}</span>
-                  <span className="ml-auto font-mono text-[9px] text-faint">{summary.defaultBranch ?? "main"} ← {summary.branch}</span>
+                  <span className="ml-auto font-mono text-[12px] text-faint">{summary.defaultBranch ?? "main"} ← {summary.branch}</span>
                   <Icon name="external" size={10} className="text-faint" />
                 </button>
 
                 <div className="mx-2 mt-2 rounded-[6px] border border-line bg-void p-2">
-                  <p className="mb-1.5 font-mono text-[9px] tracking-[0.08em] text-dim">{zh ? "WORKTREES" : "WORKTREES"}</p>
+                  <p className="mb-1.5 font-mono text-[12px] tracking-[0.08em] text-dim">{zh ? "WORKTREES" : "WORKTREES"}</p>
                   {worktrees.length === 0 ? (
-                    <p className="text-[10px] text-faint">{zh ? "暂无附加 worktree" : "No linked worktrees"}</p>
+                    <p className="text-[13px] text-faint">{zh ? "暂无附加 worktree" : "No linked worktrees"}</p>
                   ) : (
                     <div className="mb-2 space-y-1">
                       {worktrees.map((item, index) => {
@@ -545,7 +545,7 @@ export function EnvironmentSummary() {
                         const current = samePath(item.path, workspace);
                         return (
                         <div key={item.path} className="flex items-center gap-2 rounded-[4px] px-1.5 py-1 hover:bg-high">
-                          <span className="min-w-0 flex-1 truncate font-mono text-[9.5px] text-fg2">{item.branch ?? (item.detached ? "DETACHED" : baseName(item.path))}</span>
+                          <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-fg2">{item.branch ?? (item.detached ? "DETACHED" : baseName(item.path))}</span>
                           <button
                             disabled={busy !== null}
                             onClick={() => {
@@ -555,7 +555,7 @@ export function EnvironmentSummary() {
                                 setError(cause instanceof Error ? cause.message : String(cause));
                               });
                             }}
-                            className="text-[9px] text-acc hover:text-fg"
+                            className="text-[12px] text-acc hover:text-fg"
                           >
                             {zh ? "打开" : "Open"}
                           </button>
@@ -566,7 +566,7 @@ export function EnvironmentSummary() {
                               setNotice("");
                               setConfirmWorktree(item);
                             }}
-                            className="text-[9px] text-faint hover:text-red disabled:cursor-not-allowed disabled:opacity-30"
+                            className="text-[12px] text-faint hover:text-red disabled:cursor-not-allowed disabled:opacity-30"
                             title={current
                               ? (zh ? "不能删除当前工作树" : "Cannot delete the current worktree")
                               : primary
@@ -589,7 +589,7 @@ export function EnvironmentSummary() {
                         setNotice("");
                       }}
                       placeholder={zh ? "名称，如 fix-auth" : "name, e.g. fix-auth"}
-                      className="h-7 min-w-0 flex-1 rounded-[4px] border border-line2 bg-raise px-2 font-mono text-[10px] text-fg2 outline-none"
+                      className="h-7 min-w-0 flex-1 rounded-[4px] border border-line2 bg-raise px-2 font-mono text-[13px] text-fg2 outline-none"
                     />
                     <button
                       disabled={!worktreeName.trim() || busy !== null}
@@ -611,7 +611,7 @@ export function EnvironmentSummary() {
             )}
 
             {(error || notice) && (
-              <p className={`mx-2 mt-2 rounded-[4px] border border-line px-2 py-1.5 font-mono text-[9px] ${error ? "text-red" : "text-green"}`}>
+              <p className={`mx-2 mt-2 rounded-[4px] border border-line px-2 py-1.5 font-mono text-[12px] ${error ? "text-red" : "text-green"}`}>
                 {error || notice}
               </p>
             )}
@@ -619,7 +619,7 @@ export function EnvironmentSummary() {
             <div className="mx-2 my-3 h-px bg-line" />
 
             <div className="flex h-8 items-center px-2">
-              <span className="lbl !text-[9.5px]">{zh ? "来源" : "SOURCES"}</span>
+              <span className="lbl !text-[13px]">{zh ? "来源" : "SOURCES"}</span>
               <button
                 disabled={!activeId || (composer?.attachments.length ?? 0) >= MAX_ATTACHMENTS}
                 onClick={() => fileRef.current?.click()}
@@ -642,7 +642,7 @@ export function EnvironmentSummary() {
             </div>
 
             {visibleSources.length === 0 ? (
-              <p className="px-2 py-3 text-[10px] text-faint">{zh ? "当前任务还没有附件或链接来源" : "No attachment or link sources in this mission"}</p>
+              <p className="px-2 py-3 text-[13px] text-faint">{zh ? "当前任务还没有附件或链接来源" : "No attachment or link sources in this mission"}</p>
             ) : (
               <div>
                 {visibleSources.map((source) => (

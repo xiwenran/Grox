@@ -88,7 +88,7 @@ export function QuestionCard({
         <span className={`lbl ${resolved ? "" : "!text-gold"}`}>
           {resolved ? responseLabel(resolved, zh) : zh ? "需要用户输入" : "OPERATOR INPUT REQUIRED"}
         </span>
-        {!resolved && <span className="ml-auto font-mono text-[9.5px] tracking-[0.12em] text-faint">{zh ? `${block.req.questions.length} 项` : `${block.req.questions.length} FIELD${block.req.questions.length === 1 ? "" : "S"}`}</span>}
+        {!resolved && <span className="ml-auto font-mono text-[13px] tracking-[0.12em] text-faint">{zh ? `${block.req.questions.length} 项` : `${block.req.questions.length} FIELD${block.req.questions.length === 1 ? "" : "S"}`}</span>}
       </header>
 
       <div className="space-y-5 p-4">
@@ -105,10 +105,10 @@ export function QuestionCard({
 
           return (
             <fieldset key={question.question} disabled={Boolean(resolved)}>
-              <legend className="flex w-full items-start gap-3 text-[12px] text-fg2">
-                <span className="mt-px font-mono text-[9.5px] text-gold">{String(questionIndex + 1).padStart(2, "0")}</span>
+              <legend className="flex w-full items-start gap-3 text-[14px] text-fg2">
+                <span className="mt-px font-mono text-[13px] text-gold">{String(questionIndex + 1).padStart(2, "0")}</span>
                 <span>{question.question}</span>
-                {question.multiSelect && <span className="ml-auto shrink-0 font-mono text-[9.5px] tracking-[0.12em] text-faint">{zh ? "可多选" : "MULTI SELECT"}</span>}
+                {question.multiSelect && <span className="ml-auto shrink-0 font-mono text-[13px] tracking-[0.12em] text-faint">{zh ? "可多选" : "MULTI SELECT"}</span>}
               </legend>
 
               <div className="mt-2.5 grid gap-1.5 pl-7">
@@ -128,8 +128,8 @@ export function QuestionCard({
                     >
                       <span className={`mt-1.5 h-2 w-2 shrink-0 border ${question.multiSelect ? "rounded-[1px]" : "rounded-full"} ${isSelected ? "border-acc bg-acc" : "border-line3"}`} />
                       <span className="min-w-0">
-                        <span className={isSelected ? "text-[11.5px] text-fg" : "text-[11.5px] text-fg2"}>{option.label}</span>
-                        {option.description && <span className="ml-2 text-[10.5px] text-dim">{option.description}</span>}
+                        <span className={isSelected ? "text-[13px] text-fg" : "text-[13px] text-fg2"}>{option.label}</span>
+                        {option.description && <span className="ml-2 text-[13px] text-dim">{option.description}</span>}
                       </span>
                     </button>
                   );
@@ -140,11 +140,11 @@ export function QuestionCard({
                   onChange={(event) => setNotes((current) => ({ ...current, [question.question]: event.target.value }))}
                   rows={2}
                   placeholder={zh ? "其他选项或补充说明…" : "Other or additional context…"}
-                  className="mt-0.5 w-full resize-y rounded-[4px] border border-line2 bg-void px-3 py-2 font-mono text-[10.5px] leading-relaxed text-fg2 placeholder:text-faint focus:border-acc-dim focus:outline-none disabled:opacity-70"
+                  className="mt-0.5 w-full resize-y rounded-[4px] border border-line2 bg-void px-3 py-2 font-mono text-[13px] leading-relaxed text-fg2 placeholder:text-faint focus:border-acc-dim focus:outline-none disabled:opacity-70"
                 />
 
                 {activePreview && (
-                  <pre className="max-h-48 overflow-auto rounded-[4px] border border-line2 bg-void px-3 py-2 whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-fg2 select-text">{activePreview}</pre>
+                  <pre className="max-h-48 overflow-auto rounded-[4px] border border-line2 bg-void px-3 py-2 whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-fg2 select-text">{activePreview}</pre>
                 )}
               </div>
             </fieldset>
@@ -158,7 +158,7 @@ export function QuestionCard({
             type="button"
             disabled={Object.keys(normalizedAnswers).length === 0}
             onClick={() => resolveQuestion(block.id, { outcome: "accepted", answers: normalizedAnswers, notes })}
-            className="h-7 rounded-[4px] bg-acc px-3 text-[11px] font-medium text-base transition-colors hover:bg-acc-deep disabled:cursor-not-allowed disabled:opacity-35"
+            className="h-7 rounded-[4px] bg-acc px-3 text-[13px] font-medium text-base transition-colors hover:bg-acc-deep disabled:cursor-not-allowed disabled:opacity-35"
           >
             {zh ? "提交回答" : "Submit answers"}
           </button>
@@ -167,14 +167,14 @@ export function QuestionCard({
               <button
                 type="button"
                 onClick={() => resolveQuestion(block.id, { outcome: "chat_about_this", partialAnswers: partialAnswers() })}
-                className="h-7 rounded-[4px] border border-acc-dim px-3 text-[10.5px] text-acc transition-colors hover:bg-acc-wash"
+                className="h-7 rounded-[4px] border border-acc-dim px-3 text-[13px] text-acc transition-colors hover:bg-acc-wash"
               >
                 {zh ? "回到对话讨论" : "Chat about this"}
               </button>
               <button
                 type="button"
                 onClick={() => resolveQuestion(block.id, { outcome: "skip_interview", partialAnswers: partialAnswers() })}
-                className="h-7 rounded-[4px] border border-line3 px-3 text-[10.5px] text-mute transition-colors hover:bg-high hover:text-fg2"
+                className="h-7 rounded-[4px] border border-line3 px-3 text-[13px] text-mute transition-colors hover:bg-high hover:text-fg2"
               >
                 {zh ? "跳过问答" : "Skip interview"}
               </button>
@@ -183,7 +183,7 @@ export function QuestionCard({
           <button
             type="button"
             onClick={() => resolveQuestion(block.id, { outcome: "cancelled" })}
-            className="ml-auto h-7 rounded-[4px] px-2 text-[10.5px] text-dim transition-colors hover:text-red"
+            className="ml-auto h-7 rounded-[4px] px-2 text-[13px] text-dim transition-colors hover:text-red"
           >
             {zh ? "取消" : "Cancel"}
           </button>

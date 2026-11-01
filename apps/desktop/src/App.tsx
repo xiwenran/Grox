@@ -39,9 +39,9 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { error?: Erro
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-base px-8 text-center">
         <BlackHole size={34} />
-        <p className="font-mono text-[12px] text-fg">界面遇到异常，但会话没有被删除</p>
-        <p className="max-w-[680px] break-words font-mono text-[10px] leading-relaxed text-dim">{this.state.error.message}</p>
-        <button onClick={() => window.location.reload()} className="rounded-[5px] border border-line2 px-3 py-2 font-mono text-[10px] text-acc hover:border-acc-dim hover:text-fg">重新载入界面</button>
+        <p className="font-mono text-[14px] text-fg">界面遇到异常，但会话没有被删除</p>
+        <p className="max-w-[680px] break-words font-mono text-[13px] leading-relaxed text-dim">{this.state.error.message}</p>
+        <button onClick={() => window.location.reload()} className="rounded-[5px] border border-line2 px-3 py-2 font-mono text-[13px] text-acc hover:border-acc-dim hover:text-fg">重新载入界面</button>
       </div>
     );
   }
@@ -159,7 +159,7 @@ export default function App() {
               ) : inSession && !session ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3">
                   <BlackHole size={28} spin />
-                  <span className="lbl !text-[10px]">{language === "zh-CN" ? "正在恢复任务" : "RESTORING MISSION"}</span>
+                  <span className="lbl !text-[13px]">{language === "zh-CN" ? "正在恢复任务" : "RESTORING MISSION"}</span>
                 </div>
               ) : (
                 <Home />

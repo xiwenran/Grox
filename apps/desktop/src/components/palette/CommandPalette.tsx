@@ -162,13 +162,13 @@ export function CommandPalette() {
             placeholder={language === "zh-CN" ? "输入命令或搜索任务…" : "Type a command or search missions…"}
             aria-label={language === "zh-CN" ? "输入命令或搜索任务" : "Type a command or search missions"}
             aria-controls="command-palette-results"
-            className="h-11 flex-1 bg-transparent font-mono text-[12px] text-fg placeholder:text-faint focus:outline-none"
+            className="h-11 flex-1 bg-transparent font-mono text-[14px] text-fg placeholder:text-faint focus:outline-none"
           />
-          <kbd className="lbl !text-[9.5px] !text-faint">ESC</kbd>
+          <kbd className="lbl !text-[13px] !text-faint">ESC</kbd>
         </div>
         <div id="command-palette-results" role="listbox" className="max-h-[320px] overflow-y-auto py-1.5">
           {items.length === 0 && (
-            <p className="px-4 py-6 text-center font-mono text-[11px] text-dim">
+            <p className="px-4 py-6 text-center font-mono text-[13px] text-dim">
               {language === "zh-CN" ? "没有匹配结果。" : "No matches in this sector."}
             </p>
           )}
@@ -184,10 +184,10 @@ export function CommandPalette() {
               }`}
             >
               <Icon name={item.icon} size={13} className={i === idx ? "text-acc" : "text-dim"} />
-              <span className={`flex-1 truncate text-[12px] ${i === idx ? "text-fg" : "text-fg2"}`}>
+              <span className={`flex-1 truncate text-[14px] ${i === idx ? "text-fg" : "text-fg2"}`}>
                 {item.label}
               </span>
-              {item.hint && <span className="tnum text-[10px] text-faint">{item.hint}</span>}
+              {item.hint && <span className="tnum text-[13px] text-faint">{item.hint}</span>}
             </button>
           ))}
         </div>

@@ -39,7 +39,7 @@ export function UserMsg({ block, rewindPromptIndex }: { block: UserBlock; rewind
         {block.attachments && block.attachments.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {block.attachments.map((attachment) => (
-              <span key={attachment.id} className="flex max-w-[220px] items-center gap-1.5 rounded-full bg-white/15 px-2 py-1 text-[10px] opacity-90">
+              <span key={attachment.id} className="flex max-w-[220px] items-center gap-1.5 rounded-full bg-white/15 px-2 py-1 text-[13px] opacity-90">
                 <Icon name={attachment.kind === "image" ? "square" : "file"} size={9} className="opacity-80" />
                 <span className="truncate">{attachment.name}</span>
                 <span className="opacity-70">{attachment.size < 1024 * 1024 ? `${Math.max(1, Math.round(attachment.size / 1024))}K` : `${(attachment.size / 1024 / 1024).toFixed(1)}M`}</span>
@@ -48,7 +48,7 @@ export function UserMsg({ block, rewindPromptIndex }: { block: UserBlock; rewind
           </div>
         )}
       </div>
-        <div className="mt-1 flex items-center gap-2 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"><span className="tnum text-faint">{fmtClock(block.ts)}</span>{rewindPromptIndex !== undefined && <RewindMenu targetPromptIndex={rewindPromptIndex} variant="request" />}{(overflowing || expanded) && <button onClick={() => setExpanded((value) => !value)} className="h-7 px-1.5 text-acc hover:text-fg">{expanded ? (zh ? "收起" : "Collapse") : (zh ? "显示更多" : "Show more")}</button>}<MessageActions text={block.text} /></div>
+        <div className="mt-1 flex items-center gap-2 text-[13px] opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"><span className="tnum text-faint">{fmtClock(block.ts)}</span>{rewindPromptIndex !== undefined && <RewindMenu targetPromptIndex={rewindPromptIndex} variant="request" />}{(overflowing || expanded) && <button onClick={() => setExpanded((value) => !value)} className="h-7 px-1.5 text-acc hover:text-fg">{expanded ? (zh ? "收起" : "Collapse") : (zh ? "显示更多" : "Show more")}</button>}<MessageActions text={block.text} /></div>
       </div>
     </div>
   );
@@ -83,7 +83,7 @@ export function AssistantMsg({ block, process = false }: { block: AssistantBlock
             <Markdown text={block.text} streaming={streaming} className="assistant-prose text-fg2" />
             {streaming && <span className="stream-caret" />}
           </div>
-          {streaming && <div className="mt-1 pl-1 text-[11px] text-faint">{language === "zh-CN" ? "正在输出…" : "Writing…"}</div>}
+          {streaming && <div className="mt-1 pl-1 text-[13px] text-faint">{language === "zh-CN" ? "正在输出…" : "Writing…"}</div>}
           {!streaming && <div className="mt-1.5 flex justify-start pl-1"><MessageActions text={block.text} /></div>}
         </div>
       </div>
@@ -106,8 +106,8 @@ function MessageActions({ text }: { text: string }) {
     if (activeSessionId) void continueSessionInNewChat(activeSessionId);
   };
   return <div className="flex items-center gap-1 opacity-65 transition-opacity hover:opacity-100">
-    <button onClick={copy} className="flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-dim hover:bg-high hover:text-fg2" title={language === "zh-CN" ? "复制这条消息" : "Copy message"}><Icon name="copy" size={9} />{copied ? (language === "zh-CN" ? "已复制" : "Copied") : (language === "zh-CN" ? "复制" : "Copy")}</button>
-    <button disabled={!activeSessionId} onClick={continueInNewTask} className="flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-dim hover:bg-high hover:text-fg2 disabled:opacity-40" title={language === "zh-CN" ? "复制完整上下文到一个新任务" : "Fork the full context into a new task"}><Icon name="branch" size={9} />{language === "zh-CN" ? "新任务继续" : "Continue"}</button>
+    <button onClick={copy} className="flex h-7 items-center gap-1 rounded-full px-2 text-[13px] text-dim hover:bg-high hover:text-fg2" title={language === "zh-CN" ? "复制这条消息" : "Copy message"}><Icon name="copy" size={9} />{copied ? (language === "zh-CN" ? "已复制" : "Copied") : (language === "zh-CN" ? "复制" : "Copy")}</button>
+    <button disabled={!activeSessionId} onClick={continueInNewTask} className="flex h-7 items-center gap-1 rounded-full px-2 text-[13px] text-dim hover:bg-high hover:text-fg2 disabled:opacity-40" title={language === "zh-CN" ? "复制完整上下文到一个新任务" : "Fork the full context into a new task"}><Icon name="branch" size={9} />{language === "zh-CN" ? "新任务继续" : "Continue"}</button>
   </div>;
 }
 
@@ -118,7 +118,7 @@ export function SystemEvent({ block }: { block: SystemBlock }) {
   return (
     <div className="mb-2 flex min-h-7 items-start gap-2 rounded-[5px] border border-line bg-high/30 px-2.5 py-1.5 animate-fade-up">
       <Icon name={block.kind === "error" ? "x" : block.kind === "rewind" ? "refresh" : "bolt"} size={10} className={`mt-1 shrink-0 ${tone}`} />
-      <span className={`min-w-0 font-mono text-[9.5px] leading-relaxed ${tone}`}>{block.text}</span>
+      <span className={`min-w-0 font-mono text-[13px] leading-relaxed ${tone}`}>{block.text}</span>
     </div>
   );
 }

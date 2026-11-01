@@ -11,13 +11,13 @@ export function DiffView({ diff, collapsed = false }: { diff: DiffHunk[]; collap
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-1.5 [&::-webkit-details-marker]:hidden">
             <Icon name="chevronRight" size={8} className="shrink-0 text-faint transition-transform group-open/diff:rotate-90" />
             <Icon name="file" size={10} className="text-faint" />
-            <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-mute select-text">
+            <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-mute select-text">
               {hunk.path}
             </span>
-            <span className="tnum text-[9.5px] text-diff-add-fg">+{hunk.added}</span>
-            <span className="tnum text-[9.5px] text-diff-del-fg">−{hunk.removed}</span>
+            <span className="tnum text-[13px] text-diff-add-fg">+{hunk.added}</span>
+            <span className="tnum text-[13px] text-diff-del-fg">−{hunk.removed}</span>
           </summary>
-          <div className="border-t border-line py-1 font-mono text-[10.5px] leading-[1.7] select-text">
+          <div className="border-t border-line py-1 font-mono text-[13px] leading-[1.7] select-text">
             {hunk.lines.map((line, j) => (
               <div
                 key={j}

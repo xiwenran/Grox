@@ -43,14 +43,14 @@ export function PreviewPane() {
       >
         <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
           <Icon name="file" size={12} className="text-acc" />
-          <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-fg2">
+          <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-fg2">
             {file?.name ?? t("preview")}
           </span>
-          {file?.kind && <span className="lbl !text-[9.5px]">{file.kind}</span>}
+          {file?.kind && <span className="lbl !text-[13px]">{file.kind}</span>}
           {file && <>
             {sourceCapable && <div className="flex items-center rounded-[3px] border border-line2 p-px">
-              <button onClick={() => setSourceMode(false)} className={`h-5 rounded-[2px] px-1.5 font-mono text-[8.5px] ${!sourceMode ? "bg-high text-fg2" : "text-faint hover:text-mute"}`} title={languageLabel(language, "previewMode")}>{languageLabel(language, "previewMode")}</button>
-              <button onClick={() => setSourceMode(true)} className={`h-5 rounded-[2px] px-1.5 font-mono text-[8.5px] ${sourceMode ? "bg-high text-fg2" : "text-faint hover:text-mute"}`} title={languageLabel(language, "sourceMode")}>{languageLabel(language, "sourceMode")}</button>
+              <button onClick={() => setSourceMode(false)} className={`h-5 rounded-[2px] px-1.5 font-mono text-[12px] ${!sourceMode ? "bg-high text-fg2" : "text-faint hover:text-mute"}`} title={languageLabel(language, "previewMode")}>{languageLabel(language, "previewMode")}</button>
+              <button onClick={() => setSourceMode(true)} className={`h-5 rounded-[2px] px-1.5 font-mono text-[12px] ${sourceMode ? "bg-high text-fg2" : "text-faint hover:text-mute"}`} title={languageLabel(language, "sourceMode")}>{languageLabel(language, "sourceMode")}</button>
             </div>}
             <div className="ml-1 flex max-w-[62%] shrink-0 items-center gap-0.5 overflow-x-auto border-l border-line pl-1">
               <PreviewAction label={languageLabel(language, "files")} icon="folder" onClick={() => setInspectorTab("files")} />
@@ -82,11 +82,11 @@ export function PreviewPane() {
           ) : !file ? (
             <PaneMessage text={t("noFiles")} />
           ) : sourceMode ? (
-            <pre className="min-h-full whitespace-pre-wrap p-4 font-mono text-[11px] leading-relaxed text-fg2 select-text">
+            <pre className="min-h-full whitespace-pre-wrap p-4 font-mono text-[13px] leading-relaxed text-fg2 select-text">
               {file.content}
             </pre>
           ) : file.kind === "markdown" ? (
-            <article className="mx-auto max-w-[760px] p-5 text-[14px] leading-relaxed text-fg2">
+            <article className="mx-auto max-w-[760px] p-5 text-[15px] leading-relaxed text-fg2">
               <Markdown text={file.content} />
             </article>
           ) : file.kind === "html" ? (
@@ -116,13 +116,13 @@ export function PreviewPane() {
           ) : file.kind === "pdf" ? (
             <iframe title={file.name} src={file.url} className="h-full min-h-[420px] w-full border-0 bg-white" />
           ) : (
-            <pre className="min-h-full whitespace-pre-wrap p-4 font-mono text-[11px] leading-relaxed text-fg2 select-text">
+            <pre className="min-h-full whitespace-pre-wrap p-4 font-mono text-[13px] leading-relaxed text-fg2 select-text">
               {file.content}
             </pre>
           )}
         </div>
         {file && (
-          <footer className="shrink-0 truncate border-t border-line px-3 py-1.5 font-mono text-[9.5px] text-faint">
+          <footer className="shrink-0 truncate border-t border-line px-3 py-1.5 font-mono text-[13px] text-faint">
             {notice || file.path}
           </footer>
         )}
@@ -135,7 +135,7 @@ function PreviewAction({ label, icon, onClick }: { label: string; icon: React.Co
   return (
     <button
       onClick={onClick}
-      className="flex h-6 shrink-0 items-center gap-1 rounded-[3px] px-1.5 text-[9px] text-dim transition-colors hover:bg-high hover:text-fg2"
+      className="flex h-6 shrink-0 items-center gap-1 rounded-[3px] px-1.5 text-[12px] text-dim transition-colors hover:bg-high hover:text-fg2"
       title={label}
     >
       <Icon name={icon} size={10} />
@@ -153,7 +153,7 @@ function languageLabel(language: "zh-CN" | "en-US", key: "files" | "copyPath" | 
 function PaneMessage({ text, error = false }: { text: string; error?: boolean }) {
   return (
     <div className="flex h-full min-h-52 items-center justify-center p-6 text-center">
-      <span className={`font-mono text-[10px] ${error ? "text-red" : "text-dim"}`}>{text}</span>
+      <span className={`font-mono text-[13px] ${error ? "text-red" : "text-dim"}`}>{text}</span>
     </div>
   );
 }

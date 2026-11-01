@@ -58,7 +58,7 @@ export function WorkbenchPanel() {
           onClick={() => setTab("terminal")}
           role="tab"
           aria-selected={tab === "terminal"}
-          className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] ${tab === "terminal" ? "bg-high text-fg" : "text-dim hover:text-fg2"}`}
+          className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[14px] ${tab === "terminal" ? "bg-high text-fg" : "text-dim hover:text-fg2"}`}
         >
           <Icon name="terminal" size={11} />
           {zh ? "终端" : "Terminal"}
@@ -67,7 +67,7 @@ export function WorkbenchPanel() {
           onClick={() => setTab("side")}
           role="tab"
           aria-selected={tab === "side"}
-          className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] ${tab === "side" ? "bg-high text-fg" : "text-dim hover:text-fg2"}`}
+          className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[14px] ${tab === "side" ? "bg-high text-fg" : "text-dim hover:text-fg2"}`}
         >
           <Icon name="layers" size={11} />
           {zh ? "并行任务" : "Parallel task"}
@@ -90,7 +90,7 @@ export function WorkbenchPanel() {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-          <p className="text-[12px] leading-relaxed text-dim">
+          <p className="text-[14px] leading-relaxed text-dim">
             {zh
               ? "侧任务会新建独立会话并立即发送，主会话可继续运行。适合并行调研、测试或修小问题。"
               : "Side agents open a fresh session and send immediately while the main mission keeps running — useful for research, tests, or small fixes."}
@@ -101,17 +101,17 @@ export function WorkbenchPanel() {
             rows={4}
             placeholder={zh ? "描述侧任务…" : "Describe the side task…"}
             aria-label={zh ? "并行侧任务描述" : "Parallel task description"}
-            className="min-h-[160px] flex-1 resize-none rounded-[12px] border border-line2 bg-raise px-3 py-3 text-[13px] leading-relaxed text-fg outline-none placeholder:text-faint focus:border-line3"
+            className="min-h-[160px] flex-1 resize-none rounded-[12px] border border-line2 bg-raise px-3 py-3 text-[14px] leading-relaxed text-fg outline-none placeholder:text-faint focus:border-line3"
           />
-          {launchError && <p role="alert" className="text-[10.5px] leading-relaxed text-red">{launchError}</p>}
+          {launchError && <p role="alert" className="text-[13px] leading-relaxed text-red">{launchError}</p>}
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-faint">
+            <span className="text-[13px] text-faint">
               {activeId ? (zh ? "基于当前任务" : "From current task") : (zh ? "独立任务" : "Independent task")}
             </span>
             <button
               disabled={!draft.trim() || launching}
               onClick={() => void launchSide()}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-acc px-4 text-[12px] font-medium text-base disabled:opacity-35"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-acc px-4 text-[14px] font-medium text-base disabled:opacity-35"
             >
               <Icon name="play" size={11} />
               {launching ? (zh ? "正在创建" : "Creating") : (zh ? "开始并行任务" : "Start task")}

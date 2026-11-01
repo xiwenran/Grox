@@ -49,10 +49,10 @@ export function TurnChangeCard({ blocks, promptIndex }: { blocks: SessionBlock[]
           <Icon name="edit" size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[12.5px] text-fg2">
+          <p className="text-[14px] text-fg2">
             {zh ? `已编辑 ${diffs.length} 个文件` : `Edited ${diffs.length} ${diffs.length === 1 ? "file" : "files"}`}
           </p>
-          <p className="mt-0.5 font-mono text-[10px]">
+          <p className="mt-0.5 font-mono text-[13px]">
             <span className="text-green">+{added}</span>
             <span className="ml-1.5 text-red">−{removed}</span>
           </p>
@@ -60,7 +60,7 @@ export function TurnChangeCard({ blocks, promptIndex }: { blocks: SessionBlock[]
         <RewindMenu targetPromptIndex={promptIndex} variant="changes" />
         <button
           onClick={() => setReviewing((value) => !value)}
-          className={`flex h-8 items-center gap-1.5 rounded-[5px] border px-3 text-[10.5px] transition-colors ${
+          className={`flex h-8 items-center gap-1.5 rounded-[5px] border px-3 text-[13px] transition-colors ${
             reviewing ? "border-acc-dim bg-acc-wash text-fg" : "border-line2 text-fg2 hover:border-line3 hover:bg-high"
           }`}
           aria-expanded={reviewing}
@@ -78,10 +78,10 @@ export function TurnChangeCard({ blocks, promptIndex }: { blocks: SessionBlock[]
             className="group flex min-h-9 w-full items-center gap-3 rounded-[4px] px-1 text-left hover:bg-high"
             title={zh ? `预览 ${hunk.path}` : `Preview ${hunk.path}`}
           >
-            <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-mute group-hover:text-fg2">
+            <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-mute group-hover:text-fg2">
               {hunk.path}
             </span>
-            <span className="shrink-0 font-mono text-[10px]">
+            <span className="shrink-0 font-mono text-[13px]">
               <span className="text-green">+{hunk.added}</span>
               <span className="ml-1.5 text-red">−{hunk.removed}</span>
             </span>
@@ -91,7 +91,7 @@ export function TurnChangeCard({ blocks, promptIndex }: { blocks: SessionBlock[]
         {hiddenCount > 0 && (
           <button
             onClick={() => setShowAll((value) => !value)}
-            className="mt-1 flex h-8 items-center gap-2 px-1 text-[10.5px] text-dim hover:text-fg2"
+            className="mt-1 flex h-8 items-center gap-2 px-1 text-[13px] text-dim hover:text-fg2"
             aria-expanded={showAll}
           >
             {showAll ? (zh ? "收起文件" : "Show fewer files") : (zh ? `再显示 ${hiddenCount} 个文件` : `Show ${hiddenCount} more ${hiddenCount === 1 ? "file" : "files"}`)}

@@ -3,7 +3,7 @@
  *
  * Fails when density or font prefs re-introduce known layout hazards.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -72,13 +72,15 @@ describe("layout adaptability — density isolation", () => {
   });
 
   it("default transcript type is comfortable without changing chrome geometry", () => {
-    // 工作台桌面规范 §3: body 13px / 1.55; tiers only use spec sizes (12/13/14/15).
-    expect(tokens).toMatch(/html\s*\{[\s\S]*?--grox-prose-size\s*:\s*13px/);
+    // User-tuned scale (2026-11): chat prose 15px / 1.55 default; tiers 14/15/16/17.
+    expect(tokens).toMatch(/html\s*\{[\s\S]*?--grox-prose-size\s*:\s*15px/);
     const md = blockFor(`html[data-font="md"]`);
-    expect(md).toMatch(/--grox-prose-size\s*:\s*13px/);
+    expect(md).toMatch(/--grox-prose-size\s*:\s*15px/);
     expect(md).toMatch(/--grox-prose-leading\s*:\s*1\.55/);
     const sm = blockFor(`html[data-font="sm"]`);
-    expect(sm).toMatch(/--grox-prose-size\s*:\s*12px/);
+    expect(sm).toMatch(/--grox-prose-size\s*:\s*14px/);
+    expect(blockFor(`html[data-font="lg"]`)).toMatch(/--grox-prose-size\s*:\s*16px/);
+    expect(blockFor(`html[data-font="xl"]`)).toMatch(/--grox-prose-size\s*:\s*17px/);
     expect(tokens).toMatch(/\.md p\s*\{[\s\S]*?margin:\s*0 0 0\.42em/);
   });
 
@@ -139,11 +141,29 @@ describe("layout adaptability — density isolation", () => {
 });
 
 describe("layout adaptability — chrome hard rules", () => {
-  it("settings shell uses fixed 13px chrome scale (规范正文 13)", () => {
+  it("settings shell uses fixed 14px chrome scale (body 14)", () => {
     const shell = blockFor(".settings-shell");
     expect(shell).toBeTruthy();
     expect(shell).not.toMatch(/--grox-content-max/);
-    expect(shell).toMatch(/font-size:\s*13px/);
+    expect(shell).toMatch(/font-size:\s*14px/);
+  });
+
+  it("no component uses an arbitrary text size below 12px", () => {
+    const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    const tiny: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const full = resolve(dir, name);
+        if (statSync(full).isDirectory()) walk(full);
+        else if (/\.tsx?$/.test(name) && !/\.test\./.test(name)) {
+          for (const m of readFileSync(full, "utf8").matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)) {
+            if (Number(m[1]) < 12) tiny.push(`${name}: ${m[0]}`);
+          }
+        }
+      }
+    };
+    walk(root);
+    expect(tiny).toEqual([]);
   });
 
   it("lbl/chip stay fixed component size", () => {

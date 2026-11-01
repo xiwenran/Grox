@@ -12,6 +12,7 @@ import { normalizeSessionQuery, sessionMatchesLoadedContent } from "../../lib/se
 import { projectId, samePath } from "../../lib/projectCatalog";
 import { useImeGuard } from "../../lib/ime";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { AccountAvatar } from "../common/AccountAvatar";
 
 export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) {
   const { t, language } = useI18n();
@@ -147,7 +148,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
             onChange={(event) => setSessionQuery(event.target.value)}
             placeholder={language === "zh-CN" ? "搜索会话标题与内容" : "Search titles and content"}
             aria-label={language === "zh-CN" ? "搜索会话标题与内容" : "Search session titles and content"}
-            className="min-w-0 flex-1 bg-transparent text-[12px] text-fg outline-none placeholder:text-faint"
+            className="min-w-0 flex-1 bg-transparent text-[14px] text-fg outline-none placeholder:text-faint"
           />
           {sessionQuery && (
             <button type="button" onClick={() => setSessionQuery("")} className="text-faint hover:text-fg" aria-label={language === "zh-CN" ? "清除搜索" : "Clear search"}>
@@ -159,7 +160,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
           onClick={() => void refreshHistory()}
           disabled={historySyncing}
           title={historyError ?? (language === "zh-CN" ? "重新扫描 ~/.grok/sessions" : "Rescan ~/.grok/sessions")}
-          className="mt-1.5 flex h-8 w-full items-center gap-2 rounded-[4px] px-2.5 text-[11px] text-dim hover:bg-high hover:text-fg2 disabled:cursor-wait disabled:opacity-60"
+          className="mt-1.5 flex h-8 w-full items-center gap-2 rounded-[4px] px-2.5 text-[13px] text-dim hover:bg-high hover:text-fg2 disabled:cursor-wait disabled:opacity-60"
         >
           <Icon name="refresh" size={10} className={historySyncing ? "animate-orbit" : ""} />
           {historySyncing
@@ -168,7 +169,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
           {historyCount > 0 && <span className="ml-auto text-faint">{historyCount}</span>}
         </button>
         {historyError && (
-          <p role="alert" className="px-2 pt-1.5 font-mono text-[9px] leading-relaxed text-red">
+          <p role="alert" className="px-2 pt-1.5 font-mono text-[12px] leading-relaxed text-red">
             {language === "zh-CN" ? `CLI 历史导入失败：${historyError}` : `CLI history import failed: ${historyError}`}
           </p>
         )}
@@ -195,12 +196,12 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
           />
         ))}
         {normalizedQuery && !historySearching && !historySearchError && matchedSessions.length === 0 && (
-          <p className="px-2 py-6 text-center font-mono text-[9.5px] text-faint">
+          <p className="px-2 py-6 text-center font-mono text-[13px] text-faint">
             {language === "zh-CN" ? "没有匹配的历史会话" : "NO MATCHING SESSIONS"}
           </p>
         )}
         {normalizedQuery && historySearchError && (
-          <p role="alert" className="px-2 pb-3 text-center font-mono text-[9.5px] leading-relaxed text-red">
+          <p role="alert" className="px-2 pb-3 text-center font-mono text-[13px] leading-relaxed text-red">
             {language === "zh-CN" ? `历史内容搜索失败：${historySearchError}` : `History search failed: ${historySearchError}`}
           </p>
         )}
@@ -209,30 +210,25 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
       <div ref={accountRef} className="relative flex h-12 shrink-0 items-center gap-2 border-t border-line px-2">
         <button
           onClick={() => setAccountOpen((open) => !open)}
-          className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line2 bg-high text-[10px] text-fg2 hover:border-acc-dim"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-85"
           title={t("account")}
+          aria-label={t("account")}
         >
-          {account?.profileImageUrl ? (
-            <img src={account.profileImageUrl} alt="" className="h-full w-full object-cover" />
-          ) : account?.email ? (
-            account.email.slice(0, 1).toUpperCase()
-          ) : (
-            <Icon name="user" size={14} />
-          )}
+          <AccountAvatar imageUrl={account?.profileImageUrl} email={account?.email} size={32} />
         </button>
         <button
           onClick={() => setAccountOpen((open) => !open)}
           className="min-w-0 flex-1 text-left"
         >
-          <p className="truncate text-[12px] text-fg2">{account?.email ?? t("account")}</p>
-          <p className="lbl truncate !text-[9.5px]">
+          <p className="truncate text-[14px] text-fg2">{account?.email ?? t("account")}</p>
+          <p className="lbl truncate !text-[13px]">
             {billing?.subscriptionTier ?? account?.subscriptionTier ?? (account?.authenticated ? "GROK" : t("login"))}
           </p>
         </button>
         <button
           type="button"
           onClick={() => setLanguage(language === "zh-CN" ? "en-US" : "zh-CN")}
-          className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[3px] px-1 font-mono text-[9px] text-dim transition-colors hover:bg-high hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-acc"
+          className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[3px] px-1 font-mono text-[12px] text-dim transition-colors hover:bg-high hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-acc"
           title={language === "zh-CN" ? "切换至 English" : "Switch to 简体中文"}
           aria-label={language === "zh-CN" ? "切换至 English" : "Switch to 简体中文"}
         >
@@ -258,25 +254,23 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
         </button>
 
         {accountOpen && (
-          <div className="absolute bottom-11 left-2 z-50 w-[232px] rounded-[6px] border border-line2 bg-raise p-2 shadow-2xl">
-            <div className="border-b border-line px-2 pb-2">
-              <p className="truncate text-[11px] text-fg">{account?.email ?? t("signInRequired")}</p>
-              <p className="mt-0.5 font-mono text-[9.5px] text-acc">
-                {billing?.subscriptionTier ?? account?.subscriptionTier ?? "—"}
-              </p>
+          <div className="account-popover absolute bottom-11 left-2 z-50 w-[264px] rounded-[6px] border border-line2 bg-raise p-2 shadow-2xl">
+            <div className="flex items-center gap-2.5 px-2 pb-2 pt-1">
+              <AccountAvatar imageUrl={account?.profileImageUrl} email={account?.email} size={36} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] text-fg">{account?.email ?? t("signInRequired")}</p>
+                <p className="mt-0.5 truncate text-[13px] text-mute">
+                  {billing?.subscriptionTier ?? account?.subscriptionTier ?? "—"}
+                </p>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-1 border-b border-line py-2">
-              <Limit
-                label={language === "zh-CN" ? "周期结束" : "Period ends"}
-                value={fmtBillingDate(billing?.periodEnd, language)}
+            {(billing?.creditUsagePercent !== undefined || billing?.periodEnd) && (
+              <QuotaCard
+                percent={billing?.creditUsagePercent}
+                resetsAt={billing?.periodEnd ? fmtBillingDate(billing.periodEnd, language) : undefined}
+                zh={language === "zh-CN"}
               />
-              {billing?.creditUsagePercent !== undefined && (
-                <Limit
-                  label={language === "zh-CN" ? "订阅额度已用" : "Plan quota used"}
-                  value={fmtQuotaPercent(billing.creditUsagePercent)}
-                />
-              )}
-            </div>
+            )}
             <MenuButton icon="gear" label={t("settings")} onClick={() => { setSettingsOpen(true); setAccountOpen(false); }} />
             {account?.authenticated ? (
               <MenuButton icon="external" label={t("upgrade")} onClick={() => void openExternal("https://grok.com/supergrok?referrer=grok-build")} />
@@ -344,8 +338,8 @@ function ProjectGroup({
 function SectionTitle({ label, count }: { label: string; count: number }) {
   return (
     <div className="flex h-7 items-center justify-between px-2">
-      <span className="text-[11px] font-medium text-dim">{label}</span>
-      <span className="tnum text-[10px] text-faint">{String(count).padStart(2, "0")}</span>
+      <span className="text-[13px] font-medium text-dim">{label}</span>
+      <span className="tnum text-[13px] text-faint">{String(count).padStart(2, "0")}</span>
     </div>
   );
 }
@@ -404,16 +398,16 @@ function ProjectRow({ project, active, expanded, count, onToggle }: { project: P
               if (isImeBlocking(event)) return;
               if (event.key === "Enter") event.currentTarget.blur();
             }}
-            className="min-w-0 flex-1 border border-line3 bg-void px-1 text-[10.5px] outline-none"
+            className="min-w-0 flex-1 border border-line3 bg-void px-1 text-[13px] outline-none"
           />
         </div>
       ) : (
         <button onClick={() => void openProject(project.id).catch(() => {})} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <Icon name={project.pinned ? "pin" : "folder"} size={11} className={project.pinned ? "text-acc" : "text-dim"} />
-          <span className="truncate text-[12px]">{project.name}</span>
+          <span className="truncate text-[14px]">{project.name}</span>
         </button>
       )}
-      {count > 0 && <span className="tnum text-[9px] text-faint">{count}</span>}
+      {count > 0 && <span className="tnum text-[12px] text-faint">{count}</span>}
       <button
         onClick={(event) => {
           event.stopPropagation();
@@ -537,9 +531,9 @@ function MissionRow({ meta, status, completionUnread, active, tokens, onOpen }: 
         <SessionStatusLight status={status} completionUnread={completionUnread} />
         <span className={status === "idle" || status === "failed" || status === "cancelled" ? "opacity-55" : ""}><BlackHole size={11} spin={status === "running" ? true : status === "idle" || status === "failed" || status === "cancelled" || status === "disconnected" ? false : "slow"} /></span>
         {editing ? (
-          <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onCompositionStart={onCompositionStart} onCompositionEnd={onCompositionEnd} onKeyDown={(event) => { if (isImeBlocking(event)) return; if (event.key === "Enter") commit(); }} onClick={(event) => event.stopPropagation()} className="min-w-0 flex-1 border border-line3 bg-void px-1 text-[11px] text-fg outline-none" />
+          <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onCompositionStart={onCompositionStart} onCompositionEnd={onCompositionEnd} onKeyDown={(event) => { if (isImeBlocking(event)) return; if (event.key === "Enter") commit(); }} onClick={(event) => event.stopPropagation()} className="min-w-0 flex-1 border border-line3 bg-void px-1 text-[13px] text-fg outline-none" />
         ) : (
-          <span className={`min-w-0 flex-1 truncate text-[12px] ${meta.title?.trim() ? "text-fg2" : "text-faint italic"}`} title={meta.id}>
+          <span className={`min-w-0 flex-1 truncate text-[14px] ${meta.title?.trim() ? "text-fg2" : "text-faint italic"}`} title={meta.id}>
             {displayTitle}
           </span>
         )}
@@ -553,11 +547,11 @@ function MissionRow({ meta, status, completionUnread, active, tokens, onOpen }: 
         </button>
       </div>
       {meta.summary && meta.summary !== meta.title && (
-        <p className="mt-0.5 truncate pl-3.5 text-[10.5px] leading-tight text-mute" title={meta.summary}>{meta.summary}</p>
+        <p className="mt-0.5 truncate pl-3.5 text-[13px] leading-tight text-mute" title={meta.summary}>{meta.summary}</p>
       )}
       <div className="mt-0.5 flex items-center justify-between pl-3.5">
-        <span className="text-[10.5px] text-faint">{fmtRelTime(meta.updatedAt)}</span>
-        {tokens > 0 && <span className="tnum text-[10px] text-faint">{fmtTokens(tokens)} tokens</span>}
+        <span className="text-[13px] text-faint">{fmtRelTime(meta.updatedAt)}</span>
+        {tokens > 0 && <span className="tnum text-[13px] text-faint">{fmtTokens(tokens)} tokens</span>}
       </div>
       {menu && (
         <ContextMenu close={() => setMenu(false)}>
@@ -697,18 +691,34 @@ function MenuDivider() {
 
 function MenuButton({ icon, label, onClick, tone = "text-fg2" }: { icon: React.ComponentProps<typeof Icon>["name"]; label: string; onClick(): void; tone?: string }) {
   return (
-    <button role="menuitem" onClick={onClick} className={`flex h-7 w-full items-center gap-2 rounded-[3px] px-2 text-left text-[10px] hover:bg-high ${tone}`}>
+    <button role="menuitem" onClick={onClick} className={`flex h-7 w-full items-center gap-2 rounded-[3px] px-2 text-left text-[13px] hover:bg-high ${tone}`}>
       <Icon name={icon} size={11} className="text-dim" />
       {label}
     </button>
   );
 }
 
-function Limit({ label, value }: { label: string; value: string }) {
+/**
+ * One self-explanatory quota card: "本周期已用额度  <1%", a thin fill bar,
+ * and "11月4日 15:04 重置" underneath. Data stays x.ai/billing
+ * creditUsagePercent + periodEnd.
+ */
+function QuotaCard({ percent, resetsAt, zh }: { percent?: number; resetsAt?: string; zh: boolean }) {
+  const fill = percent === undefined ? 0 : Math.max(percent < 1 ? 1.5 : 0, Math.min(100, percent));
   return (
-    <div className="rounded-[4px] bg-high/70 px-2 py-1.5">
-      <p className="lbl !text-[9.5px]">{label}</p>
-      <p className="mt-1 truncate font-mono text-[9.5px] text-fg2">{value}</p>
+    <div className="quota-card mx-1 mb-2 rounded-[10px] bg-high/70 px-3 py-2.5" data-testid="quota-card">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[13px] text-mute">{zh ? "本周期已用额度" : "Used this period"}</span>
+        <span className="tnum text-[15px] font-medium text-fg">{percent === undefined ? "—" : fmtQuotaPercent(percent)}</span>
+      </div>
+      {percent !== undefined && (
+        <div className="quota-card__track mt-2 h-1.5 overflow-hidden rounded-full" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(100, percent))}>
+          <div className="quota-card__fill h-full rounded-full" style={{ width: `${fill}%` }} />
+        </div>
+      )}
+      {resetsAt && (
+        <p className="mt-1.5 text-[12px] text-faint">{zh ? `${resetsAt} 重置` : `Resets ${resetsAt}`}</p>
+      )}
     </div>
   );
 }

@@ -34,14 +34,14 @@ export function ThinkingBlock({ block, processing }: { block: ThinkingBlock; pro
       >
         <span className={`process-node ${live ? "is-live" : "is-done"}`} aria-hidden="true" />
         <BlackHole size={13} spin={live} />
-        <span className={`shrink-0 text-[10.5px] font-medium ${live ? "text-fg2" : "text-dim"}`}>
+        <span className={`shrink-0 text-[13px] font-medium ${live ? "text-fg2" : "text-dim"}`}>
           {live
             ? language === "zh-CN" ? "思考中" : "Thinking"
             : `${language === "zh-CN" ? "思考" : "Thought"}${block.elapsedMs ? ` · ${fmtDuration(block.elapsedMs)}` : ""}`}
         </span>
         {live && <span className="h-1 w-1 animate-pulse-dot rounded-full bg-acc" />}
         {!expanded && preview && (
-          <span className="min-w-0 flex-1 truncate text-[11px] text-faint" title={preview}>
+          <span className="min-w-0 flex-1 truncate text-[13px] text-faint" title={preview}>
             {preview}
             {live && <span className="ml-1 inline-block h-2.5 w-[5px] animate-blink bg-acc-dim align-[-1px]" />}
           </span>
@@ -54,7 +54,7 @@ export function ThinkingBlock({ block, processing }: { block: ThinkingBlock; pro
         />
       </button>
       {expanded && visibleText && (
-        <div className="ml-[6px] mt-1 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words border-l border-line2 pb-1 pl-6 text-[12.5px] leading-[1.72] text-mute select-text">
+        <div className="ml-[6px] mt-1 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words border-l border-line2 pb-1 pl-6 text-[14px] leading-[1.72] text-mute select-text">
           {visibleText}
           {live && <span className="ml-0.5 inline-block h-3 w-[6px] animate-blink bg-acc-dim align-[-1px]" />}
         </div>

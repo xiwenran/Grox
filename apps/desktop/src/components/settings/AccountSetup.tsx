@@ -213,7 +213,7 @@ function AccountSetupDialog({
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-[18px] font-medium text-fg">{t("firstRunTitle")}</h1>
-            <p className="mt-1 text-[12px] leading-relaxed text-dim">{t("firstRunBody")}</p>
+            <p className="mt-1 text-[14px] leading-relaxed text-dim">{t("firstRunBody")}</p>
           </div>
           <button onClick={onClose} className="text-dim hover:text-fg" title="Close">
             <Icon name="x" size={14} />
@@ -228,7 +228,7 @@ function AccountSetupDialog({
               className={`rounded-[5px] border px-2 py-3 text-left ${kind === option ? "border-acc-dim bg-acc-wash" : "border-line2 bg-raise hover:border-line3"}`}
             >
               <Icon name={option === "oauth" ? "user" : option === "official" ? "bolt" : "globe"} size={13} className={kind === option ? "text-acc" : "text-dim"} />
-              <p className="mt-2 text-[12px] text-fg2">
+              <p className="mt-2 text-[14px] text-fg2">
                 {option === "oauth" ? t("oauth") : option === "official" ? t("officialApi") : t("compatibleApi")}
               </p>
             </button>
@@ -242,23 +242,23 @@ function AccountSetupDialog({
               <>
                 <Field label={language === "zh-CN" ? "供应商名称" : "Provider name"} value={providerName} onChange={setProviderName} placeholder={language === "zh-CN" ? "例如：公司中转 / OpenRouter" : "e.g. Company gateway / OpenRouter"} />
                 <Field label={t("baseUrl")} value={baseUrl} onChange={setBaseUrl} placeholder="https://example.com/v1" />
-                <p className="rounded-[5px] border border-line bg-raise px-3 py-2 text-[10px] leading-relaxed text-dim">{language === "zh-CN" ? "仅接入标准 OpenAI Chat Completions 服务：保存后会从 Base URL /models 获取模型，并为当前模型写入 Grok 官方的 env_key、base_url 与 api_backend=chat_completions；切回 OAuth 时自动恢复。真实 Key 始终只保存在当前 ACP 子进程环境。" : "Only standard OpenAI Chat Completions endpoints are connected here. Grox fetches Base URL /models and writes the documented env_key, base_url, and api_backend=chat_completions for the active model, restoring them on OAuth. The literal key stays only in the current ACP child environment."}</p>
+                <p className="rounded-[5px] border border-line bg-raise px-3 py-2 text-[13px] leading-relaxed text-dim">{language === "zh-CN" ? "仅接入标准 OpenAI Chat Completions 服务：保存后会从 Base URL /models 获取模型，并为当前模型写入 Grok 官方的 env_key、base_url 与 api_backend=chat_completions；切回 OAuth 时自动恢复。真实 Key 始终只保存在当前 ACP 子进程环境。" : "Only standard OpenAI Chat Completions endpoints are connected here. Grox fetches Base URL /models and writes the documented env_key, base_url, and api_backend=chat_completions for the active model, restoring them on OAuth. The literal key stays only in the current ACP child environment."}</p>
               </>
             )}
           </div>
         )}
 
         {kind === "oauth" && (
-          <div className="mt-4 rounded-[7px] border border-line bg-raise px-3 py-2.5 text-[11.5px] leading-relaxed text-dim">
+          <div className="mt-4 rounded-[7px] border border-line bg-raise px-3 py-2.5 text-[13px] leading-relaxed text-dim">
             {t("oauth")} 会打开 Grok 官方登录页。登录后可读取订阅等级与上游实际提供的周额度；当前 Grok Build 接口没有独立五小时额度字段。
             {auth.error && <p className="mt-2 text-red">{auth.error}</p>}
           </div>
         )}
 
-        {error && <p className="mt-3 rounded-[4px] border border-red/30 bg-red/5 px-3 py-2 text-[10px] text-red">{error}</p>}
+        {error && <p className="mt-3 rounded-[4px] border border-red/30 bg-red/5 px-3 py-2 text-[13px] text-red">{error}</p>}
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
-          <button onClick={() => auth.inProgress ? onCancelSignIn() : onDefer()} disabled={busy && !auth.inProgress} className="h-9 rounded-full px-3 text-[12px] text-dim hover:bg-high hover:text-fg2 disabled:opacity-50">
+          <button onClick={() => auth.inProgress ? onCancelSignIn() : onDefer()} disabled={busy && !auth.inProgress} className="h-9 rounded-full px-3 text-[14px] text-dim hover:bg-high hover:text-fg2 disabled:opacity-50">
             {auth.inProgress
               ? (language === "zh-CN" ? "取消登录" : "Cancel sign-in")
               : (language === "zh-CN" ? "稍后设置，先进入应用" : "Set up later")}
@@ -266,7 +266,7 @@ function AccountSetupDialog({
           <button
             disabled={continueDisabled}
             onClick={onSubmit}
-            className="flex h-9 min-w-[132px] items-center justify-center gap-2 rounded-full bg-acc px-5 text-[12px] font-medium text-base hover:bg-acc-deep disabled:opacity-50"
+            className="flex h-9 min-w-[132px] items-center justify-center gap-2 rounded-full bg-acc px-5 text-[14px] font-medium text-base hover:bg-acc-deep disabled:opacity-50"
             title={reconnectBlocking
               ? (language === "zh-CN" ? "等待 Agent 重连完成" : "Wait for Agent reconnect")
               : undefined}
@@ -281,26 +281,26 @@ function AccountSetupDialog({
 }
 
 function RuntimeOption({ icon, title, badge, description, disabled, onClick }: { icon: "globe" | "bolt"; title: string; badge: string; description: string; disabled: boolean; onClick(): void }) {
-  return <button disabled={disabled} onClick={onClick} className="group min-h-[154px] rounded-[9px] border border-line2 bg-raise p-4 text-left transition-colors hover:border-acc-dim hover:bg-high disabled:cursor-wait disabled:opacity-50"><div className="flex items-start justify-between"><span className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-line2 bg-void text-acc"><Icon name={icon} size={14} /></span><span className="rounded-full border border-line2 px-2 py-0.5 text-[10px] text-faint group-hover:text-acc">{badge}</span></div><p className="mt-4 text-[13px] font-medium text-fg">{title}</p><p className="mt-1.5 text-[11.5px] leading-relaxed text-dim">{description}</p></button>;
+  return <button disabled={disabled} onClick={onClick} className="group min-h-[154px] rounded-[9px] border border-line2 bg-raise p-4 text-left transition-colors hover:border-acc-dim hover:bg-high disabled:cursor-wait disabled:opacity-50"><div className="flex items-start justify-between"><span className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-line2 bg-void text-acc"><Icon name={icon} size={14} /></span><span className="rounded-full border border-line2 px-2 py-0.5 text-[13px] text-faint group-hover:text-acc">{badge}</span></div><p className="mt-4 text-[14px] font-medium text-fg">{title}</p><p className="mt-1.5 text-[13px] leading-relaxed text-dim">{description}</p></button>;
 }
 function Field({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange(value: string): void; placeholder?: string; type?: string }) {
   return (
     <label className="block">
-      <span className="text-[11px] text-dim">{label}</span>
+      <span className="text-[13px] text-dim">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         autoComplete="off"
-        className="mt-1.5 h-10 w-full rounded-[6px] border border-line2 bg-void px-3 font-mono text-[12px] text-fg outline-none placeholder:text-faint focus:border-acc-dim"
+        className="mt-1.5 h-10 w-full rounded-[6px] border border-line2 bg-void px-3 font-mono text-[14px] text-fg outline-none placeholder:text-faint focus:border-acc-dim"
       />
     </label>
   );
 }
 
 function KeyField({ label, value, onChange, hidden, onToggle, language }: { label: string; value: string; onChange(value: string): void; hidden: boolean; onToggle(): void; language: string }) {
-  return <label className="block"><span className="text-[11px] text-dim">{label}</span><div className="relative mt-1.5"><input type={hidden ? "password" : "text"} value={value} onChange={(event) => onChange(event.target.value)} placeholder="xai-…" autoComplete="off" spellCheck={false} className="h-10 w-full rounded-[6px] border border-line2 bg-void py-0 pl-3 pr-16 font-mono text-[12px] text-fg outline-none placeholder:text-faint focus:border-acc-dim" /><button type="button" onClick={onToggle} className="absolute inset-y-0 right-0 w-14 border-l border-line text-[11px] text-dim hover:text-fg">{hidden ? (language === "zh-CN" ? "显示" : "Show") : (language === "zh-CN" ? "隐藏" : "Hide")}</button></div></label>;
+  return <label className="block"><span className="text-[13px] text-dim">{label}</span><div className="relative mt-1.5"><input type={hidden ? "password" : "text"} value={value} onChange={(event) => onChange(event.target.value)} placeholder="xai-…" autoComplete="off" spellCheck={false} className="h-10 w-full rounded-[6px] border border-line2 bg-void py-0 pl-3 pr-16 font-mono text-[14px] text-fg outline-none placeholder:text-faint focus:border-acc-dim" /><button type="button" onClick={onToggle} className="absolute inset-y-0 right-0 w-14 border-l border-line text-[13px] text-dim hover:text-fg">{hidden ? (language === "zh-CN" ? "显示" : "Show") : (language === "zh-CN" ? "隐藏" : "Hide")}</button></div></label>;
 }
 
 function RuntimeInstallDialog({ runtimeBusy, installRuntime, error, heading, body, optionTitle, optionBadge, optionDescription, statusLine }: {
@@ -327,18 +327,18 @@ function RuntimeInstallDialog({ runtimeBusy, installRuntime, error, heading, bod
         <div className="flex items-start gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line3 bg-raise"><BlackHole size={22} /></div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-[17px] font-medium text-fg">{heading}</h1>
-            <p className="mt-1 text-[11px] leading-relaxed text-dim">{body}</p>
+            <h1 className="text-[18px] font-medium text-fg">{heading}</h1>
+            <p className="mt-1 text-[13px] leading-relaxed text-dim">{body}</p>
           </div>
         </div>
         <div className="mt-6">
           <RuntimeOption icon="globe" title={optionTitle} badge={optionBadge} description={optionDescription} disabled={runtimeBusy} onClick={installRuntime} />
         </div>
-        <div className="mt-4 flex items-center gap-2 rounded-[5px] border border-line bg-raise px-3 py-2.5 font-mono text-[9.5px] text-dim">
+        <div className="mt-4 flex items-center gap-2 rounded-[5px] border border-line bg-raise px-3 py-2.5 font-mono text-[13px] text-dim">
           <span className={`h-1.5 w-1.5 rounded-full ${runtimeBusy ? "animate-pulse-dot bg-gold" : "bg-acc"}`} />
           {statusLine}
         </div>
-        {error && <p className="mt-3 rounded-[4px] border border-red/30 bg-red/5 px-3 py-2 text-[10px] text-red">{error}</p>}
+        {error && <p className="mt-3 rounded-[4px] border border-red/30 bg-red/5 px-3 py-2 text-[13px] text-red">{error}</p>}
       </div>
     </div>
   );

@@ -168,10 +168,10 @@ export function Home() {
         <div className="animate-mission-in animate-bh-breathe" style={{ animationDelay: "0.04s" }}>
           <BlackHole size={72} spin="slow" />
         </div>
-        <h1 className="mt-5 animate-mission-in text-[28px] font-semibold tracking-tight text-fg" style={{ animationDelay: "0.11s" }}>
+        <h1 className="mt-5 animate-mission-in text-[26px] font-semibold tracking-tight text-fg" style={{ animationDelay: "0.11s" }}>
           Grox
         </h1>
-        <p className="mt-3 animate-mission-in text-center text-[14px] text-mute" style={{ animationDelay: "0.17s" }}>
+        <p className="mt-3 animate-mission-in text-center text-[15px] text-mute" style={{ animationDelay: "0.17s" }}>
           {language === "zh-CN" ? "把想做的事交给 Grok Build" : "Give Grok Build something worth making"}
         </p>
 
@@ -179,8 +179,8 @@ export function Home() {
           <div className="mt-7 flex w-full max-w-[820px] animate-mission-in items-start gap-3 rounded-[14px] border border-red/35 bg-red/5 px-4 py-3" style={{ animationDelay: "0.22s" }}>
             <Icon name="alert" size={15} className="mt-0.5 shrink-0 text-red" />
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-red">{language === "zh-CN" ? "Grok Build 连接失败" : "Could not connect to Grok Build"}</p>
-              <p className="mt-1 break-words font-mono text-[11px] leading-relaxed text-fg2">{startupError}</p>
+              <p className="text-[14px] font-medium text-red">{language === "zh-CN" ? "Grok Build 连接失败" : "Could not connect to Grok Build"}</p>
+              <p className="mt-1 break-words font-mono text-[13px] leading-relaxed text-fg2">{startupError}</p>
             </div>
           </div>
         )}
@@ -193,7 +193,7 @@ export function Home() {
                 {attachments.map((attachment) => (
                   <div key={attachment.id} className="flex h-9 max-w-[220px] items-center gap-2 rounded-full border border-line2 bg-high/70 px-3">
                     {attachment.kind === "image" && attachment.data ? <img src={`data:${attachment.mime};base64,${attachment.data}`} alt="" className="h-6 w-6 rounded-full object-cover" /> : <Icon name="file" size={11} className="text-dim" />}
-                    <span className="min-w-0 flex-1 truncate text-[11px] text-fg2">{attachment.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-fg2">{attachment.name}</span>
                     <button onClick={() => setAttachments((items) => items.filter((item) => item.id !== attachment.id))} className="text-faint hover:text-fg" title={language === "zh-CN" ? "移除" : "Remove"}><Icon name="x" size={9} /></button>
                   </div>
                 ))}
@@ -224,7 +224,7 @@ export function Home() {
             />
             {slashMatches.length > 0 && (
               <div className="absolute z-30 mt-1.5 w-[min(640px,calc(100%-32px))] animate-fade-up rounded-[14px] border border-line2 bg-raise p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
-                {slashMatches.map((command, index) => <button key={command.id} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSlash(command.id)} className={`flex w-full items-center gap-3 rounded-[10px] px-3.5 py-2.5 text-left ${index === slashIndex ? "bg-high text-fg" : "text-dim hover:bg-high hover:text-fg2"}`}><span className="font-mono text-[12px] text-acc">{command.id}</span><span className="min-w-0 flex-1 truncate text-[12px]">{command.hint}</span></button>)}
+                {slashMatches.map((command, index) => <button key={command.id} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSlash(command.id)} className={`flex w-full items-center gap-3 rounded-[10px] px-3.5 py-2.5 text-left ${index === slashIndex ? "bg-high text-fg" : "text-dim hover:bg-high hover:text-fg2"}`}><span className="font-mono text-[14px] text-acc">{command.id}</span><span className="min-w-0 flex-1 truncate text-[14px]">{command.hint}</span></button>)}
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-1.5">
@@ -234,12 +234,12 @@ export function Home() {
               <PromptOptionsMenu mode={mode} effort={effort} efforts={models.find((item) => item.id === model)?.efforts} permissionMode={permissionMode} onMode={setMode} onEffort={setEffort} onPermission={setPermissionMode} />
               <button onClick={() => void launch()} disabled={!hasPrompt || readingFiles} className={`ml-auto flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ${hasPrompt ? (auth.required ? "border border-gold/50 bg-gold/10 text-gold hover:bg-gold/15" : "bg-acc text-base hover:bg-acc-deep") : "bg-high text-faint"}`} title={auth.required ? (language === "zh-CN" ? "配置账户后发送" : "Connect an account to send") : (language === "zh-CN" ? "开始任务" : "Start")}><Icon name="arrowUp" size={15} strokeWidth={2} /></button>
             </div>
-            {attachmentError && <p className="border-t border-red/20 px-4 py-2 text-[11px] text-red">{attachmentError}</p>}
+            {attachmentError && <p className="border-t border-red/20 px-4 py-2 text-[13px] text-red">{attachmentError}</p>}
           </div>
         </div>
 
         {auth.required && (
-          <button onClick={() => auth.inProgress ? void cancelAuthentication() : setAccountSetupOpen(true)} className="mt-3 flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] text-gold hover:bg-gold/5">
+          <button onClick={() => auth.inProgress ? void cancelAuthentication() : setAccountSetupOpen(true)} className="mt-3 flex items-center gap-2 rounded-full px-3 py-1.5 text-[14px] text-gold hover:bg-gold/5">
             <span className={`h-1.5 w-1.5 rounded-full ${auth.inProgress ? "animate-pulse bg-gold" : "bg-gold"}`} />
             {auth.inProgress ? (language === "zh-CN" ? "正在连接账户…" : "Connecting account…") : (auth.error ?? (language === "zh-CN" ? "发送前需要登录或配置服务" : "Sign in or configure a provider before sending"))}
             <span className="text-fg2">{auth.inProgress ? (language === "zh-CN" ? "取消" : "Cancel") : `${t("account")} →`}</span>
@@ -249,8 +249,8 @@ export function Home() {
         {recent.length > 0 && (
           <div className="mt-10 w-full max-w-[820px] animate-mission-in" style={{ animationDelay: "0.34s" }}>
             <div className="mb-3 flex items-center justify-between px-1">
-              <span className="text-[12px] font-medium text-mute">{language === "zh-CN" ? "继续最近任务" : "Continue recent work"}</span>
-              <span className="text-[11px] text-faint">{recent.length}</span>
+              <span className="text-[14px] font-medium text-mute">{language === "zh-CN" ? "继续最近任务" : "Continue recent work"}</span>
+              <span className="text-[13px] text-faint">{recent.length}</span>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {recent.map((mission, index) => {
@@ -262,11 +262,11 @@ export function Home() {
                   || (language === "zh-CN" ? "未命名任务" : "Untitled task");
                 return (
                   <button key={mission.id} onClick={() => openSession(mission.id)} className="mission-card group animate-mission-card rounded-[14px] border border-line2 bg-raise/55 px-4 py-3 text-left hover:border-line3 hover:bg-raise" style={{ animationDelay: `${0.38 + index * 0.04}s` }}>
-                    <p className="flex items-center gap-1.5 text-[13px] text-fg2 group-hover:text-fg">
+                    <p className="flex items-center gap-1.5 text-[14px] text-fg2 group-hover:text-fg">
                       {attention && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${attention.tone}`} title={attention.label} aria-label={attention.label} />}
                       <span className="min-w-0 truncate">{title}</span>
                     </p>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-faint">
+                    <div className="mt-2 flex items-center justify-between text-[13px] text-faint">
                       <span>{fmtRelTime(mission.updatedAt)}</span>
                       {tokens > 0 && <span className="font-mono">{fmtTokens(tokens)} tokens</span>}
                     </div>

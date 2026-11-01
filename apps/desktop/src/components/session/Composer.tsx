@@ -365,10 +365,10 @@ export function Composer() {
                   i === slashIdx ? "bg-high" : "hover:bg-high/60"
                 }`}
               >
-                <span className="w-20 shrink-0 font-mono text-[11px] text-acc">{c.id}</span>
-                <span className="min-w-0 flex-1 truncate text-[11px] text-mute">{c.hint}</span>
-                {c.tag && <span className="rounded-full bg-acc/10 px-1.5 py-0.5 font-mono text-[8.5px] tracking-[0.08em] text-acc">{c.tag}</span>}
-                {c.source === "runtime" && <span className="rounded-full border border-line2 px-1.5 py-0.5 font-mono text-[8.5px] tracking-[0.08em] text-faint">RUNTIME</span>}
+                <span className="w-20 shrink-0 font-mono text-[13px] text-acc">{c.id}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-mute">{c.hint}</span>
+                {c.tag && <span className="rounded-full bg-acc/10 px-1.5 py-0.5 font-mono text-[12px] tracking-[0.08em] text-acc">{c.tag}</span>}
+                {c.source === "runtime" && <span className="rounded-full border border-line2 px-1.5 py-0.5 font-mono text-[12px] tracking-[0.08em] text-faint">RUNTIME</span>}
               </button>
             ))}
           </div>
@@ -395,7 +395,7 @@ export function Composer() {
                   ) : (
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-raise text-dim"><Icon name="file" size={11} /></span>
                   )}
-                  <div className="min-w-0 flex-1"><p className="truncate font-mono text-[9.5px] text-fg2">{attachment.name}</p><p className="font-mono text-[8.5px] text-faint">{attachment.size < 1024 * 1024 ? `${Math.max(1, Math.round(attachment.size / 1024))} KB` : `${(attachment.size / 1024 / 1024).toFixed(1)} MB`}</p></div>
+                  <div className="min-w-0 flex-1"><p className="truncate font-mono text-[13px] text-fg2">{attachment.name}</p><p className="font-mono text-[12px] text-faint">{attachment.size < 1024 * 1024 ? `${Math.max(1, Math.round(attachment.size / 1024))} KB` : `${(attachment.size / 1024 / 1024).toFixed(1)} MB`}</p></div>
                   <button onClick={() => setAttachments(attachments.filter((item) => item.id !== attachment.id))} className="flex h-6 w-6 items-center justify-center rounded-full text-faint hover:bg-raise hover:text-fg" title={language === "zh-CN" ? "移除附件" : "Remove attachment"}><Icon name="x" size={9} /></button>
                 </div>
               ))}
@@ -420,14 +420,14 @@ export function Composer() {
                 ? (language === "zh-CN" ? "Grok 正在处理 — 可以准备下一条请求…" : "Grok is working — queue the next directive…")
                 : (language === "zh-CN" ? "发送给 Grok…" : "Transmit to Grok…")
             }
-            className="composer-input block w-full resize-none bg-transparent px-5 pb-1.5 pt-3.5 text-[14px] leading-relaxed text-fg placeholder:text-faint focus:outline-none"
+            className="composer-input block w-full resize-none bg-transparent px-5 pb-1.5 pt-3.5 text-[15px] leading-relaxed text-fg placeholder:text-faint focus:outline-none"
           />
 
           {queue.length > 0 && (
             <div className="border-t border-line px-3 py-2">
               <div className="mb-1.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className={`font-mono text-[9.5px] ${queueParked ? "text-gold" : "text-dim"}`}>
+                  <span className={`font-mono text-[13px] ${queueParked ? "text-gold" : "text-dim"}`}>
                     {queueParked
                       ? (language === "zh-CN" ? `队列已暂停 · ${queue.length} 条待确认` : `Queue paused · ${queue.length} held`)
                       : (language === "zh-CN" ? `等待发送 ${queue.length}` : `${queue.length} queued`)}
@@ -435,18 +435,18 @@ export function Composer() {
                   {queueParked && (
                     <button
                       onClick={() => resumePromptQueue(activeId ?? undefined)}
-                      className="rounded border border-gold/35 bg-gold/10 px-1.5 py-0.5 font-mono text-[9px] text-gold transition-colors hover:bg-gold/20"
+                      className="rounded border border-gold/35 bg-gold/10 px-1.5 py-0.5 font-mono text-[12px] text-gold transition-colors hover:bg-gold/20"
                     >
                       {language === "zh-CN" ? "确认并继续" : "Review & resume"}
                     </button>
                   )}
                 </div>
-                <button onClick={() => clearPromptQueue(activeId ?? undefined)} className="font-mono text-[9px] text-faint hover:text-red">
+                <button onClick={() => clearPromptQueue(activeId ?? undefined)} className="font-mono text-[12px] text-faint hover:text-red">
                   {language === "zh-CN" ? "清空" : "Clear"}
                 </button>
               </div>
               {queueParked && (
-                <p className="mb-1.5 text-[9.5px] leading-relaxed text-mute">
+                <p className="mb-1.5 text-[13px] leading-relaxed text-mute">
                   {language === "zh-CN"
                     ? "上次停止或异常后，Grox 不会自动发送这些内容。请先核对最后一轮结果。"
                     : "Grox will not auto-send these after a stop or incident. Review the previous result first."}
@@ -461,7 +461,7 @@ export function Composer() {
                       onChange={(event) => activeId && updateQueuedPrompt(activeId, item.id, event.target.value)}
                       disabled={item.state === "sending"}
                       placeholder={item.attachments.length > 0 ? (language === "zh-CN" ? "图片消息" : "Image prompt") : undefined}
-                      className="min-w-0 flex-1 bg-transparent text-[10.5px] text-fg2 outline-none placeholder:text-faint"
+                      className="min-w-0 flex-1 bg-transparent text-[13px] text-fg2 outline-none placeholder:text-faint"
                     />
                     <button disabled={item.state === "sending" || queue[index - 1]?.state === "sending" || index === 0} onClick={() => activeId && moveQueuedPrompt(activeId, item.id, -1)} className="text-faint enabled:hover:text-fg disabled:opacity-25" title={language === "zh-CN" ? "上移" : "Move up"}><Icon name="arrowUp" size={9} /></button>
                     <button disabled={item.state === "sending" || queue[index + 1]?.state === "sending" || index === queue.length - 1} onClick={() => activeId && moveQueuedPrompt(activeId, item.id, 1)} className="rotate-180 text-faint enabled:hover:text-fg disabled:opacity-25" title={language === "zh-CN" ? "下移" : "Move down"}><Icon name="arrowUp" size={9} /></button>
@@ -470,7 +470,7 @@ export function Composer() {
                     </button>
                     </div>
                     {item.attachments.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{item.attachments.map((attachment, attachmentIndex) => (
-                      <span key={attachment.id} className="flex items-center gap-1 rounded-[3px] border border-line px-1.5 py-0.5 font-mono text-[8.5px] text-mute">
+                      <span key={attachment.id} className="flex items-center gap-1 rounded-[3px] border border-line px-1.5 py-0.5 font-mono text-[12px] text-mute">
                         <span className="max-w-28 truncate">{attachment.name}</span>
                         <button disabled={item.state === "sending" || attachmentIndex === 0} onClick={() => activeId && moveQueuedAttachment(activeId, item.id, attachment.id, -1)} className="disabled:opacity-20" aria-label="上移附件">↑</button>
                         <button disabled={item.state === "sending" || attachmentIndex === item.attachments.length - 1} onClick={() => activeId && moveQueuedAttachment(activeId, item.id, attachment.id, 1)} className="disabled:opacity-20" aria-label="下移附件">↓</button>
@@ -513,7 +513,7 @@ export function Composer() {
               }}
               disabled={running}
               title={language === "zh-CN" ? "启动 Deep Research" : "Start Deep Research"}
-              className="flex h-8 items-center gap-1.5 rounded-full border border-acc/30 bg-acc/5 px-3 font-mono text-[10.5px] text-acc transition-colors hover:border-acc/60 hover:bg-acc/10 disabled:opacity-40"
+              className="flex h-8 items-center gap-1.5 rounded-full border border-acc/30 bg-acc/5 px-3 font-mono text-[13px] text-acc transition-colors hover:border-acc/60 hover:bg-acc/10 disabled:opacity-40"
             >
               <Icon name="search" size={11} />
               {language === "zh-CN" ? "深度研究" : "Research"}
@@ -541,7 +541,7 @@ export function Composer() {
                   onClick={() => void send()}
                   disabled={!text.trim() && attachments.length === 0}
                   title={language === "zh-CN" ? "当前回合结束后发送" : "Send after current turn"}
-                  className="flex h-8 items-center gap-1.5 rounded-full border border-line2 px-3 font-mono text-[10px] text-fg2 disabled:opacity-40"
+                  className="flex h-8 items-center gap-1.5 rounded-full border border-line2 px-3 font-mono text-[13px] text-fg2 disabled:opacity-40"
                 >
                   {language === "zh-CN" ? "加入队列" : "QUEUE"}
                 </button>
@@ -549,14 +549,14 @@ export function Composer() {
                     onClick={() => void interject()}
                     disabled={!text.trim() && attachments.length === 0}
                     title={language === "zh-CN" ? "插入当前回合（⌘/Ctrl+Enter）" : "Interject (Cmd/Ctrl+Enter)"}
-                    className="flex h-8 items-center gap-1.5 rounded-full border border-acc/40 px-3 font-mono text-[10px] text-acc disabled:opacity-40"
+                    className="flex h-8 items-center gap-1.5 rounded-full border border-acc/40 px-3 font-mono text-[13px] text-acc disabled:opacity-40"
                   >
                     {language === "zh-CN" ? "插话" : "INTERJECT"}
                   </button>}
                 {computerRunning && <button
                   onClick={emergencyStopComputer}
                   title={language === "zh-CN" ? "紧急停止 Computer Use，并锁定当前控制租约" : "Emergency stop Computer Use and lock this control lease"}
-                  className="flex h-8 items-center gap-1.5 rounded-full border border-red/70 bg-red/5 px-3 font-mono text-[10px] text-red transition-colors hover:bg-red/10"
+                  className="flex h-8 items-center gap-1.5 rounded-full border border-red/70 bg-red/5 px-3 font-mono text-[13px] text-red transition-colors hover:bg-red/10"
                 >
                   <Icon name="stop" size={10} />
                   {language === "zh-CN" ? "紧急停止" : "E-STOP"}
@@ -598,7 +598,7 @@ export function Composer() {
               onSent={() => { setFeedbackText(""); setFeedbackOpen(false); }}
             />
           )}
-          {attachmentError && <p className="border-t border-red/20 px-3 py-1.5 text-[9.5px] text-red">{attachmentError}</p>}
+          {attachmentError && <p className="border-t border-red/20 px-3 py-1.5 text-[13px] text-red">{attachmentError}</p>}
         </div>
         </div>
 
@@ -631,11 +631,11 @@ function FeedbackDialog({ language, activeId, text, onTextChange, error, sending
     >
       <div ref={dialogRef} className="w-full max-w-lg rounded-[7px] border border-line3 bg-raise p-4 shadow-2xl">
         <div className="flex items-center justify-between"><span className="lbl !text-gold">{zh ? "提交 GROK BUILD 反馈" : "GROK BUILD FEEDBACK"}</span><button onClick={onClose} className="text-faint hover:text-fg"><Icon name="x" size={11} /></button></div>
-        <p className="mt-2 text-[10.5px] leading-relaxed text-dim">{zh ? "反馈会通过官方 x.ai/feedback 通道提交，并关联当前任务上下文。" : "Feedback is submitted through the official x.ai/feedback channel with this mission context."}</p>
-        <textarea value={text} onChange={(event) => onTextChange(event.target.value)} rows={6} className="mt-3 w-full resize-y rounded-[5px] border border-line2 bg-void p-3 text-[12px] text-fg outline-none focus:border-gold/60" placeholder={zh ? "请描述问题或建议…" : "Describe the issue or suggestion…"} />
-        {error && <p className="mt-2 text-[10px] text-red">{error}</p>}
+        <p className="mt-2 text-[13px] leading-relaxed text-dim">{zh ? "反馈会通过官方 x.ai/feedback 通道提交，并关联当前任务上下文。" : "Feedback is submitted through the official x.ai/feedback channel with this mission context."}</p>
+        <textarea value={text} onChange={(event) => onTextChange(event.target.value)} rows={6} className="mt-3 w-full resize-y rounded-[5px] border border-line2 bg-void p-3 text-[14px] text-fg outline-none focus:border-gold/60" placeholder={zh ? "请描述问题或建议…" : "Describe the issue or suggestion…"} />
+        {error && <p className="mt-2 text-[13px] text-red">{error}</p>}
         <div className="mt-3 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-[4px] border border-line2 px-3 py-2 text-[10.5px] text-mute hover:text-fg">{zh ? "取消" : "Cancel"}</button>
+          <button onClick={onClose} className="rounded-[4px] border border-line2 px-3 py-2 text-[13px] text-mute hover:text-fg">{zh ? "取消" : "Cancel"}</button>
           <button
             disabled={!text.trim() || sending || !activeId}
             onClick={() => {
@@ -647,7 +647,7 @@ function FeedbackDialog({ language, activeId, text, onTextChange, error, sending
                 .catch((cause) => onError(cause instanceof Error ? cause.message : String(cause)))
                 .finally(() => onSending(false));
             }}
-            className="rounded-[4px] bg-gold px-3 py-2 text-[10.5px] font-medium text-base disabled:opacity-40"
+            className="rounded-[4px] bg-gold px-3 py-2 text-[13px] font-medium text-base disabled:opacity-40"
           >
             {sending ? (zh ? "提交中…" : "Sending…") : (zh ? "提交" : "Submit")}
           </button>

@@ -25,7 +25,7 @@ export function PlanCard({ block }: { block: PlanBlock }) {
       <div className="border-l border-gold/50 pl-3">
         <div className="flex items-center gap-2">
           <span className="lbl !text-gold">{language === "zh-CN" ? "计划" : "PLAN"}</span>
-          <span className="tnum text-[9.5px] text-faint">
+          <span className="tnum text-[13px] text-faint">
             {done}/{total}
           </span>
           <span className="relative h-[2px] w-16 overflow-hidden rounded-full bg-high">
@@ -37,7 +37,7 @@ export function PlanCard({ block }: { block: PlanBlock }) {
             <div key={s.id} className="flex items-start gap-2.5">
               <StepIcon status={s.status} />
               <span
-                className={`text-[12px] leading-snug ${
+                className={`text-[14px] leading-snug ${
                   s.status === "completed"
                     ? "text-dim"
                     : s.status === "in_progress"

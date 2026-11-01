@@ -69,7 +69,7 @@ export function StatusBar() {
   }, [workspace, activeId, status]);
 
   return (
-    <footer className="flex h-8 shrink-0 items-center justify-between border-t border-line bg-panel px-3 text-[11px] text-dim select-none">
+    <footer className="flex h-8 shrink-0 items-center justify-between border-t border-line bg-panel px-3 text-[13px] text-dim select-none">
       <div className="flex items-center gap-2">
         <BlackHole size={13} spin={presentation.spin} />
         <span className={presentation.tone}>

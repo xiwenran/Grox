@@ -105,9 +105,9 @@ export function ChipSelect({
 
   const trigger =
     variant === "field"
-      ? `flex h-9 w-full min-w-0 items-center gap-2 rounded-full border border-line2 bg-void px-3.5 font-mono text-[10.5px] text-fg2 outline-none transition-colors hover:border-line3 disabled:cursor-wait disabled:opacity-60 ${open ? "border-line3" : ""}`
+      ? `flex h-9 w-full min-w-0 items-center gap-2 rounded-full border border-line2 bg-void px-3.5 font-mono text-[13px] text-fg2 outline-none transition-colors hover:border-line3 disabled:cursor-wait disabled:opacity-60 ${open ? "border-line3" : ""}`
       : variant === "ghost"
-        ? `inline-flex max-w-full min-w-0 items-center gap-1.5 bg-transparent font-mono text-[10px] text-dim outline-none hover:text-fg2 disabled:cursor-wait disabled:opacity-60`
+        ? `inline-flex max-w-full min-w-0 items-center gap-1.5 bg-transparent font-mono text-[13px] text-dim outline-none hover:text-fg2 disabled:cursor-wait disabled:opacity-60`
         : `chip max-w-[260px] min-w-0 disabled:cursor-wait disabled:opacity-60`;
 
   const menuPosition =
@@ -140,7 +140,7 @@ export function ChipSelect({
           style={{ width: fullWidth ? "100%" : `min(${width}px, calc(100vw - 32px))` }}
         >
           {items.length === 0 ? (
-            <p className="px-3 py-2 font-mono text-[10px] text-faint">—</p>
+            <p className="px-3 py-2 font-mono text-[13px] text-faint">—</p>
           ) : (
             items.map((it, index) => (
               <button
@@ -165,8 +165,8 @@ export function ChipSelect({
                 <span
                   className={`h-1 w-1 shrink-0 rounded-full ${it.id === activeId ? "bg-acc" : "bg-transparent"}`}
                 />
-                <span className="truncate font-mono text-[11px] text-fg2">{it.label}</span>
-                <span className="truncate text-right text-[10px] text-faint">{it.hint ?? ""}</span>
+                <span className="truncate font-mono text-[13px] text-fg2">{it.label}</span>
+                <span className="truncate text-right text-[13px] text-faint">{it.hint ?? ""}</span>
               </button>
             ))
           )}

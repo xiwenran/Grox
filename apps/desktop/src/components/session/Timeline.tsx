@@ -109,12 +109,12 @@ function DeepResearchToolCard({ run, query }: { run?: WorkflowRun; query?: strin
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="font-mono text-[10.5px] text-fg2">{language === "zh-CN" ? "深度研究" : "DEEP RESEARCH"}</span>
-          <span className={`font-mono text-[8.5px] tracking-[0.08em] ${tone}`}>{status}</span>
+          <span className="font-mono text-[13px] text-fg2">{language === "zh-CN" ? "深度研究" : "DEEP RESEARCH"}</span>
+          <span className={`font-mono text-[12px] tracking-[0.08em] ${tone}`}>{status}</span>
         </span>
-        <span className="mt-0.5 block truncate text-[10px] text-dim">{query || run?.objective || phase}</span>
+        <span className="mt-0.5 block truncate text-[13px] text-dim">{query || run?.objective || phase}</span>
       </span>
-      <span className="hidden shrink-0 text-right font-mono text-[8.5px] text-faint sm:block">
+      <span className="hidden shrink-0 text-right font-mono text-[12px] text-faint sm:block">
         {phase}<br />{language === "zh-CN" ? "查看任务详情" : "OPEN TASK DETAILS"}
       </span>
       <Icon name="chevronRight" size={10} className="shrink-0 text-faint" />
@@ -143,21 +143,21 @@ export function DeadSessionNotice({ session }: { session: Session }) {
     <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 pb-24">
       <BlackHole size={34} />
       <div className="max-w-[420px] text-center">
-        <p className="text-[15px] font-medium text-fg">{copy.title}</p>
-        <p className="mt-2 text-[12px] leading-relaxed text-mute">{copy.body}</p>
-        <p className="mt-3 break-all font-mono text-[9.5px] text-faint">{copy.detail}</p>
+        <p className="text-[16px] font-medium text-fg">{copy.title}</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-mute">{copy.body}</p>
+        <p className="mt-3 break-all font-mono text-[13px] text-faint">{copy.detail}</p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button
           type="button"
-          className="rounded-[5px] border border-red/40 bg-red/10 px-3 py-2 font-mono text-[10px] text-red transition-colors hover:border-red hover:bg-red/15"
+          className="rounded-[5px] border border-red/40 bg-red/10 px-3 py-2 font-mono text-[13px] text-red transition-colors hover:border-red hover:bg-red/15"
           onClick={() => setConfirmRemoval(true)}
         >
           {copy.remove}
         </button>
         <button
           type="button"
-          className="rounded-[5px] border border-line2 px-3 py-2 font-mono text-[10px] text-fg2 transition-colors hover:border-acc/40 hover:text-fg"
+          className="rounded-[5px] border border-line2 px-3 py-2 font-mono text-[13px] text-fg2 transition-colors hover:border-acc/40 hover:text-fg"
           onClick={() => useDesktop.getState().goHome()}
         >
           {copy.home}
@@ -446,8 +446,8 @@ function ToolBatch({ blocks }: { blocks: Extract<SessionBlock, { type: "tool" }>
       <button onClick={() => setOpen((value) => !value)} className="process-tool-toggle">
         <span className={`process-node ${busy ? "is-live" : "is-done"}`} aria-hidden="true" />
         <Icon name={commands ? "terminal" : edits ? "edit" : "bolt"} size={11} className="shrink-0 text-dim" />
-        <span className="min-w-0 flex-1 truncate text-[10.5px] text-fg2" title={summary}>{summary}</span>
-        {busy && <span className="lbl lbl-acc shrink-0 !text-[9px]">{language === "zh-CN" ? "执行中" : "RUNNING"}</span>}
+        <span className="min-w-0 flex-1 truncate text-[13px] text-fg2" title={summary}>{summary}</span>
+        {busy && <span className="lbl lbl-acc shrink-0 !text-[12px]">{language === "zh-CN" ? "执行中" : "RUNNING"}</span>}
         <Icon name="chevronRight" size={9} className={`shrink-0 text-faint transition-transform ${open ? "rotate-90" : ""}`} />
       </button>
       {open && <div className="ml-[6px] max-h-56 overflow-y-auto border-l border-line2 pb-1 pl-4 pt-1">{blocks.map((block) => <ToolCallCard key={block.id} block={block} />)}</div>}
@@ -538,15 +538,15 @@ function TurnGroup({ turn, sessionId, status, active, workflow, onProcessInspect
         {!deepResearch && <div className="process-live mb-3">
           <div className="mb-2 flex min-h-7 items-center gap-2">
             <BlackHole size={22} spin />
-            <span className="text-[12px] font-medium text-fg2">{status === "awaiting_permission" ? (language === "zh-CN" ? "等待批准" : "Awaiting approval") : status === "awaiting_input" ? (language === "zh-CN" ? "等待你的回答" : "Awaiting input") : (language === "zh-CN" ? "Grok 正在处理" : "Grok is working")}</span>
+            <span className="text-[14px] font-medium text-fg2">{status === "awaiting_permission" ? (language === "zh-CN" ? "等待批准" : "Awaiting approval") : status === "awaiting_input" ? (language === "zh-CN" ? "等待你的回答" : "Awaiting input") : (language === "zh-CN" ? "Grok 正在处理" : "Grok is working")}</span>
             <span className="h-1 w-1 animate-pulse-dot rounded-full bg-acc" />
-            <span className="font-mono text-[9px] tracking-[0.08em] text-faint">{language === "zh-CN" ? `${liveBlocks.length} 条事件` : `${liveBlocks.length} events`}</span>
+            <span className="font-mono text-[12px] tracking-[0.08em] text-faint">{language === "zh-CN" ? `${liveBlocks.length} 条事件` : `${liveBlocks.length} events`}</span>
           </div>
           {processBlocks.length > 0 ? <div className="process-sequence process-rail ml-[7px] pl-5">
             <RenderSequence blocks={processBlocks} sessionId={sessionId} processing />
           </div> : !streamingAnswer ? (
             <div className="process-sequence process-rail ml-[7px] pl-5">
-              <div className="mb-3 flex items-center gap-2 text-[10.5px] text-dim">
+              <div className="mb-3 flex items-center gap-2 text-[13px] text-dim">
                 <span className="h-1 w-1 animate-pulse-dot rounded-full bg-acc-dim" />
                 {language === "zh-CN" ? "等待模型返回第一个事件…" : "Waiting for the first model event…"}
               </div>
@@ -600,8 +600,8 @@ function TurnGroup({ turn, sessionId, status, active, workflow, onProcessInspect
           aria-expanded={processOpen}
         >
           <Icon name={processOpen ? "chevronDown" : "chevronRight"} size={9} className="shrink-0 text-dim" />
-          <span className="shrink-0 text-[10px] font-medium text-fg2">{language === "zh-CN" ? "已处理" : "Processed"}</span>
-          <span className="min-w-0 flex-1 truncate text-[9.5px] text-dim" title={processSummary}>{processSummary}{elapsed ? ` · ${(elapsed / 1000).toFixed(1)}s` : ""}</span>
+          <span className="shrink-0 text-[13px] font-medium text-fg2">{language === "zh-CN" ? "已处理" : "Processed"}</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] text-dim" title={processSummary}>{processSummary}{elapsed ? ` · ${(elapsed / 1000).toFixed(1)}s` : ""}</span>
           <Icon name="check" size={9} className="text-green" />
         </button>
         {processOpen && (
@@ -611,7 +611,7 @@ function TurnGroup({ turn, sessionId, status, active, workflow, onProcessInspect
         )}
       </div>}
       {!deepResearch && active && compatibleProvider && finalAssistant && process.length === 0 && (
-        <div className="mb-3 flex items-center gap-2 font-mono text-[9.5px] text-faint">
+        <div className="mb-3 flex items-center gap-2 font-mono text-[13px] text-faint">
           <Icon name="alert" size={9} className="shrink-0" />
           <span>{language === "zh-CN"
             ? "本回合的模型服务未返回思考、工具调用或来源；Grox 不会把正文猜成搜索记录。"
@@ -800,7 +800,7 @@ export function Timeline({ session }: { session: Session }) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 pb-24">
         <BlackHole size={28} spin />
-        <span className="lbl !text-[10px]">
+        <span className="lbl !text-[13px]">
           {language === "zh-CN" ? "正在加载会话记录…" : "LOADING MISSION LOG…"}
         </span>
       </div>
@@ -811,7 +811,7 @@ export function Timeline({ session }: { session: Session }) {
     return <DeadSessionNotice session={session} />;
   }
 
-  if (session.blocks.length === 0) return <div className="flex flex-1 flex-col items-center justify-center gap-4 pb-24"><BlackHole size={44} spin="slow" /><div className="text-center"><p className="text-[14px] text-mute">{language === "zh-CN" ? "任务通道已打开。" : "Mission channel open."}</p><p className="lbl mt-1.5 !text-[10px]">{language === "zh-CN" ? "输入你的第一个请求" : "Type your first request"}</p></div></div>;
+  if (session.blocks.length === 0) return <div className="flex flex-1 flex-col items-center justify-center gap-4 pb-24"><BlackHole size={44} spin="slow" /><div className="text-center"><p className="text-[15px] text-mute">{language === "zh-CN" ? "任务通道已打开。" : "Mission channel open."}</p><p className="lbl mt-1.5 !text-[13px]">{language === "zh-CN" ? "输入你的第一个请求" : "Type your first request"}</p></div></div>;
 
   const jumpToTurn = (id: string) => {
     const index = turns.findIndex((turn) => turn.id === id);
@@ -844,7 +844,7 @@ export function Timeline({ session }: { session: Session }) {
           <div className="timeline-content mx-auto mb-4">
             <button
               type="button"
-              className="w-full rounded-[5px] border border-line2 bg-raise/40 px-3 py-2 text-center font-mono text-[10px] tracking-[0.06em] text-dim transition-colors hover:border-acc/40 hover:text-fg2"
+              className="w-full rounded-[5px] border border-line2 bg-raise/40 px-3 py-2 text-center font-mono text-[13px] tracking-[0.06em] text-dim transition-colors hover:border-acc/40 hover:text-fg2"
               onClick={loadEarlier}
             >
               {language === "zh-CN"
@@ -875,7 +875,7 @@ export function Timeline({ session }: { session: Session }) {
         <button
           type="button"
           onClick={jumpToLatest}
-          className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-line2 bg-raise/95 px-3.5 py-1.5 font-mono text-[10px] text-fg2 shadow-lg backdrop-blur transition-colors hover:border-acc/50 hover:text-fg"
+          className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-line2 bg-raise/95 px-3.5 py-1.5 font-mono text-[13px] text-fg2 shadow-lg backdrop-blur transition-colors hover:border-acc/50 hover:text-fg"
         >
           <Icon name="chevronDown" size={10} />
           {language === "zh-CN" ? "回到最新" : "Jump to latest"}
