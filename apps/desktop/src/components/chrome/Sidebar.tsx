@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { exportSessionSupportBundle, openExternal, revealSupportBundle, searchSessionHistory } from "../../lib/hostActions";
 import { useDesktop, type ProjectMeta } from "../../state/store";
 import { usePreferences } from "../../state/preferences";
-import { useHomeWorkspace, type HomeWorkspaceMode } from "../../state/homeWorkspace";
 import { useI18n } from "../../lib/i18n";
 import { fmtBillingDate, fmtRelTime, fmtTokens } from "../../lib/format";
 import { Wordmark } from "../fx/Wordmark";
@@ -29,12 +28,6 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   const view = useDesktop((state) => state.view);
   const openSession = useDesktop((state) => state.openSession);
   const goHome = useDesktop((state) => state.goHome);
-  const homeMode = useHomeWorkspace((state) => state.mode);
-  const setHomeMode = useHomeWorkspace((state) => state.setMode);
-  const openWorkspace = (mode: HomeWorkspaceMode) => {
-    setHomeMode(mode);
-    goHome();
-  };
   const newProject = useDesktop((state) => state.newProject);
   const account = useDesktop((state) => state.account);
   const billing = useDesktop((state) => state.billing);
@@ -124,7 +117,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   return (
     <aside className="relative flex shrink-0 flex-col border-r border-line bg-panel" style={{ width }}>
       <div className="flex h-14 items-center border-b border-line px-4">
-        <button onClick={() => openWorkspace("conversation")} className="transition-opacity hover:opacity-70" title="Home">
+        <button onClick={goHome} className="transition-opacity hover:opacity-70" title="Home">
           <Wordmark size={14} markSpin={view === "home" ? "slow" : false} />
         </button>
         <button
@@ -147,28 +140,6 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
           {t("newProject")}
           <span className="ml-auto text-[length:var(--fs-xs)] text-faint">Ctrl N</span>
         </button>
-        <nav className="mt-2 flex flex-col gap-px" aria-label={t("navWorkspaces")}>
-          {([
-            ["conversation", "command", t("navChat")],
-            ["image", "layers", t("navImages")],
-            ["video", "play", t("navVideo")],
-            ["automations", "clock", t("navScheduled")],
-          ] as const).map(([id, icon, label]) => {
-            const current = view === "home" && homeMode === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => openWorkspace(id)}
-                aria-current={current ? "page" : undefined}
-                className={`sidebar-nav-item ${current ? "is-active" : ""}`}
-              >
-                <Icon name={icon} size={13} />
-                {label}
-              </button>
-            );
-          })}
-        </nav>
         <div className="mt-2 flex h-9 items-center gap-2 rounded-[10px] border border-line2 bg-raise px-3 focus-within:border-line3">
           <Icon name="search" size={11} className={historySearching ? "animate-pulse text-acc" : "text-dim"} />
           <input
@@ -299,12 +270,12 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
                 label={language === "zh-CN" ? "周期结束" : "Period ends"}
                 value={fmtBillingDate(billing?.periodEnd, language)}
               />
-              <Limit
-                label={language === "zh-CN" ? "订阅额度" : "Plan quota"}
-                value={billing?.creditUsagePercent !== undefined
-                  ? `${Math.round(billing.creditUsagePercent)}%`
-                  : (language === "zh-CN" ? "上游未公开" : "Not exposed")}
-              />
+              {billing?.creditUsagePercent !== undefined && (
+                <Limit
+                  label={language === "zh-CN" ? "订阅额度已用" : "Plan quota used"}
+                  value={fmtQuotaPercent(billing.creditUsagePercent)}
+                />
+              )}
             </div>
             <MenuButton icon="gear" label={t("settings")} onClick={() => { setSettingsOpen(true); setAccountOpen(false); }} />
             {account?.authenticated ? (
@@ -547,7 +518,7 @@ function MissionRow({ meta, status, completionUnread, active, tokens, onOpen }: 
       role="button"
       tabIndex={0}
       aria-label={displayTitle}
-      className={`group relative mb-px cursor-pointer rounded-[10px] px-2.5 py-1.5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-acc ${active ? "bg-high" : "hover:bg-high/60"}`}
+      className={`group relative mb-px cursor-pointer rounded-[10px] px-2.5 py-1.5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-acc ${active ? "bg-raise shadow-[var(--sh3)]" : "hover:bg-raise/70"}`}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -740,4 +711,9 @@ function Limit({ label, value }: { label: string; value: string }) {
       <p className="mt-1 truncate font-mono text-[9.5px] text-fg2">{value}</p>
     </div>
   );
+}
+
+/** Grok reports whole percents; anything under 1 (incl. a fresh period) reads "<1%". */
+function fmtQuotaPercent(value: number): string {
+  return value < 1 ? "<1%" : `${Math.min(100, Math.round(value))}%`;
 }

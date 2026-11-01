@@ -24,7 +24,6 @@ describe("组件运行时边界", () => {
   it("不直接引用 @tauri-apps/api（事件/窗口走 lib/hostActions；仅纯资源 URL 助手登记白名单）", () => {
     // convertFileSrc 是纯资源 URL 助手（无 IPC、无副作用），允许在消费组件内直接使用。
     const allowlisted = new Set([
-      join(process.cwd(), "src/components/home/MediaStudio.tsx"),
       join(process.cwd(), "src/components/session/ToolCallCard.tsx"),
     ]);
     const violations = sourceFiles(join(process.cwd(), "src/components")).flatMap((path) => {

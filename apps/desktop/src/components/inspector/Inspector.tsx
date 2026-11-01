@@ -52,12 +52,11 @@ export function Inspector() {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`relative h-full px-2 font-mono text-[10px] tracking-[0.14em] transition-colors ${
-              tab === t.id ? "text-fg" : "text-dim hover:text-mute"
+            className={`relative h-7 rounded-[10px] px-2.5 text-[12px] transition-[color,background-color,box-shadow] ${
+              tab === t.id ? "bg-raise text-fg shadow-[var(--sh3)]" : "text-dim hover:bg-raise/60 hover:text-fg"
             }`}
           >
             {t.label}
-            {tab === t.id && <span className="absolute inset-x-2 bottom-0 h-px bg-acc" />}
           </button>
         ))}
       </div>

@@ -6621,7 +6621,8 @@ fn main() {
             }
             tray::setup(app.handle()).map_err(std::io::Error::other)?;
             register_computer_emergency_shortcut(app.handle().clone());
-            app.state::<AutomationRunner>().start(app.handle().clone());
+            // 「已安排」入口已从 UI 移除（非官方 grok CLI 能力）：不再启动 Host
+            // 后台调度循环。automations.json 等用户数据保持不动。
             if let Err(error) = restore_job_journal(
                 app.handle(),
                 app.state::<Arc<MediaService>>().inner(),

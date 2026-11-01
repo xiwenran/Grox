@@ -22,9 +22,7 @@ const BASELINE: Record<string, number> = {
   "src/components/chrome/WorkbenchPanel.tsx": 11,
   // 12 -> 13：菜单容器补 role="dialog" 的 aria-label（2026-09，a11y 改造新增）。
   "src/components/common/PromptControls.tsx": 13,
-  "src/components/home/AutomationsStudio.tsx": 52,
   "src/components/home/Home.tsx": 36,
-  "src/components/home/MediaStudio.tsx": 47,
   "src/components/inspector/Inspector.tsx": 52,
   "src/components/palette/CommandPalette.tsx": 10,
   "src/components/preview/PlanPreviewPane.tsx": 17,

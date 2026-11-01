@@ -1,14 +1,12 @@
 /* Home — a calm starting surface: choose a medium, describe the work, begin. */
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDesktop } from "../../state/store";
-import { useHomeWorkspace } from "../../state/homeWorkspace";
 import type { PromptAttachment, SessionStatus } from "../../bridge/types";
 import { fmtRelTime, fmtTokens } from "../../lib/format";
 import { MAX_ATTACHMENTS, prepareAttachment, validateAttachmentSet } from "../../lib/attachments";
 import { attachExplicitPromptImages } from "../../lib/pathAttachments";
 import { BlackHole } from "../fx/BlackHole";
-import { StageTransition } from "../fx/StageTransition";
 import { Icon } from "../fx/Icon";
 import { ChipSelect } from "../common/ChipSelect";
 import { PromptOptionsMenu, ProviderSwitcher } from "../common/PromptControls";
@@ -17,12 +15,9 @@ import { useImeGuard } from "../../lib/ime";
 import { clearDraftBuffer, loadDraftBuffer, saveDraftBuffer } from "../../lib/draftPersistence";
 import { cleanApiError } from "../../lib/runtimeNotice";
 
-const MediaStudio = lazy(() => import("./MediaStudio").then((module) => ({ default: module.MediaStudio })));
-const AutomationsStudio = lazy(() => import("./AutomationsStudio").then((module) => ({ default: module.AutomationsStudio })));
 
 export function Home() {
   const { language, t } = useI18n();
-  const workspaceMode = useHomeWorkspace((state) => state.mode);
   const [q, setQ] = useState("");
   const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState("");
@@ -162,21 +157,6 @@ export function Home() {
   };
 
   const currentModel = models.find((item) => item.id === model);
-
-  if (workspaceMode !== "conversation") {
-    return (
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-base">
-        <div className="home-nebula opacity-40" />
-        <StageTransition stageKey={workspaceMode} variant="panel" className="relative z-[1]">
-          <Suspense fallback={<div className="flex flex-1 items-center justify-center"><BlackHole size={28} spin /></div>}>
-            {workspaceMode === "automations"
-              ? <AutomationsStudio key={`automations:${workspace}`} />
-              : <MediaStudio key={`${workspaceMode}:${workspace}`} mode={workspaceMode} />}
-          </Suspense>
-        </StageTransition>
-      </div>
-    );
-  }
 
   const hasPrompt = Boolean(q.trim() || attachments.length > 0);
 

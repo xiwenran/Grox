@@ -24,18 +24,21 @@
   --color-hover: #202020;
   --color-active: #282828;
 
-  /* hairlines */
-  --color-line: #171717; /* structural hairline */
-  --color-line2: #242424; /* card borders */
-  --color-line3: #3a3a3a; /* selection-grade border */
+  /* hairlines — retired by 工作台桌面规范 (no solid lines). Kept as
+     transparent tokens so legacy border utilities collapse to spacing;
+     layering comes from fills (panel/raise/high) and the --sh* shadows. */
+  --color-line: transparent;
+  --color-line2: transparent;
+  --color-line3: transparent;
   --color-focus: #5a5a5a; /* focused chrome */
 
   /* starlight — text */
-  --color-fg: #f5f5f5; /* primary: starlight at full burn */
-  --color-fg2: #d6d6d6; /* secondary */
-  --color-mute: #a3a3a3; /* tertiary — readable at small sizes */
-  --color-dim: #8c8c8c; /* labels */
-  --color-faint: #5c5c5c; /* ghosted */
+  /* three text levels only (规范 l1 / l2 / l3) */
+  --color-fg: #e8e8e8; /* l1 — titles, body, input */
+  --color-fg2: #e8e8e8; /* = l1 */
+  --color-mute: #a0a0a0; /* l2 — labels, captions */
+  --color-dim: #a0a0a0; /* = l2 */
+  --color-faint: #686868; /* l3 — placeholder, disabled, minor time */
 
   /* the one accent: light */
   --color-acc: #ffffff;
@@ -57,8 +60,9 @@
   --color-diff-del-fg: #f7768e;
   --color-diff-mute: #6c6c6c;
 
+  /* 规范 §3.1 font stack */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
-    "Microsoft YaHei", "Helvetica Neue", "Geist Sans", system-ui, sans-serif;
+    "Microsoft YaHei", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Mono", monospace;
 
   --animate-orbit: orbit 6s linear infinite;
@@ -92,22 +96,34 @@
 
 html {
   /* ── UI scale (single source of truth) ───────────────────────────────
-     Type:   xs 12 · sm 13 · base 15 · title 18 (17–20) · hero 28
-     Radius: control 10 · control-lg 12 · card/bubble 16 · pill 999
-     Space:  4 · 8 · 12 · 16 · 24 · 32                                   */
+     Follows Obsidian「规范/桌面工作台 UI 视觉规范」§3 / §2.3 / §2.5.
+     Type (only these sizes may appear):
+       cap 12 (说明 / 分组小标签) · body 13 (正文 / 控件 / 条目)
+       nav 14 (导航 / 配置栏小标题) · section 15 (卡片区块标题)
+       title 17 (页头标题) · stat 24 (大数字 / 首页大字)
+     Weight: 400 body · 500 item titles / selected nav · 600 bold (never 700)
+     Radius: control 10 · list/menu 14 · card 12 · dialog 18 · pill 999
+     Space:  tier-1 4/6/8/10/12 · tier-2 14/18/20/24                     */
   --fs-xs: 12px;
   --fs-sm: 13px;
-  --fs-base: 15px;
-  --fs-title: 18px;
-  --fs-title-lg: 20px;
-  --fs-hero: 28px;
+  --fs-base: 13px;
+  --fs-nav: 14px;
+  --fs-section: 15px;
+  --fs-title: 17px;
+  --fs-title-lg: 17px;
+  --fs-hero: 24px;
+  --fw-regular: 400;
+  --fw-item: 500;
+  --fw-bold: 600;
   --lh-tight: 1.35;
-  --lh-ui: 1.5;
-  --lh-prose: 1.65;
+  --lh-ui: 1.55;
+  --lh-prose: 1.55;
   --radius-control: 10px;
-  --radius-control-lg: 12px;
-  --radius-card: 16px;
-  --radius-bubble: 16px;
+  --radius-control-lg: 10px;
+  --radius-card: 12px;
+  --radius-menu: 14px;
+  --radius-dialog: 18px;
+  --radius-bubble: 14px;
   --radius-pill: 999px;
   --space-1: 4px;
   --space-2: 8px;
@@ -122,11 +138,11 @@ html {
    * Transcript-only integer tiers (default = md).
    * Compact type + tight leading for long Chinese replies; chrome untouched.
    */
-  --grox-prose-size: 15px; /* = --fs-base */
-  --grox-prose-leading: 1.65; /* = --lh-prose */
-  --grox-user-size: 15px;
-  --grox-process-size: 13px; /* = --fs-sm */
-  --grox-code-size: 13px;
+  --grox-prose-size: 13px; /* = --fs-base (规范正文 13 / 1.55) */
+  --grox-prose-leading: 1.55; /* = --lh-prose */
+  --grox-user-size: 13px;
+  --grox-process-size: 12px; /* = --fs-xs (说明) */
+  --grox-code-size: 12px;
   /*
    * Reading column (narrow / medium / wide)
    * ---------------------------------------
@@ -142,32 +158,32 @@ html {
 }
 
 html[data-font="sm"] {
-  --grox-prose-size: 14px;
-  --grox-prose-leading: 1.6;
-  --grox-user-size: 14px;
+  --grox-prose-size: 12px;
+  --grox-prose-leading: 1.55;
+  --grox-user-size: 12px;
   --grox-process-size: 12px;
   --grox-code-size: 12px;
 }
 html[data-font="md"] {
+  --grox-prose-size: 13px;
+  --grox-prose-leading: 1.55;
+  --grox-user-size: 13px;
+  --grox-process-size: 12px;
+  --grox-code-size: 12px;
+}
+html[data-font="lg"] {
+  --grox-prose-size: 14px;
+  --grox-prose-leading: 1.6;
+  --grox-user-size: 14px;
+  --grox-process-size: 13px;
+  --grox-code-size: 13px;
+}
+html[data-font="xl"] {
   --grox-prose-size: 15px;
   --grox-prose-leading: 1.65;
   --grox-user-size: 15px;
   --grox-process-size: 13px;
   --grox-code-size: 13px;
-}
-html[data-font="lg"] {
-  --grox-prose-size: 16px;
-  --grox-prose-leading: 1.7;
-  --grox-user-size: 16px;
-  --grox-process-size: 14px;
-  --grox-code-size: 14px;
-}
-html[data-font="xl"] {
-  --grox-prose-size: 17px;
-  --grox-prose-leading: 1.72;
-  --grox-user-size: 17px;
-  --grox-process-size: 15px;
-  --grox-code-size: 15px;
 }
 
 /* Density: column width only (padding/gap fixed). */
@@ -208,7 +224,7 @@ body {
 /* Settings: fixed chrome scale — independent of transcript font tier. */
 .settings-shell {
   --grox-font-weight: 400;
-  font-size: 15px;
+  font-size: 13px; /* fixed chrome scale = --fs-base */
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
@@ -255,7 +271,7 @@ body {
   border-radius: 5px;
   padding: 0 10px;
   color: var(--color-fg2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   transition: background-color 120ms ease, color 120ms ease;
 }
 button.summary-row:hover {
@@ -268,7 +284,7 @@ button.summary-row:hover {
   border-radius: 4px;
   padding: 0 9px;
   color: var(--color-fg2);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 .summary-action:hover:not(:disabled) {
   border-color: var(--color-line3);
@@ -294,16 +310,18 @@ html[data-theme="light"] {
   --color-hover: #e2e2e2;
   --color-active: #dadada;
 
-  --color-line: #ececec;
-  --color-line2: #e2e2e2;
-  --color-line3: #cdcdcd;
+  --color-line: transparent;
+  --color-line2: transparent;
+  --color-line3: transparent;
   --color-focus: #9a9a9a;
 
-  --color-fg: #0d0d0d;
-  --color-fg2: #262626;
-  --color-mute: #595959;
-  --color-dim: #707070;
-  --color-faint: #9a9a9a;
+  /* three text levels (规范 l1 .9 / l2 .66 / l3 .4, neutral hue because the
+     Grok accent is black — 换色清单 #4: text tint follows the accent hue) */
+  --color-fg: #1c1c1c;
+  --color-fg2: #1c1c1c;
+  --color-mute: #6e6e6e;
+  --color-dim: #6e6e6e;
+  --color-faint: #a6a6a6;
 
   --color-acc: #000000;
   --color-acc-deep: #262626;
@@ -329,7 +347,24 @@ html[data-theme="light"] {
   --face-bg: #000000;
   --face-eye: #ffffff;
   --face-ring: transparent;
-  --soft-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(0, 0, 0, 0.05);
+  /* 规范 §2.3 shadow tiers (neutral hue for the black Grok accent) */
+  --sh1: 0 1px 2px rgba(30, 30, 40, 0.07), 0 2px 8px rgba(30, 30, 40, 0.08);
+  --sh2: 0 2px 4px rgba(30, 30, 40, 0.09), 0 6px 16px rgba(30, 30, 40, 0.11);
+  --sh3: 0 2px 5px rgba(30, 30, 40, 0.14), 0 10px 24px rgba(30, 30, 40, 0.18);
+  --shc: 0 1px 2px rgba(30, 30, 40, 0.07), 0 5px 16px rgba(30, 30, 40, 0.08);
+  --shch: 0 2px 4px rgba(30, 30, 40, 0.09), 0 8px 22px rgba(30, 30, 40, 0.12);
+  --sh-composer: 0 1px 2px rgba(30, 30, 40, 0.05), 0 8px 20px rgba(30, 30, 40, 0.06),
+    0 24px 48px rgba(30, 30, 40, 0.07);
+  --sh-pop: 0 16px 44px rgba(30, 30, 40, 0.22), 0 2px 8px rgba(30, 30, 40, 0.1);
+  --sh-primary: 0 4px 12px rgba(0, 0, 0, 0.22);
+  --sh-danger: 0 4px 12px rgba(229, 72, 77, 0.28);
+  --sh-inset: inset 0 1px 4px rgba(30, 30, 40, 0.12);
+  --f1: rgba(255, 255, 255, 0.72);
+  --f2: rgba(255, 255, 255, 0.5);
+  --f3: rgba(30, 30, 40, 0.1);
+  --scroll-thumb: rgba(30, 30, 40, 0.2);
+  --scroll-thumb-hover: rgba(30, 30, 40, 0.34);
+  --soft-shadow: var(--sh1);
 }
 
 html:not([data-theme="light"]) {
@@ -341,7 +376,24 @@ html:not([data-theme="light"]) {
   --face-bg: #f5f5f5;
   --face-eye: #000000;
   --face-ring: transparent;
-  --soft-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+  /* same shadow tiers, deeper for a dark canvas */
+  --sh1: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --sh2: 0 2px 4px rgba(0, 0, 0, 0.5), 0 6px 16px rgba(0, 0, 0, 0.42);
+  --sh3: 0 2px 5px rgba(0, 0, 0, 0.6), 0 10px 24px rgba(0, 0, 0, 0.5);
+  --shc: 0 1px 2px rgba(0, 0, 0, 0.45), 0 5px 16px rgba(0, 0, 0, 0.38);
+  --shch: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 22px rgba(0, 0, 0, 0.46);
+  --sh-composer: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.36),
+    0 24px 48px rgba(0, 0, 0, 0.32);
+  --sh-pop: 0 16px 44px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --sh-primary: 0 4px 12px rgba(255, 255, 255, 0.1);
+  --sh-danger: 0 4px 12px rgba(229, 72, 77, 0.32);
+  --sh-inset: inset 0 1px 4px rgba(0, 0, 0, 0.55);
+  --f1: rgba(255, 255, 255, 0.06);
+  --f2: rgba(255, 255, 255, 0.04);
+  --f3: rgba(255, 255, 255, 0.12);
+  --scroll-thumb: rgba(255, 255, 255, 0.18);
+  --scroll-thumb-hover: rgba(255, 255, 255, 0.3);
+  --soft-shadow: var(--sh1);
 }
 
 .grox-range {
@@ -353,7 +405,7 @@ html:not([data-theme="light"]) {
 .grox-range::-webkit-slider-runnable-track {
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--color-line3), var(--color-faint));
+  background: var(--f3);
 }
 
 .grox-range::-webkit-slider-thumb {
@@ -361,10 +413,10 @@ html:not([data-theme="light"]) {
   height: 12px;
   margin-top: -5px;
   appearance: none;
-  border: 2px solid var(--color-panel);
+  border: 0;
   border-radius: 50%;
   background: var(--color-acc);
-  box-shadow: 0 0 0 1px var(--color-line3);
+  box-shadow: var(--sh1);
 }
 
 /*
@@ -789,13 +841,13 @@ html[data-reduce-motion="1"] .plan-spinner {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-line2);
+    background: var(--scroll-thumb);
     border-radius: 999px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-line3);
+    background: var(--scroll-thumb-hover);
     border: 2px solid transparent;
     background-clip: content-box;
   }
@@ -888,33 +940,32 @@ html[data-reduce-motion="1"] .plan-spinner {
   .md h5,
   .md h6 {
     color: var(--color-fg);
-    font-weight: 640;
-    letter-spacing: -0.012em;
+    font-weight: 600;
+    letter-spacing: 0;
     line-height: 1.3;
     margin: 1.05em 0 0.35em;
   }
+  /* headings snap to the spec scale: 17 / 15 / 14 / 13 */
   .md h1 {
-    font-size: 1.22em;
-    padding-bottom: 0.22em;
-    border-bottom: 1px solid var(--color-line);
+    font-size: var(--fs-title);
   }
   .md h2 {
-    font-size: 1.1em;
+    font-size: var(--fs-section);
   }
   .md h3 {
-    font-size: 1.02em;
+    font-size: var(--fs-nav);
   }
   .md h4 {
-    font-size: 1em;
+    font-size: var(--fs-base);
   }
   .md h5,
   .md h6 {
-    font-size: 0.94em;
+    font-size: var(--fs-base);
     color: var(--color-fg2);
   }
   .md strong {
     color: var(--color-fg);
-    font-weight: 620;
+    font-weight: 600;
   }
   .md del {
     color: var(--color-faint);
@@ -956,7 +1007,7 @@ html[data-reduce-motion="1"] .plan-spinner {
   }
   .md-code-lang {
     font-family: var(--font-sans);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     letter-spacing: 0;
     color: var(--color-faint);
   }
@@ -967,7 +1018,7 @@ html[data-reduce-motion="1"] .plan-spinner {
     border-radius: 4px;
     background: transparent;
     font-family: var(--font-sans);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--color-dim);
     cursor: pointer;
     opacity: 0;
@@ -995,7 +1046,7 @@ html[data-reduce-motion="1"] .plan-spinner {
     border-radius: 0;
     background: transparent;
     color: var(--color-fg2);
-    font-size: 12px;
+    font-size: var(--fs-xs);
     line-height: 1.7;
   }
 
@@ -1054,7 +1105,7 @@ html[data-reduce-motion="1"] .plan-spinner {
     font-style: italic;
   }
   .hljs-strong {
-    font-weight: 650;
+    font-weight: 600;
   }
 
   .md ul,
@@ -1163,7 +1214,7 @@ html[data-reduce-motion="1"] .plan-spinner {
     border-bottom: 1px solid var(--color-line2);
     background: var(--color-high);
     color: var(--color-fg);
-    font-weight: 620;
+    font-weight: 600;
     white-space: normal;
   }
   .md img {
@@ -1282,7 +1333,7 @@ html[data-reduce-motion="1"] .plan-spinner {
     gap: 10px;
     margin-top: 8px;
     color: var(--color-faint);
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .turn-elapsed i {
     height: 1px;
@@ -1411,9 +1462,9 @@ html[data-reduce-motion="1"] .plan-spinner {
     max-width: min(300px, 42vw);
     padding: 10px 12px;
     border-radius: 12px;
-    border: 1px solid color-mix(in srgb, var(--color-line3) 82%, var(--color-acc));
-    background: color-mix(in srgb, var(--color-raise) 96%, #000);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38);
+    border: 0;
+    background: var(--color-raise);
+    box-shadow: var(--sh-pop);
     color: var(--color-fg);
     pointer-events: none;
     text-align: start;
@@ -1423,7 +1474,7 @@ html[data-reduce-motion="1"] .plan-spinner {
   .msg-rail__tip-role {
     margin-bottom: 4px;
     color: var(--color-acc-dim);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     line-height: 1.3;
   }
@@ -1440,15 +1491,15 @@ html[data-reduce-motion="1"] .plan-spinner {
   .msg-rail__tip-response {
     margin-top: 4px;
     color: var(--color-dim);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     -webkit-line-clamp: 3;
   }
   .msg-rail__tip-count {
     margin-top: 8px;
     color: var(--color-faint);
     font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.04em;
+    font-size: var(--fs-xs);
+    letter-spacing: 0;
   }
   @media (max-width: 760px) {
     .msg-rail {
@@ -1629,23 +1680,32 @@ html[data-reduce-motion="1"] .grok-face * {
   border-radius: var(--radius-card);
 }
 
-/* Type scale: legacy micro sizes (8–12.5px) collapse onto the token scale so
-   chrome reads at 12/13px; larger ad-hoc sizes snap to base/title/hero. */
+/* Type scale (规范 §3.2): every ad-hoc size snaps onto the six allowed
+   sizes — 12 说明 · 13 正文/控件 · 14 导航 · 15 区块标题 · 17 页头 · 24 大数字.
+   No intermediate values (12.5, 14.5 …) survive. */
 .text-\[8px\], .text-\[8\.5px\], .text-\[9px\], .text-\[9\.5px\],
-.text-\[10px\], .text-\[10\.5px\] {
+.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\],
+.text-\[12px\], .text-xs {
   font-size: var(--fs-xs);
 }
-.text-\[11px\], .text-\[11\.5px\], .text-\[12px\], .text-\[12\.5px\] {
+.text-\[12\.5px\], .text-\[13px\], .text-sm {
   font-size: var(--fs-sm);
 }
-.text-\[14px\], .text-\[15px\], .text-\[16px\] {
-  font-size: var(--fs-base);
+.text-\[14px\] {
+  font-size: var(--fs-nav);
 }
-.text-\[17px\], .text-\[18px\] {
+.text-\[15px\], .text-\[16px\] {
+  font-size: var(--fs-section);
+}
+.text-\[17px\], .text-\[18px\], .text-lg, .text-xl {
   font-size: var(--fs-title);
 }
-.text-\[26px\], .text-\[28px\] {
+.text-\[26px\], .text-\[28px\], .text-2xl {
   font-size: var(--fs-hero);
+}
+/* Bold is 600 everywhere, item titles 500 (规范: never the default 700). */
+.font-bold, .font-semibold {
+  font-weight: var(--fw-bold);
 }
 /* Code / logs keep a compact monospace size. */
 pre.text-\[9\.5px\], pre.text-\[10\.5px\], pre.text-\[11px\],
@@ -1653,31 +1713,231 @@ pre.text-\[9\.5px\], pre.text-\[10\.5px\], pre.text-\[11px\],
   font-size: var(--fs-xs);
 }
 
-/* Sidebar */
+/* Sidebar (规范 §4.1 / §5.1: nav item 40 high, 14px, icon–text gap 10,
+   radius 10; selected = raised white + shadow, never a line) */
 .sidebar-new {
-  border: 1px solid var(--color-line2);
+  border: 0;
   border-radius: var(--radius-control);
   background: var(--color-raise);
-  box-shadow: var(--soft-shadow);
+  box-shadow: var(--sh1);
+  transition: box-shadow 160ms ease;
+}
+.sidebar-new:hover {
+  box-shadow: var(--sh2);
 }
 .sidebar-nav-item {
   display: flex;
-  height: 34px;
+  height: 40px;
   align-items: center;
   gap: 10px;
   padding: 0 var(--space-3);
   border-radius: var(--radius-control);
-  color: var(--color-fg2);
-  font-size: var(--fs-sm);
+  color: var(--color-fg);
+  font-size: var(--fs-nav);
+  font-weight: var(--fw-regular);
   text-align: left;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 160ms ease;
 }
 .sidebar-nav-item:hover {
-  background: color-mix(in srgb, var(--color-high) 60%, transparent);
+  background: var(--f1);
   color: var(--color-fg);
 }
-.sidebar-nav-item.is-active {
-  background: var(--color-high);
+.sidebar-nav-item.is-active,
+.sidebar-nav-item.is-active:hover {
+  background: var(--color-raise);
   color: var(--color-fg);
-  font-weight: 500;
+  font-weight: var(--fw-item);
+  box-shadow: var(--sh3);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   工作台桌面规范 — "no solid lines" layer
+   Source: Obsidian 规范/桌面工作台 UI 视觉规范 §2.1 / §2.3 / §5 / §10.1.
+   Rules: no dividers, no outlines-as-decoration, no border-as-selection.
+   Hierarchy comes from fills, spacing and the shadow tiers:
+     --sh1 controls · --sh2 hover · --sh3 selected · --shc cards ·
+     --sh-pop menus/dialogs · --sh-composer the chat input.
+   Keyboard focus (:focus-visible) keeps a ring for accessibility.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* 1. Hairline tokens are transparent (see @theme / light block), so every
+      border-line* / divide-line utility collapses into spacing. Border widths
+      are kept so nothing reflows. Remaining coloured borders that acted as
+      decoration or selection are neutralised here. */
+[class*="border-acc"],
+[class*="border-red"],
+[class*="border-gold"],
+[class*="border-green"],
+[class*="border-white"],
+[class*="border-focus"],
+.border-dashed {
+  border-color: transparent !important;
+}
+/* status boxes keep their meaning through a tinted fill instead of a frame */
+.border:is([class*="border-red/"]):not([class*="bg-"]) {
+  background-color: color-mix(in srgb, var(--color-red) 8%, transparent);
+}
+.border:is([class*="border-gold/"]):not([class*="bg-"]) {
+  background-color: color-mix(in srgb, var(--color-gold) 9%, transparent);
+}
+.border:is([class*="border-green/"]):not([class*="bg-"]) {
+  background-color: color-mix(in srgb, var(--color-green) 9%, transparent);
+}
+/* empty-state drop zones: a soft fill instead of a dashed frame */
+.border-dashed {
+  background-color: color-mix(in srgb, var(--color-panel) 70%, transparent);
+}
+
+@layer components {
+  /* 2. Framed boxes become raised surfaces. Utilities (shadow-*) still win. */
+  .border:is(.border-line, .border-line2, .border-line3) {
+    box-shadow: var(--sh1);
+  }
+  .border:is(.border-line, .border-line2, .border-line3):is(:hover):not(:disabled):is(button, a, [role="button"]) {
+    box-shadow: var(--sh2);
+  }
+  .border:is(.border-line, .border-line2, .border-line3):focus-within:is(:has(input), :has(textarea), input, textarea, select) {
+    box-shadow: var(--sh2);
+  }
+  /* 3. Border-as-selection → selected = raised + --sh3 */
+  .border:is(.border-acc-dim, .border-acc, [class*="border-acc/"]) {
+    box-shadow: var(--sh3);
+  }
+  .border:is(.border-line, .border-line2, .border-line3).border-dashed {
+    box-shadow: none;
+  }
+}
+
+/* 4. Named surfaces from this stylesheet */
+.card {
+  border-color: transparent;
+  box-shadow: var(--shc);
+}
+.chip,
+.pill-btn,
+.summary-action {
+  border-color: transparent;
+  box-shadow: var(--sh1);
+}
+.chip:hover,
+.pill-btn:hover,
+.summary-action:hover:not(:disabled) {
+  border-color: transparent;
+  box-shadow: var(--sh2);
+}
+.mission-card:hover,
+html[data-theme="light"] .mission-card:hover {
+  box-shadow: var(--shch);
+}
+.aurora-rim__core,
+html[data-theme="light"] .aurora-rim__core,
+html[data-theme="light"] .aurora-rim:hover .aurora-rim__core {
+  border-color: transparent;
+  box-shadow: var(--sh-composer);
+}
+.aurora-rim:focus-within .aurora-rim__core,
+html[data-theme="light"] .aurora-rim:focus-within .aurora-rim__core {
+  border-color: transparent;
+  /* spec §5.4: focus shows no frame — just one step more lift */
+  box-shadow: var(--sh-composer), var(--sh2);
+}
+.process-summary {
+  border-color: transparent;
+  background: var(--f1);
+  box-shadow: var(--sh1);
+}
+.process-summary:hover {
+  border-color: transparent;
+  background: var(--color-raise);
+  box-shadow: var(--sh2);
+}
+/* process trail: the vertical rail line goes; nodes alone carry the rhythm */
+.process-rail {
+  border-left-color: transparent;
+}
+.process-node {
+  border-color: transparent;
+  background: var(--color-faint);
+}
+.toolline {
+  border-left-color: transparent;
+}
+
+/* Markdown: frames → fills + shadow; dividers → whitespace */
+.md-code {
+  border-color: transparent;
+  box-shadow: var(--sh1);
+}
+.md-code-bar {
+  border-bottom-color: transparent;
+  background: color-mix(in srgb, var(--color-high) 45%, transparent);
+}
+.md-table-wrap {
+  border-color: transparent;
+  box-shadow: var(--shc);
+}
+.md-table-wrap th,
+.md-table-wrap td,
+.md-table-wrap thead th {
+  border-bottom-color: transparent;
+}
+.md-table-wrap tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--color-high) 35%, transparent);
+}
+.md blockquote {
+  border-left-color: transparent;
+  padding: 0.5em 0.9em;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--color-high) 45%, transparent);
+}
+.md hr {
+  background: none;
+  margin: 1.4em 0;
+}
+.md img {
+  border-color: transparent;
+  box-shadow: var(--shc);
+}
+.md kbd {
+  border-color: transparent;
+  box-shadow: var(--sh1);
+}
+.md input[type="checkbox"] {
+  border-color: transparent;
+  background: var(--color-raise);
+  box-shadow: var(--sh1);
+}
+.md input[type="checkbox"]:checked {
+  border-color: transparent;
+}
+.turn-elapsed i {
+  background: none;
+}
+
+/* Popovers / dialogs share one glass-free pop shadow (规范 §2.3 特例) */
+.shadow-2xl,
+.shadow-lg,
+[class*="shadow-[0_"]:not([class*="shadow-[0_0_"]) {
+  box-shadow: var(--sh-pop) !important;
+}
+
+/* Primary buttons (black Grok action) get the spec's primary lift */
+.bg-acc:not(.h-px):not(.h-\[2px\]):is(button, a) {
+  box-shadow: var(--sh-primary);
+}
+
+/* Diff / terminal keep a block distinction via fill, not a frame */
+.border:is(.border-line, .border-line2, .border-line3):is(pre, .code-mono) {
+  box-shadow: none;
+}
+
+/* 5. Accessibility: keyboard focus keeps a visible ring (not decoration). */
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-acc) 45%, transparent);
+  outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+[contenteditable]:focus-visible {
+  outline: none;
 }

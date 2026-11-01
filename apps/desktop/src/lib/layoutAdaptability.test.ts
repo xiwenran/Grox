@@ -72,13 +72,13 @@ describe("layout adaptability — density isolation", () => {
   });
 
   it("default transcript type is comfortable without changing chrome geometry", () => {
-    // UI type scale: message/body 15px with relaxed leading (Grok Bot–style).
-    expect(tokens).toMatch(/html\s*\{[\s\S]*?--grox-prose-size\s*:\s*15px/);
+    // 工作台桌面规范 §3: body 13px / 1.55; tiers only use spec sizes (12/13/14/15).
+    expect(tokens).toMatch(/html\s*\{[\s\S]*?--grox-prose-size\s*:\s*13px/);
     const md = blockFor(`html[data-font="md"]`);
-    expect(md).toMatch(/--grox-prose-size\s*:\s*15px/);
-    expect(md).toMatch(/--grox-prose-leading\s*:\s*1\.65/);
+    expect(md).toMatch(/--grox-prose-size\s*:\s*13px/);
+    expect(md).toMatch(/--grox-prose-leading\s*:\s*1\.55/);
     const sm = blockFor(`html[data-font="sm"]`);
-    expect(sm).toMatch(/--grox-prose-size\s*:\s*14px/);
+    expect(sm).toMatch(/--grox-prose-size\s*:\s*12px/);
     expect(tokens).toMatch(/\.md p\s*\{[\s\S]*?margin:\s*0 0 0\.42em/);
   });
 
@@ -139,11 +139,11 @@ describe("layout adaptability — density isolation", () => {
 });
 
 describe("layout adaptability — chrome hard rules", () => {
-  it("settings shell uses fixed 15px chrome scale", () => {
+  it("settings shell uses fixed 13px chrome scale (规范正文 13)", () => {
     const shell = blockFor(".settings-shell");
     expect(shell).toBeTruthy();
     expect(shell).not.toMatch(/--grox-content-max/);
-    expect(shell).toMatch(/font-size:\s*15px/);
+    expect(shell).toMatch(/font-size:\s*13px/);
   });
 
   it("lbl/chip stay fixed component size", () => {

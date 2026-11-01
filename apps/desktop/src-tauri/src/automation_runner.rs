@@ -139,6 +139,7 @@ struct ClaimedAutomationConfig {
 }
 
 impl AutomationRunner {
+    #[allow(dead_code)] // scheduler loop is no longer started (UI entry removed)
     pub(crate) fn start(&self, app: AppHandle) {
         if self.started.swap(true, Ordering::AcqRel) {
             return;

@@ -3080,10 +3080,16 @@ export class AcpBridge implements GrokBridge {
     const raw = record(await this.callExtension<unknown>("x.ai/billing", {})) ?? {};
     const config = record(raw.config) ?? raw;
     const period = record(config.currentPeriod) ?? record(config.current_period) ?? {};
+    // The official `x.ai/billing` payload is protobuf-JSON: zero-valued fields
+    // are omitted. Grok's own log (`billing: fetched credits config`) shows
+    // `creditUsagePercent` as 61…100 during a period and absent right after a
+    // reset, so a valid period with no percent means "0% used", not "unknown".
+    const reportedUsage =
+      billingNumber(config.creditUsagePercent) ?? billingNumber(config.credit_usage_percent);
+    const hasPeriod = Boolean(string(period.start) || string(period.end) || string(period.type));
     return {
       subscriptionTier: string(raw.subscriptionTier) ?? string(raw.subscription_tier),
-      creditUsagePercent:
-        billingNumber(config.creditUsagePercent) ?? billingNumber(config.credit_usage_percent),
+      creditUsagePercent: reportedUsage ?? (hasPeriod ? 0 : undefined),
       periodType: billingPeriodType(period.type),
       periodStart: string(period.start),
       periodEnd: string(period.end),
