@@ -35,6 +35,7 @@ export function settingsHash(section: SettingsSection): string {
 export function getSettingsCatalog(zh: boolean): SettingsSearchEntry[] {
   return [
     { id: "runtime", section: "general", label: zh ? "Grok Build 运行时" : "Grok Build runtime", description: zh ? "检测、安装或更新官方 CLI" : "Detect, install, or update the official CLI", keywords: ["cli", "runtime", "运行时", "安装", "更新"] },
+    { id: "cli-history", section: "general", label: zh ? "导入 CLI 历史" : "Import CLI history", description: zh ? "扫描 ~/.grok/sessions 并加入侧栏" : "Scan ~/.grok/sessions into the sidebar", keywords: ["cli", "history", "import", "导入", "历史", "会话"] },
     { id: "execution", section: "general", label: zh ? "执行策略" : "Execution defaults", description: zh ? "推理强度、权限、Computer Use 与通知" : "Effort, permissions, Computer Use, and notifications", keywords: ["effort", "permission", "权限", "通知", "browser"] },
     { id: "provider", section: "account", label: zh ? "账户与服务" : "Account and providers", description: zh ? "OAuth、官方 API 与兼容服务" : "OAuth, official API, and compatible providers", keywords: ["oauth", "api", "key", "base url", "账户", "登录", "供应商"] },
     { id: "models", section: "account", label: zh ? "模型" : "Models", description: zh ? "发现模型并选择默认模型" : "Discover models and choose a default", keywords: ["model", "模型", "grok"] },

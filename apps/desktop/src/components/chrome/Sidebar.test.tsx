@@ -17,15 +17,16 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-it("CLI 历史导入错误在按钮附近直接呈现", async () => {
-  useDesktop.setState({ historyError: "会话目录无权访问" });
+it("CLI 历史导入入口已移到设置，侧栏不再显示", async () => {
+  useDesktop.setState({ historyError: "会话目录无权访问", historyCount: 19 });
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
 
   await act(async () => root.render(<Sidebar />));
 
-  expect(container.querySelector('[role="alert"]')?.textContent).toContain("CLI 历史导入失败：会话目录无权访问");
+  expect(container.textContent).not.toContain("导入 CLI 历史");
+  expect(container.textContent).not.toContain("Import CLI history");
   await act(async () => root.unmount());
 });
 

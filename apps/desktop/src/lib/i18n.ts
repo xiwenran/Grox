@@ -89,6 +89,35 @@ const zh = {
   outputTokens: "输出 Tokens",
   cacheRead: "缓存读取",
   sessionId: "任务 ID",
+  effortXhighHint: "最充分的推理，适合最难的任务",
+  effortHighHint: "推理充分、质量高（推荐）",
+  effortMediumHint: "质量不错，返回更快",
+  effortLowHint: "最快，适合简单任务",
+  permAsk: "每次询问",
+  permAuto: "自动审核",
+  permAlways: "始终批准",
+  permAskHint: "运行工具前征求同意（CLI 默认）",
+  permAutoHint: "由 Grok 自动审核工具调用",
+  permAlwaysHint: "跳过所有确认（YOLO）",
+  modeSection: "模式",
+  modeDefault: "默认",
+  modeDefaultHint: "直接执行任务",
+  modePlan: "计划模式",
+  modePlanShort: "计划",
+  modePlanHint: "先出计划，批准后再改动",
+  permSection: "权限",
+  effortSection: "思考强度",
+  promptOptionsTitle: "模式、权限与思考强度",
+  effortSettingHint: "选项与说明来自官方 CLI（reasoning_effort）。",
+  permSettingHint: "官方 CLI 的三种权限：每次询问（CLI 默认）、自动审核、始终批准。始终批准仅用于可信环境，启用前会再次确认，并与 Computer Use 互斥。",
+  permModeLabel: "权限模式",
+  cliDefault: "CLI 默认",
+  importCliHistory: "导入 CLI 历史",
+  importCliHistoryHint: "扫描 ~/.grok/sessions，把在命令行里跑过的会话加入侧栏。",
+  importCliHistoryFailed: "导入失败：",
+  importAction: "导入",
+  importing: "导入中…",
+  sessionsSuffix: " 个会话",
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
@@ -114,6 +143,7 @@ const en: Record<keyof typeof zh, string> = {
   signInRequired: "Account setup required", projectResources: "Project resources", openFilePreview: "Open side preview",
   loading: "Loading", error: "Error", model: "Model", elapsed: "Elapsed", sessionSpan: "Session span", context: "Context", turns: "Turns",
   cost: "Cost", inputTokens: "Input tokens", outputTokens: "Output tokens", cacheRead: "Cache read", sessionId: "Mission ID",
+  effortXhighHint: "Maximum reasoning for the hardest tasks.", effortHighHint: "Thorough reasoning and quality. Recommended.", effortMediumHint: "Strong quality with a faster turnaround.", effortLowHint: "Fastest responses. Best for simple tasks.", permAsk: "Ask", permAuto: "Auto-review", permAlways: "Always approve", permAskHint: "Ask before running tools (CLI default)", permAutoHint: "Grok reviews tool calls automatically", permAlwaysHint: "Skip all prompts (YOLO)", modeSection: "Mode", modeDefault: "Default", modeDefaultHint: "Work on the task directly", modePlan: "Plan mode", modePlanShort: "Plan", modePlanHint: "Plan first; edit after approval", permSection: "Permissions", effortSection: "Reasoning effort", promptOptionsTitle: "Mode, permissions and reasoning effort", effortSettingHint: "Options come from the official CLI (reasoning_effort).", permSettingHint: "The official CLI's three modes: Ask (CLI default), Auto-review, Always approve. Always approve requires confirmation and cannot run with Computer Use.", permModeLabel: "Permission mode", cliDefault: "CLI default", importCliHistory: "Import CLI history", importCliHistoryHint: "Scan ~/.grok/sessions and add sessions you ran in the terminal to the sidebar.", importCliHistoryFailed: "Import failed: ", importAction: "Import", importing: "Importing…", sessionsSuffix: " sessions",
 };
 
 export type TranslationKey = keyof typeof zh;

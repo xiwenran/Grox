@@ -175,3 +175,125 @@ export function ChipSelect({
     </div>
   );
 }
+
+export interface SelectSection {
+  id: string;
+  label: string;
+  items: SelectItem[];
+  activeId?: string;
+  onSelect: (id: string) => void;
+}
+
+/**
+ * Same trigger + popup styling as ChipSelect, but the list is split into
+ * labelled sections (Codex-style): plain rows, a checkmark on the current
+ * item of each section. Picking a row applies it and closes the menu.
+ */
+export function SectionedSelect({
+  label,
+  sections,
+  width = 260,
+  disabled = false,
+  menuPlacement = "up",
+  align = "start",
+  title,
+  "aria-label": ariaLabel,
+}: {
+  label: ReactNode;
+  sections: SelectSection[];
+  width?: number;
+  disabled?: boolean;
+  menuPlacement?: "up" | "down";
+  align?: "start" | "end";
+  title?: string;
+  "aria-label"?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      const options = ref.current ? [...ref.current.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')] : [];
+      if (options.length === 0) return;
+      e.preventDefault();
+      const index = options.indexOf(document.activeElement as HTMLButtonElement);
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      options[index < 0 ? 0 : (index + step + options.length) % options.length]?.focus();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const menuPosition = menuPlacement === "down" ? "top-full mt-1.5" : "bottom-full mb-1.5";
+  const menuAlign = align === "end" ? "right-0" : "left-0";
+
+  return (
+    <div ref={ref} className="relative min-w-0">
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={ariaLabel}
+        title={title}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-controls={open ? menuId : undefined}
+        className="chip max-w-[260px] min-w-0 disabled:cursor-wait disabled:opacity-60"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+        <Icon name="chevronDown" size={9} className={`shrink-0 text-faint transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          id={menuId}
+          data-testid="sectioned-select-menu"
+          className={`absolute z-50 ${menuPosition} ${menuAlign} max-h-[min(520px,75vh)] overflow-y-auto overflow-x-hidden rounded-[16px] border border-line2 bg-raise p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.55)] animate-fade-up`}
+          style={{ width: `min(${width}px, calc(100vw - 32px))` }}
+        >
+          {sections.map((section, sectionIndex) => (
+            <div key={section.id} role="group" aria-label={section.label} className={sectionIndex > 0 ? "mt-1.5" : ""}>
+              <p className="px-3 pb-1 pt-1.5 text-[12px] text-faint">{section.label}</p>
+              {section.items.map((it) => {
+                const checked = it.id === section.activeId;
+                return (
+                  <button
+                    key={it.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={checked}
+                    onClick={() => {
+                      section.onSelect(it.id);
+                      setOpen(false);
+                    }}
+                    title={it.hint ? `${it.label} — ${it.hint}` : it.label}
+                    className={`flex w-full items-center gap-2 rounded-[10px] px-3 py-1.5 text-left outline-none transition-colors hover:bg-high focus-visible:bg-high ${checked ? "text-fg" : "text-fg2"}`}
+                  >
+                    <span className="shrink-0 text-[14px]">{it.label}</span>
+                    <span className="min-w-0 flex-1 truncate text-[12px] text-faint">{it.hint ?? ""}</span>
+                    <Icon name="check" size={13} className={`shrink-0 ${checked ? "text-fg" : "invisible"}`} />
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

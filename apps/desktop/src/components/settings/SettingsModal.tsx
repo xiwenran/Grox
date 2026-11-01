@@ -3,7 +3,6 @@ import {
   loadRuntimeSession, openExternal, readConfigDocuments, runtimeCall, writeConfigDocument,
 } from "../../lib/hostActions";
 import type { ConfigDocument, ProviderApiBackend, ProviderKind, SecretBackendKind } from "../../bridge/types";
-import { EFFORTS } from "../../bridge/types";
 import { useDesktop } from "../../state/store";
 import { useProviderCapability } from "../../state/providerCapabilityStore";
 import { usePreferences } from "../../state/preferences";
@@ -16,6 +15,7 @@ import { Wordmark } from "../fx/Wordmark";
 import { ChipSelect } from "../common/ChipSelect";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { AccountAvatar } from "../common/AccountAvatar";
+import { CLI_EFFORT_ORDER, cliEffortLabel, permissionLabel } from "../common/PromptControls";
 import {
   getSettingsCatalog,
   isSettingsSection,
@@ -225,7 +225,7 @@ function SecretInput({ value, onChange, hidden, onToggle, placeholder }: { value
 }
 
 function General() {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const zh = language === "zh-CN";
   const workspace = useDesktop((state) => state.workspace);
   const bridgeKind = useDesktop((state) => state.bridgeKind);
@@ -243,6 +243,10 @@ function General() {
   const refreshRuntime = useDesktop((state) => state.refreshRuntime);
   const installOfficialRuntime = useDesktop((state) => state.installOfficialRuntime);
   const [runtimeError, setRuntimeError] = useState("");
+  const refreshHistory = useDesktop((state) => state.refreshHistory);
+  const historySyncing = useDesktop((state) => state.historySyncing);
+  const historyCount = useDesktop((state) => state.historyCount);
+  const historyError = useDesktop((state) => state.historyError);
   const runtimeSource = runtime?.source === "system"
     ? (zh ? "本机 CLI" : "System CLI")
     : runtime?.source === "override"
@@ -254,22 +258,30 @@ function General() {
     <Row label={zh ? "Grok Build 运行时" : "Grok Build runtime"} hint={runtime?.path}><div className="flex items-center gap-2"><span className="chip">{runtimeSource}</span><ActionButton disabled={runtimeBusy} onClick={() => void refreshRuntime()}>{zh ? "重新检测" : "Detect"}</ActionButton>{runtime && runtime.source !== "override" && <ActionButton tone="accent" disabled={runtimeBusy} onClick={() => { setRuntimeError(""); void installOfficialRuntime().catch((cause) => setRuntimeError(cause instanceof Error ? cause.message : String(cause))); }}>{runtimeBusy ? (zh ? "安装中" : "Installing") : runtime.systemPath ? (zh ? "更新官方 CLI" : "Update official CLI") : (zh ? "安装官方 CLI" : "Install official CLI")}</ActionButton>}</div></Row>
     {runtime && <Row label={zh ? "版本来源" : "Version provenance"} hint={zh ? "CLI 由 x.ai 官方安装与更新；Grox 根据官方版本持续适配。" : "The CLI is installed and updated by x.ai; Grox tracks official releases for compatibility."}><div className="max-w-[440px] space-y-1 text-right font-mono text-[12px] text-dim"><p className="truncate" title={runtime.version}>{runtime.version ?? (zh ? "无法读取 CLI 版本" : "CLI version unavailable")}</p><p>{zh ? "官方 CLI · 由本机安装管理" : "OFFICIAL CLI · managed by the local installation"}</p><p className="truncate" title={runtime.groxCommit}>GROX APP · {runtime.groxCommit}</p></div></Row>}
     {runtimeError && <p className="mb-4 rounded-[4px] border border-red/30 bg-red/5 px-3 py-2 text-[13px] text-red">{runtimeError}</p>}
-    <Row label={zh ? "推理强度" : "Reasoning effort"}><div className="flex gap-1">{EFFORTS.map((item) => <button key={item} onClick={() => setEffort(item)} className={`h-7 rounded-[3px] border px-2 font-mono text-[13px] ${effort === item ? "border-acc-dim bg-acc-wash text-acc" : "border-line2 text-dim"}`}>{item.toUpperCase()}</button>)}</div></Row>
-    <Row label={zh ? "权限模式" : "Permission mode"} hint={zh ? "Default 保留审批；Auto 交给 Agent 策略；Bypass 仅用于可信环境，启用前会再次确认，并与 Computer Use 互斥。" : "Default keeps approvals; Auto follows the Agent policy; Bypass requires confirmation and cannot run with Computer Use."}>
+    <Row label={t("importCliHistory")} hint={historyError ? `${t("importCliHistoryFailed")}${historyError}` : t("importCliHistoryHint")}>
+      <div className="flex items-center gap-2" data-testid="settings-import-cli-history">
+        {historyCount > 0 && <span className="chip tnum">{historyCount}{t("sessionsSuffix")}</span>}
+        <ActionButton disabled={historySyncing} onClick={() => void refreshHistory()}>{historySyncing ? t("importing") : t("importAction")}</ActionButton>
+      </div>
+    </Row>
+    <Row label={t("effortSection")} hint={t("effortSettingHint")}>
+      <ChipSelect variant="field" menuPlacement="down" align="end" width={300} activeId={effort} label={cliEffortLabel(effort, t).label} items={CLI_EFFORT_ORDER.map((item) => ({ id: item, ...cliEffortLabel(item, t) }))} onSelect={(id) => setEffort(id as typeof effort)} aria-label={t("effortSection")} />
+    </Row>
+    <Row label={t("permModeLabel")} hint={t("permSettingHint")}>
       <ChipSelect
         variant="field"
         menuPlacement="down"
         align="end"
-        width={200}
+        width={260}
         activeId={permission}
-        label={permission === "bypass" ? "BYPASS / YOLO" : permission === "auto" ? "AUTO" : "DEFAULT"}
+        label={permissionLabel(permission, t)}
         items={[
-          { id: "default", label: "DEFAULT", hint: zh ? "按需确认" : "Ask when needed" },
-          { id: "auto", label: "AUTO", hint: zh ? "自动策略" : "Agent policy" },
-          { id: "bypass", label: "BYPASS", hint: "YOLO" },
+          { id: "default", label: t("permAsk"), hint: t("cliDefault") },
+          { id: "auto", label: t("permAuto"), hint: "Auto-review" },
+          { id: "bypass", label: t("permAlways"), hint: "YOLO" },
         ]}
         onSelect={(id) => setPermission(id as typeof permission)}
-        aria-label={zh ? "权限模式" : "Permission mode"}
+        aria-label={t("permModeLabel")}
       />
     </Row>
     <Row label="Computer Use" hint={zh ? "写入本机 host_prefs（主机权威）。关闭后无法仅靠 localStorage 重开。与 Bypass 互斥；变更后需新建或重新加载会话。" : "Persists to host_prefs (host authority). localStorage alone cannot re-open after host off. Mutually exclusive with Bypass; reload session after change."}><Toggle label="Computer Use" on={computerUse} onChange={setComputerUse} /></Row>

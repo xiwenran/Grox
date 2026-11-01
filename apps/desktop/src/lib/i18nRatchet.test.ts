@@ -16,12 +16,12 @@ const INLINE_BILINGUAL = /language === "zh-CN"|\bzh \? /g;
 /** 基线 = 2026-09 全量清点结果；只允许下调，不允许悄悄上调。 */
 const BASELINE: Record<string, number> = {
   "src/components/chrome/EnvironmentSummary.tsx": 80,
-  "src/components/chrome/Sidebar.tsx": 66,
+  "src/components/chrome/Sidebar.tsx": 62,
   "src/components/chrome/StatusBar.tsx": 4,
   "src/components/chrome/TitleBar.tsx": 14,
   "src/components/chrome/WorkbenchPanel.tsx": 11,
-  // 12 -> 13：菜单容器补 role="dialog" 的 aria-label（2026-09，a11y 改造新增）。
-  "src/components/common/PromptControls.tsx": 13,
+  // 13 -> 3：模式/权限/思考强度改为 CLI 选项的标准下拉，文案走 t()（2026-11）。
+  "src/components/common/PromptControls.tsx": 3,
   "src/components/home/Home.tsx": 36,
   "src/components/inspector/Inspector.tsx": 52,
   "src/components/palette/CommandPalette.tsx": 10,
@@ -41,7 +41,7 @@ const BASELINE: Record<string, number> = {
   "src/components/session/blocks.tsx": 10,
   // 14 -> 15：账户设置在 ACP 重连中禁用「继续」的 title 提示（2026-11-01）。
   "src/components/settings/AccountSetup.tsx": 15,
-  "src/components/settings/SettingsModal.tsx": 170,
+  "src/components/settings/SettingsModal.tsx": 163,
   "src/components/terminal/TerminalPanel.tsx": 3,
   "src/components/update/UpdateNotice.tsx": 21,
 };

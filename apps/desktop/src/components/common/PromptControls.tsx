@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from "react";
 import { capWord } from "../../lib/format";
-import { EFFORTS, type AgentMode, type Effort, type PermissionMode } from "../../bridge/types";
+import { type AgentMode, type Effort, type PermissionMode } from "../../bridge/types";
 import { useI18n } from "../../lib/i18n";
 import { useDesktop } from "../../state/store";
 import { useProviderCapability } from "../../state/providerCapabilityStore";
 import { Icon } from "../fx/Icon";
-import { ChipSelect } from "./ChipSelect";
+import { ChipSelect, SectionedSelect } from "./ChipSelect";
 
 export function ProviderSwitcher() {
   const { language } = useI18n();
@@ -48,6 +47,36 @@ export function ProviderSwitcher() {
   );
 }
 
+/*
+ * Composer "mode · effort" menu. Only what the official grok CLI exposes:
+ *  - 思考强度: the `reasoning_effort` configOption that `grok agent stdio`
+ *    returns from session/new (category thought_level). Names/descriptions
+ *    mirror the CLI's; the per-model list comes from the CLI model catalogue.
+ *  - 权限: the CLI's permission modes as exposed to ACP clients — default
+ *    "ask" (prompt for approval), `_meta.autoMode` (Auto-review) and
+ *    `_meta.yoloMode` (always-approve) on session/new.
+ *  - 模式: the CLI's plan mode (/plan); default otherwise.
+ * No Grox-invented options.
+ */
+export const CLI_EFFORT_ORDER: readonly Effort[] = ["xhigh", "high", "medium", "low"];
+
+type T = ReturnType<typeof useI18n>["t"];
+
+/** Labels are the CLI's own option names; hints translate the CLI descriptions. */
+export function cliEffortLabel(effort: Effort, t: T): { label: string; hint: string } {
+  switch (effort) {
+    case "xhigh": return { label: "Extra High", hint: t("effortXhighHint") };
+    case "high": return { label: "High", hint: t("effortHighHint") };
+    case "medium": return { label: "Medium", hint: t("effortMediumHint") };
+    case "low": return { label: "Low", hint: t("effortLowHint") };
+    default: return { label: capWord(effort), hint: "" };
+  }
+}
+
+export function permissionLabel(mode: PermissionMode, t: T): string {
+  return mode === "bypass" ? t("permAlways") : mode === "auto" ? t("permAuto") : t("permAsk");
+}
+
 export function PromptOptionsMenu({
   mode,
   effort,
@@ -55,7 +84,7 @@ export function PromptOptionsMenu({
   onMode,
   onEffort,
   onPermission,
-  efforts = EFFORTS,
+  efforts,
 }: {
   mode: AgentMode;
   effort: Effort;
@@ -65,90 +94,47 @@ export function PromptOptionsMenu({
   onPermission(mode: PermissionMode): void;
   efforts?: readonly Effort[];
 }) {
-  const { language } = useI18n();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: PointerEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
-    };
-    const key = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
-    document.addEventListener("pointerdown", close);
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("pointerdown", close);
-      document.removeEventListener("keydown", key);
-    };
-  }, [open]);
-
+  const { t } = useI18n();
+  // Prefer the model's CLI-advertised list; otherwise the CLI's standard four.
+  const advertised = efforts && efforts.length > 0 ? CLI_EFFORT_ORDER.filter((e) => efforts.includes(e)) : [];
+  const effortItems = (advertised.length > 0 ? advertised : CLI_EFFORT_ORDER).map((value) => ({ id: value, ...cliEffortLabel(value, t) }));
+  const parts = [mode === "plan" ? t("modePlanShort") : "", cliEffortLabel(effort, t).label, permissionMode !== "default" ? permissionLabel(permissionMode, t) : ""].filter(Boolean);
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        className="chip max-w-[220px]"
-        title={language === "zh-CN" ? "模式、权限与思考强度" : "Mode, access and reasoning effort"}
-      >
-        <Icon name="gear" size={10} />
-        <span className="truncate">{capWord(mode)} · {capWord(effort)}</span>
-        <Icon name="chevronDown" size={8} className="text-faint" />
-      </button>
-      {open && (
-        <div
-          role="dialog"
-          aria-label={language === "zh-CN" ? "模式、权限与思考强度" : "Mode, access and reasoning effort"}
-          className="absolute bottom-full left-0 z-40 mb-1.5 w-[min(360px,calc(100vw-32px))] rounded-[18px] border border-line2 bg-raise p-3.5 shadow-[0_8px_28px_rgba(0,0,0,0.55)] animate-fade-up"
-        >
-          <OptionRow groupLabel="mode" rowLabel={language === "zh-CN" ? "工作模式" : "MODE"} values={[
-            ["agent", language === "zh-CN" ? "执行" : "Agent"],
-            ["plan", language === "zh-CN" ? "计划" : "PLAN"],
-            ["ask", language === "zh-CN" ? "问答" : "ASK"],
-          ]} active={mode} onSelect={(value) => onMode(value as AgentMode)} />
-          <OptionRow groupLabel="permission" rowLabel={language === "zh-CN" ? "工具权限" : "ACCESS"} values={[
-            ["default", language === "zh-CN" ? "按需确认" : "DEFAULT"],
-            ["auto", language === "zh-CN" ? "自动策略" : "AUTO"],
-            ["bypass", "YOLO"],
-          ]} active={permissionMode} onSelect={(value) => onPermission(value as PermissionMode)} />
-          <OptionRow groupLabel="effort" rowLabel={language === "zh-CN" ? "思考强度" : "Effort"} values={efforts.map((value) => [value, capWord(value)])} active={effort} onSelect={(value) => onEffort(value as Effort)} last />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function OptionRow({ groupLabel, rowLabel, values, active, onSelect, last = false }: { groupLabel: string; rowLabel: string; values: readonly (readonly [string, string])[]; active: string; onSelect(value: string): void; last?: boolean }) {
-  // 单选分段组：radio 语义 + 方向键在组内移动（Tab 仍可跨组）。
-  const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
-    event.preventDefault();
-    const row = event.currentTarget.parentElement;
-    const options = row ? [...row.querySelectorAll<HTMLButtonElement>('[role="radio"]')] : [];
-    if (options.length === 0) return;
-    const index = options.indexOf(event.currentTarget as HTMLButtonElement);
-    const step = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
-    options[(index + step + options.length) % options.length]?.focus();
-  };
-  return (
-    <div className={last ? "" : "mb-3 border-b border-line pb-3"}>
-      <p className="lbl mb-1.5 !text-[12px]" id={`prompt-option-${groupLabel}`}>{rowLabel}</p>
-      <div role="radiogroup" aria-labelledby={`prompt-option-${groupLabel}`} className="grid gap-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
-        {values.map(([value, text]) => (
-          <button
-            key={value}
-            role="radio"
-            aria-checked={active === value}
-            onClick={() => onSelect(value)}
-            onKeyDown={onKeyDown}
-            className={`min-w-0 truncate rounded-full border px-2.5 py-1.5 font-mono text-[13px] ${active === value ? "border-acc-dim bg-acc-wash text-acc" : "border-line2 text-dim hover:text-fg2"}`}
-            title={text}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
-    </div>
+    <SectionedSelect
+      label={<span className="inline-flex items-center gap-1.5"><Icon name="gear" size={10} />{parts.join(" · ")}</span>}
+      title={t("promptOptionsTitle")}
+      aria-label={t("promptOptionsTitle")}
+      width={360}
+      sections={[
+        {
+          id: "mode",
+          label: t("modeSection"),
+          activeId: mode === "plan" ? "plan" : mode === "agent" ? "agent" : undefined,
+          items: [
+            { id: "agent", label: t("modeDefault"), hint: t("modeDefaultHint") },
+            { id: "plan", label: t("modePlan"), hint: t("modePlanHint") },
+          ],
+          onSelect: (id) => onMode(id as AgentMode),
+        },
+        {
+          id: "permission",
+          label: t("permSection"),
+          activeId: permissionMode,
+          items: [
+            { id: "default", label: t("permAsk"), hint: t("permAskHint") },
+            { id: "auto", label: t("permAuto"), hint: t("permAutoHint") },
+            { id: "bypass", label: t("permAlways"), hint: t("permAlwaysHint") },
+          ],
+          onSelect: (id) => onPermission(id as PermissionMode),
+        },
+        {
+          id: "effort",
+          label: t("effortSection"),
+          activeId: effort,
+          items: effortItems,
+          onSelect: (id) => onEffort(id as Effort),
+        },
+      ]}
+    />
   );
 }

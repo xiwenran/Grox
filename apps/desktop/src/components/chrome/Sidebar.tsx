@@ -35,10 +35,6 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   const setSettingsOpen = useDesktop((state) => state.setSettingsOpen);
   const setAccountSetupOpen = useDesktop((state) => state.setAccountSetupOpen);
   const logout = useDesktop((state) => state.logout);
-  const refreshHistory = useDesktop((state) => state.refreshHistory);
-  const historySyncing = useDesktop((state) => state.historySyncing);
-  const historyCount = useDesktop((state) => state.historyCount);
-  const historyError = useDesktop((state) => state.historyError);
   const [accountOpen, setAccountOpen] = useState(false);
   const [sessionQuery, setSessionQuery] = useState("");
   const [historyMatches, setHistoryMatches] = useState<Set<string>>(() => new Set());
@@ -156,23 +152,6 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
             </button>
           )}
         </div>
-        <button
-          onClick={() => void refreshHistory()}
-          disabled={historySyncing}
-          title={historyError ?? (language === "zh-CN" ? "重新扫描 ~/.grok/sessions" : "Rescan ~/.grok/sessions")}
-          className="mt-1.5 flex h-8 w-full items-center gap-2 rounded-[4px] px-2.5 text-[13px] text-dim hover:bg-high hover:text-fg2 disabled:cursor-wait disabled:opacity-60"
-        >
-          <Icon name="refresh" size={10} className={historySyncing ? "animate-orbit" : ""} />
-          {historySyncing
-            ? (language === "zh-CN" ? "正在导入 CLI 历史" : "Importing CLI history")
-            : (language === "zh-CN" ? "导入 CLI 历史" : "Import CLI history")}
-          {historyCount > 0 && <span className="ml-auto text-faint">{historyCount}</span>}
-        </button>
-        {historyError && (
-          <p role="alert" className="px-2 pt-1.5 font-mono text-[12px] leading-relaxed text-red">
-            {language === "zh-CN" ? `CLI 历史导入失败：${historyError}` : `CLI history import failed: ${historyError}`}
-          </p>
-        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
