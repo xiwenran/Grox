@@ -85,6 +85,23 @@ pub(crate) async fn authenticate(
         };
     };
 
+    // CLI 在 init_is_expired=true / has_current=false 时仍可能把
+    // defaultAuthMethodId 标成 cached_token，并且 ACP authenticate 对过期缓存
+    // 返回成功。本地先读 auth.json 的 expires_at：硬过期必须打成需重新登录，
+    // 否则桌面会假就绪并把回合闷死在 waiting_for_model。
+    // 只读检查；断网时也不删除凭据。
+    if method_id == "cached_token" {
+        if let Some(status) = local_cached_oidc_status() {
+            if status.hard_expired {
+                tracing::warn!(
+                    target: "grox::runtime",
+                    "cached OIDC token is hard-expired; requiring interactive re-login"
+                );
+                return interactive_auth_state(&plan, Some(status.message));
+            }
+        }
+    }
+
     match request_acp_json(
         state,
         leases,
@@ -96,14 +113,31 @@ pub(crate) async fn authenticate(
     )
     .await
     {
-        Ok(_) => AgentAuthenticationState {
-            required: false,
-            in_progress: false,
-            method_id: Some(method_id.to_string()),
-            label: None,
-            error: None,
-        },
-        Err(_error) if plan.interactive_method_id.is_some() => interactive_auth_state(&plan, None),
+        Ok(_) => {
+            // Authenticate 成功后仍复查一次：覆盖「握手后才写盘过期」或
+            // authenticate 未校验 expires_at 的上游行为。
+            if method_id == "cached_token" {
+                if let Some(status) = local_cached_oidc_status() {
+                    if status.hard_expired {
+                        tracing::warn!(
+                            target: "grox::runtime",
+                            "cached OIDC token hard-expired after authenticate; requiring re-login"
+                        );
+                        return interactive_auth_state(&plan, Some(status.message));
+                    }
+                }
+            }
+            AgentAuthenticationState {
+                required: false,
+                in_progress: false,
+                method_id: Some(method_id.to_string()),
+                label: None,
+                error: None,
+            }
+        }
+        Err(error) if plan.interactive_method_id.is_some() => {
+            interactive_auth_state(&plan, Some(error.message))
+        }
         Err(error) => AgentAuthenticationState {
             // 非交互凭据失败时运行时虽然完成了握手，但不能发送请求。这里必须
             // 保持发送门禁；否则首页只看到 required=false，会让用户进入一条
@@ -115,6 +149,78 @@ pub(crate) async fn authenticate(
             error: Some(error.message),
         },
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct CachedOidcStatus {
+    hard_expired: bool,
+    message: String,
+}
+
+/// 只读检查 `~/.grok/auth.json`（或 GROK_HOME）里 OIDC 缓存是否已硬过期。
+/// 解析失败或没有可判定条目时返回 None，不臆造登录态。
+fn local_cached_oidc_status() -> Option<CachedOidcStatus> {
+    let path = crate::host_core::grok_home().ok()?.join("auth.json");
+    let raw = crate::host_core::read_bounded_text(&path, 256 * 1024).ok()?;
+    cached_oidc_status_from_auth_json(&raw)
+}
+
+fn cached_oidc_status_from_auth_json(raw: &str) -> Option<CachedOidcStatus> {
+    if raw.trim().is_empty() {
+        return None;
+    }
+    let value: Value = serde_json::from_str(raw).ok()?;
+    let object = value.as_object()?;
+    let now = chrono::Utc::now();
+    let mut saw_material = false;
+    let mut any_unexpired = false;
+    let mut any_expired = false;
+
+    for entry in object.values() {
+        let Some(entry) = entry.as_object() else {
+            continue;
+        };
+        let has_material = entry
+            .get("refresh_token")
+            .and_then(Value::as_str)
+            .is_some_and(|value| !value.is_empty())
+            || entry
+                .get("key")
+                .and_then(Value::as_str)
+                .is_some_and(|value| !value.is_empty());
+        if !has_material {
+            continue;
+        }
+        saw_material = true;
+        let Some(expires_at) = entry.get("expires_at").and_then(Value::as_str) else {
+            continue;
+        };
+        let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(expires_at) else {
+            continue;
+        };
+        if parsed.with_timezone(&chrono::Utc) > now {
+            any_unexpired = true;
+        } else {
+            any_expired = true;
+        }
+    }
+
+    if !saw_material {
+        return None;
+    }
+    if any_unexpired {
+        return Some(CachedOidcStatus {
+            hard_expired: false,
+            message: String::new(),
+        });
+    }
+    if any_expired {
+        return Some(CachedOidcStatus {
+            hard_expired: true,
+            message: "Grok OAuth 登录已过期，需要重新授权。若无法访问 auth.x.ai，请先恢复网络后再登录。".into(),
+        });
+    }
+    None
 }
 
 fn interactive_auth_state(
@@ -309,5 +415,33 @@ mod tests {
             })),
             Some(("grok.com".into(), "Grok account".into()))
         );
+    }
+
+    #[test]
+    fn hard_expired_cached_oidc_is_detected_from_auth_json() {
+        let expired = concat!(
+            r#"{"https://auth.x.ai::demo":{"auth_mode":"oidc","refresh_token":"rt","expires_at":"2020-01-01T00:00:00Z"}}"#
+        );
+        let status = cached_oidc_status_from_auth_json(expired).expect("status");
+        assert!(status.hard_expired);
+        assert!(status.message.contains("过期"));
+    }
+
+    #[test]
+    fn unexpired_cached_oidc_is_not_hard_expired() {
+        let future = chrono::Utc::now() + chrono::Duration::hours(2);
+        let raw = format!(
+            r#"{{"https://auth.x.ai::demo":{{"auth_mode":"oidc","refresh_token":"rt","expires_at":"{}"}}}}"#,
+            future.to_rfc3339()
+        );
+        let status = cached_oidc_status_from_auth_json(&raw).expect("status");
+        assert!(!status.hard_expired);
+    }
+
+    #[test]
+    fn empty_or_unreadable_auth_json_does_not_invent_expiry() {
+        assert!(cached_oidc_status_from_auth_json("").is_none());
+        assert!(cached_oidc_status_from_auth_json("{}").is_none());
+        assert!(cached_oidc_status_from_auth_json(r#"{"x":{"email":"a@b.c"}}"#).is_none());
     }
 }

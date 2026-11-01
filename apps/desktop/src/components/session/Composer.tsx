@@ -54,6 +54,8 @@ export function Composer() {
   const { onCompositionStart, onCompositionEnd, isImeBlocking } = useImeGuard();
 
   const sendPrompt = useDesktop((s) => s.sendPrompt);
+  const auth = useDesktop((s) => s.auth);
+  const setAccountSetupOpen = useDesktop((s) => s.setAccountSetupOpen);
   const interjectPrompt = useDesktop((s) => s.interjectPrompt);
   const removeQueuedPrompt = useDesktop((s) => s.removeQueuedPrompt);
   const updateQueuedPrompt = useDesktop((s) => s.updateQueuedPrompt);
@@ -224,6 +226,10 @@ export function Composer() {
     const submittedAttachmentIds = attachments.map((attachment) => attachment.id);
     const t = submittedText.trim();
     if ((!t && attachments.length === 0) || creating || restoring || readingFiles) return;
+    if (auth.required) {
+      setAccountSetupOpen(true);
+      return;
+    }
     // Path attachments are resolved asynchronously. Pin this turn to the
     // session that owned the composer when Enter was pressed; otherwise a
     // quick session switch can redirect it to a different task.

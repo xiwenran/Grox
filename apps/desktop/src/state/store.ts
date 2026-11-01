@@ -844,7 +844,16 @@ export const useDesktop = create<DesktopState>((set, get) => {
 
     switch (e.type) {
       case "auth_state":
-        set({ auth: e.state });
+        if (e.state.required) {
+          // 过期/需重登时清掉「已登录」假象，避免侧栏继续显示 GROK / 邮箱。
+          set({
+            auth: e.state,
+            account: get().account ? { authenticated: false } : null,
+            billing: null,
+          });
+        } else {
+          set({ auth: e.state });
+        }
         if (!e.state.required && !e.state.inProgress && get().historySyncedAt === 0 && !get().historySyncing) {
           window.setTimeout(() => void get().refreshHistory(), 250);
         }
@@ -2022,6 +2031,18 @@ export const useDesktop = create<DesktopState>((set, get) => {
 
     async newSession(launch) {
       const beforeNew = get();
+      const launchAttachmentsEarly = launch?.attachments ?? [];
+      const hasLaunchEarly = Boolean(launch && (launch.text.trim() || launchAttachmentsEarly.length > 0));
+      if (hasLaunchEarly && beforeNew.auth.required) {
+        set({
+          accountSetupOpen: true,
+          startupError: beforeNew.auth.error
+            ?? (localStorage.getItem("grox.language") === "en-US"
+              ? "Sign in or configure a provider before sending"
+              : "发送前需要重新登录或配置服务"),
+        });
+        return;
+      }
       bridge.invalidateWorkspaceSelection();
       viewNavigation = nextViewNavigation(viewNavigation, null, beforeNew.workspace);
       const currentId = beforeNew.activeId;
@@ -3003,9 +3024,20 @@ export const useDesktop = create<DesktopState>((set, get) => {
     },
 
     sendPrompt(text, attachments = [], targetSessionId, modeOverride, submission, queueItemId) {
-      const { activeId, sessions, model, effort, mode, permissionMode, sessionComposers, providerSwitching, restoringSessionId } = get();
+      const { activeId, sessions, model, effort, mode, permissionMode, sessionComposers, providerSwitching, restoringSessionId, auth } = get();
       const sessionId = targetSessionId ?? activeId;
       if (providerSwitching || restoringSessionId === sessionId) return false;
+      // 过期/未鉴权时不得把回合送进 waiting_for_model；打开账户入口并保留草稿。
+      if (auth.required) {
+        set({
+          accountSetupOpen: true,
+          startupError: auth.error
+            ?? (localStorage.getItem("grox.language") === "en-US"
+              ? "Sign in or configure a provider before sending"
+              : "发送前需要重新登录或配置服务"),
+        });
+        return false;
+      }
       const session = sessionId ? sessions[sessionId] : null;
       if (!session) return false;
       const storedComposer = sessionComposers[session.id] ?? {

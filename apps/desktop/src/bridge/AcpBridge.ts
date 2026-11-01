@@ -52,6 +52,7 @@ import type {
   WorktreeForkResult,
 } from "./types";
 import { readStoredPermissionMode } from "../lib/permissionMode";
+import { resolveAccountAuthenticated } from "../lib/accountAuth";
 import { cleanApiError, toolCanonicalKind, toolReadOnly, versionMismatchNotice } from "../lib/runtimeNotice";
 import {
   isOpenToolStatus,
@@ -3055,11 +3056,17 @@ export class AcpBridge implements GrokBridge {
       // Subscription metadata is OAuth-only.
     }
     const meta = record(subscription.meta) ?? {};
+    const email = string(authInfo.email) ?? string(meta.email);
+    // 只认正向证据。不能因 auth.required=false（例如过期 cached_token 假就绪）
+    // 就把账户打成已登录，否则设置页会显示 GROK OAUTH / 已登录并隐藏重登入口。
+    const authenticated = resolveAccountAuthenticated({
+      subscriptionAuthenticated: Boolean(subscription.authenticated),
+      email,
+    });
     return {
-      authenticated: Boolean(subscription.authenticated)
-        || (!this.authState.required && !this.authState.error),
+      authenticated,
       methodId: string(authInfo.methodId),
-      email: string(authInfo.email) ?? string(meta.email),
+      email,
       firstName: string(authInfo.firstName),
       lastName: string(authInfo.lastName),
       profileImageUrl: string(authInfo.profileImageUrl),

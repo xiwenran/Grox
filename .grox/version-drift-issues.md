@@ -132,3 +132,11 @@
 - **根因**：账户设置 `reconfigureRuntime` 强制重连时，旧代次 `finalize_agent_exit` 仍可能调度自动重连；前端 `onExit` 还会抢走 `boot` Promise，与 `force_reconnect` 的 `mark_runtime_ready` 竞态，抛出 `ACP_RUNTIME_GENERATION_STALE`。
 - **改动**：Host 在已有更新代次 spawn 时跳过自动重连；`mark_runtime_ready` 若 stale 但已有就绪通道则跟新通道；前端重配置期间禁止 exit 投影抢 boot，并对 stale 做一次跟通道重试；AccountSetup 在 starting/reconnecting/providerSwitching 时禁用「继续」。
 
+## OAuth 硬过期假登录修复（2026-11-01 17:20 Asia/Shanghai）
+
+| 项 | 内容 |
+|----|------|
+| 症状 | `~/.grok/auth.json` `expires_at` 已过期；CLI `is_expired=true` / `hard_expired` / `auth.x.ai` 不通；桌面仍显示 GROK OAUTH/已登录，`auth_required=false`，发消息卡在「等待模型返回第一个事件」；`grok models` 仅兜底 4.6/4.5 |
+| 根因 | CLI 在过期时仍把 ACP `defaultAuthMethodId` 标成 `cached_token`，Host `authenticate` 成功后记 `auth_required=false`；`getAccountInfo` 又用 `!auth.required` 推断 `authenticated=true` |
+| 修复 | Host 只读检查 auth.json `expires_at`，硬过期则 `auth.required=true` 并给出重登/网络提示（不删凭据）；TS 账户只认订阅/邮箱正向证据；`sendPrompt`/`newSession`/Composer 在需登录时打开账户入口，不再闷送 turn |
+| 验证 | `cargo test` agent_runtime；`pnpm typecheck`；相关 vitest；本机 `auth.x.ai` 仍超时则 UI 应提示需登录/网络，OAuth 浏览器步骤留给用户 |
