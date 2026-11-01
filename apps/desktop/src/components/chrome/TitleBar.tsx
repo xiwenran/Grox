@@ -57,7 +57,7 @@ export function TitleBar() {
   return (
     <header
       data-tauri-drag-region
-      className={`titlebar relative z-40 flex h-10 shrink-0 items-center border-b border-line bg-void pr-2 select-none ${windows ? "pl-2" : "pl-[78px]"}`}
+      className={`titlebar relative z-40 flex h-10 shrink-0 items-center border-b border-line bg-base pr-2 select-none ${windows ? "pl-2" : "pl-[78px]"}`}
     >
       {!sidebarVisible && (
         <div
@@ -88,7 +88,7 @@ export function TitleBar() {
               <span className="min-w-0 truncate text-fg2">{breadcrumbTitle}</span>
             </>
           ) : (
-            <span className="font-medium tracking-[0.18em] text-mute">GROX</span>
+            <span className="font-medium text-mute">Grox</span>
           )}
         </div>
       </div>
@@ -222,7 +222,7 @@ function DefaultOpenMenu({ language }: { language: "zh-CN" | "en-US" }) {
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-[60] w-52 overflow-hidden rounded-[7px] border border-line3 bg-raise p-1.5 shadow-2xl" role="menu">
-          <p className="px-2 pb-1.5 pt-1 font-mono text-[8.5px] tracking-[0.12em] text-faint">{zh ? "文件默认打开应用" : "DEFAULT FILE APPLICATION"}</p>
+          <p className="px-2 pb-1.5 pt-1 font-mono text-[8.5px] tracking-[0.12em] text-faint">{zh ? "文件默认打开应用" : "Default file application"}</p>
           {applications.map((item) => (
             <button
               key={item.id}

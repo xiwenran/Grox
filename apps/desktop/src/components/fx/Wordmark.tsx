@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   The wordmark. GROK — set in the house grotesque, tracked wide, paired
-   with the black hole. Nothing else needs to be said.
+   The wordmark: the living face avatar + "Grox" in the system sans,
+   normal case, no wide tracking.
    ───────────────────────────────────────────────────────────────────────── */
 
 import type { ReactNode } from "react";
@@ -18,23 +18,16 @@ export function Wordmark({
   className?: string;
 }) {
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      {withMark && <BlackHole size={size * 1.35} spin={markSpin} />}
-      <span
-        className="font-sans font-semibold text-fg"
-        style={{ fontSize: size, letterSpacing: "0.34em", marginRight: "-0.34em" }}
-      >
-        GROK
+    <span className={`inline-flex items-center gap-2 ${className}`}>
+      {withMark && <BlackHole size={Math.round(size * 1.6)} spin={markSpin} />}
+      <span className="font-sans font-semibold text-fg" style={{ fontSize: size + 1, letterSpacing: "-0.01em" }}>
+        Grox
       </span>
     </span>
   );
 }
 
-/** Mono caption paired under the wordmark, e.g. "DESKTOP · BUILD 0.1.0". */
+/** Caption paired under the wordmark, e.g. "Desktop · build 0.1.0". */
 export function WordmarkCaption({ children }: { children: ReactNode }) {
-  return (
-    <div className="lbl" style={{ letterSpacing: "0.3em" }}>
-      {children}
-    </div>
-  );
+  return <div className="lbl">{children}</div>;
 }

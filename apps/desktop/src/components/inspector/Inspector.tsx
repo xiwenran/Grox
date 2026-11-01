@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useDesktop, type InspectorTab } from "../../state/store";
 import type { DiffHunk, PlanStep, Session, WorkflowRun, WorkspaceEntry } from "../../bridge/types";
-import { fmtCost, fmtDuration, fmtTokens } from "../../lib/format";
+import { fmtCost, fmtDuration, fmtTokens, capWord } from "../../lib/format";
 import { DiffView } from "../session/DiffView";
 import { ResizeHandle } from "../common/ResizeHandle";
 import { usePreferences } from "../../state/preferences";
@@ -82,7 +82,7 @@ export function Inspector() {
 
 const Empty = ({ text }: { text: string }) => (
   <div className="flex h-full items-center justify-center">
-    <span className="lbl !text-[9.5px]">{text.toUpperCase()}</span>
+    <span className="lbl !text-[9.5px]">{text}</span>
   </div>
 );
 
@@ -302,7 +302,7 @@ function TasksTab({ session }: { session: Session }) {
               {s.content}
             </p>
             <p className={`lbl mt-1 !text-[9.5px] ${s.status === "in_progress" ? "!text-gold" : s.status === "completed" ? "!text-green" : ""}`}>
-              {s.status.replace("_", " ").toUpperCase()}
+              {capWord(s.status)}
             </p>
           </div>
         </div>
@@ -357,7 +357,7 @@ function WorkflowCard({ workflow, onAction }: { workflow: WorkflowRun; onAction(
           <Icon name="chevronRight" size={9} className={`shrink-0 text-faint transition-transform ${expanded ? "rotate-90" : ""}`} />
           <Icon name="search" size={11} className={statusTone} />
           <p className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-fg2">{workflow.name}</p>
-          <span className={`font-mono text-[8.5px] tracking-[0.08em] ${statusTone}`}>{workflow.status.toUpperCase()}</span>
+          <span className={`font-mono text-[8.5px] tracking-[0.08em] ${statusTone}`}>{capWord(workflow.status)}</span>
         </button>
         {workflow.objective && <p className={`mt-1.5 text-[10.5px] leading-relaxed text-mute ${expanded ? "line-clamp-3" : "truncate"}`}>{workflow.objective}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[8px] text-faint">
@@ -595,7 +595,7 @@ function UsageTab({ session }: { session: Session }) {
       <Readout label={t("outputTokens")} value={fmtTokens(u.outputTokens)} />
       <Readout label={t("cost")} value={fmtCost(u.costUSD)} tone="text-green" />
       <Readout label={t("turns")} value={String(u.turns)} />
-      <Readout label={t("model")} value={session.model.toUpperCase()} tone="text-fg2" />
+      <Readout label={t("model")} value={session.model} tone="text-fg2" />
       <Readout
         label={t("sessionSpan")}
         value={fmtDuration(Math.max(0, session.updatedAt - session.createdAt))}

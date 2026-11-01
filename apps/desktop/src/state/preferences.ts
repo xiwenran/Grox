@@ -95,7 +95,11 @@ function applyFontScale(scale: FontScale) {
 
 const initialLanguage: Language =
   localStorage.getItem("grox.language") === "en-US" ? "en-US" : "zh-CN";
-const initialTheme: Theme = localStorage.getItem("grox.theme") === "light" ? "light" : "dark";
+// Light (Grok Bot–style) is the default. The v2 key intentionally ignores the
+// legacy "grox.theme" value so existing installs land on the new light theme
+// once; after that the user's explicit choice persists.
+const THEME_KEY = "grox.theme.v2";
+const initialTheme: Theme = localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
 
 const initialFontScale = (() => {
   // Prefer new key; fall back to legacy grox.fontSize.
@@ -142,7 +146,7 @@ export const usePreferences = create<PreferencesState>((set) => ({
     set({ language });
   },
   setTheme(theme) {
-    localStorage.setItem("grox.theme", theme);
+    localStorage.setItem(THEME_KEY, theme);
     document.documentElement.dataset.theme = theme;
     set({ theme });
   },

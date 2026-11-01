@@ -3,6 +3,12 @@ import { usePreferences } from "../state/preferences";
 
 const zh = {
   newProject: "新项目",
+  navChat: "对话",
+  navImages: "图片",
+  navVideo: "视频",
+  navScheduled: "已安排",
+  navWorkspaces: "工作台",
+  addAttachment: "添加附件",
   projects: "项目",
   missions: "任务",
   archived: "已归档",
@@ -89,6 +95,7 @@ const zh = {
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
+  navChat: "Chat", navImages: "Images", navVideo: "Video", navScheduled: "Scheduled", navWorkspaces: "Workspaces", addAttachment: "Add attachment",
   newProject: "New project", projects: "Projects", missions: "Missions", archived: "Archived",
   pin: "Pin", unpin: "Unpin", archive: "Archive", unarchive: "Unarchive", rename: "Rename",
   remove: "Remove", delete: "Delete", openExplorer: "Open in Explorer", settings: "Settings",

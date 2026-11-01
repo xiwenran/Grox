@@ -72,12 +72,13 @@ describe("layout adaptability — density isolation", () => {
   });
 
   it("default transcript type is comfortable without changing chrome geometry", () => {
-    expect(tokens).toMatch(/html\s*\{[\s\S]*?--grox-prose-size\s*:\s*14px/);
+    // UI type scale: message/body 15px with relaxed leading (Grok Bot–style).
+    expect(tokens).toMatch(/html\s*\{[\s\S]*?--grox-prose-size\s*:\s*15px/);
     const md = blockFor(`html[data-font="md"]`);
-    expect(md).toMatch(/--grox-prose-size\s*:\s*14px/);
-    expect(md).toMatch(/--grox-prose-leading\s*:\s*1\.5/);
+    expect(md).toMatch(/--grox-prose-size\s*:\s*15px/);
+    expect(md).toMatch(/--grox-prose-leading\s*:\s*1\.65/);
     const sm = blockFor(`html[data-font="sm"]`);
-    expect(sm).toMatch(/--grox-prose-size\s*:\s*13px/);
+    expect(sm).toMatch(/--grox-prose-size\s*:\s*14px/);
     expect(tokens).toMatch(/\.md p\s*\{[\s\S]*?margin:\s*0 0 0\.42em/);
   });
 

@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { useDesktop } from "../../state/store";
 import { gitSummary } from "../../lib/hostActions";
-import { fmtCost, fmtTokens } from "../../lib/format";
+import { fmtCost, fmtTokens, capWord } from "../../lib/format";
 import { BlackHole } from "../fx/BlackHole";
 import { useI18n } from "../../lib/i18n";
 
@@ -108,9 +108,9 @@ export function StatusBar() {
             <Sep />
           </>
         )}
-        <span className="text-fg2">{model.toUpperCase().replace(/-/g, "‑")}</span>
+        <span className="text-fg2">{model.replace(/-/g, "‑")}</span>
         <Sep />
-        <span>{language === "zh-CN" ? "强度" : "Effort"} {effort.toUpperCase()}</span>
+        <span>{language === "zh-CN" ? "强度" : "Effort"} {capWord(effort)}</span>
       </div>
     </footer>
   );

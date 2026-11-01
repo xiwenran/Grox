@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { capWord } from "../../lib/format";
 import { EFFORTS, type AgentMode, type Effort, type PermissionMode } from "../../bridge/types";
 import { useI18n } from "../../lib/i18n";
 import { useDesktop } from "../../state/store";
@@ -17,8 +18,8 @@ export function ProviderSwitcher() {
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId);
   const activeId = activeProfileId ?? provider.kind;
   const label = switching
-    ? (language === "zh-CN" ? "等待本轮完成" : "WAITING FOR TURN")
-    : activeProfile?.name ?? (provider.kind === "oauth" ? "GROK OAUTH" : provider.kind === "official" ? "XAI API" : "OPENAI API");
+    ? (language === "zh-CN" ? "等待本轮完成" : "Waiting for turn")
+    : activeProfile?.name ?? (provider.kind === "oauth" ? "Grok OAuth" : provider.kind === "official" ? "xAI API" : "OpenAI API");
   const items = [
     { id: "oauth", label: "Grok OAuth", hint: language === "zh-CN" ? "官方账户" : "Official account" },
     ...(provider.kind === "official" && !activeProfileId
@@ -92,7 +93,7 @@ export function PromptOptionsMenu({
         title={language === "zh-CN" ? "模式、权限与思考强度" : "Mode, access and reasoning effort"}
       >
         <Icon name="gear" size={10} />
-        <span className="truncate">{mode.toUpperCase()} · {effort.toUpperCase()}</span>
+        <span className="truncate">{capWord(mode)} · {capWord(effort)}</span>
         <Icon name="chevronDown" size={8} className="text-faint" />
       </button>
       {open && (
@@ -102,7 +103,7 @@ export function PromptOptionsMenu({
           className="absolute bottom-full left-0 z-40 mb-1.5 w-[min(360px,calc(100vw-32px))] rounded-[18px] border border-line2 bg-raise p-3.5 shadow-[0_8px_28px_rgba(0,0,0,0.55)] animate-fade-up"
         >
           <OptionRow groupLabel="mode" rowLabel={language === "zh-CN" ? "工作模式" : "MODE"} values={[
-            ["agent", language === "zh-CN" ? "执行" : "AGENT"],
+            ["agent", language === "zh-CN" ? "执行" : "Agent"],
             ["plan", language === "zh-CN" ? "计划" : "PLAN"],
             ["ask", language === "zh-CN" ? "问答" : "ASK"],
           ]} active={mode} onSelect={(value) => onMode(value as AgentMode)} />
@@ -111,7 +112,7 @@ export function PromptOptionsMenu({
             ["auto", language === "zh-CN" ? "自动策略" : "AUTO"],
             ["bypass", "YOLO"],
           ]} active={permissionMode} onSelect={(value) => onPermission(value as PermissionMode)} />
-          <OptionRow groupLabel="effort" rowLabel={language === "zh-CN" ? "思考强度" : "EFFORT"} values={efforts.map((value) => [value, value.toUpperCase()])} active={effort} onSelect={(value) => onEffort(value as Effort)} last />
+          <OptionRow groupLabel="effort" rowLabel={language === "zh-CN" ? "思考强度" : "Effort"} values={efforts.map((value) => [value, capWord(value)])} active={effort} onSelect={(value) => onEffort(value as Effort)} last />
         </div>
       )}
     </div>

@@ -537,8 +537,8 @@ function TurnGroup({ turn, sessionId, status, active, workflow, onProcessInspect
         {deepResearch && <DeepResearchToolCard run={workflow} query={query} />}
         {!deepResearch && <div className="process-live mb-3">
           <div className="mb-2 flex min-h-7 items-center gap-2">
-            <BlackHole size={15} spin />
-            <span className="text-[10.5px] font-medium text-fg2">{status === "awaiting_permission" ? (language === "zh-CN" ? "等待批准" : "Awaiting approval") : status === "awaiting_input" ? (language === "zh-CN" ? "等待你的回答" : "Awaiting input") : (language === "zh-CN" ? "Grok 正在处理" : "Grok is working")}</span>
+            <BlackHole size={22} spin />
+            <span className="text-[12px] font-medium text-fg2">{status === "awaiting_permission" ? (language === "zh-CN" ? "等待批准" : "Awaiting approval") : status === "awaiting_input" ? (language === "zh-CN" ? "等待你的回答" : "Awaiting input") : (language === "zh-CN" ? "Grok 正在处理" : "Grok is working")}</span>
             <span className="h-1 w-1 animate-pulse-dot rounded-full bg-acc" />
             <span className="font-mono text-[9px] tracking-[0.08em] text-faint">{language === "zh-CN" ? `${liveBlocks.length} 条事件` : `${liveBlocks.length} events`}</span>
           </div>
@@ -811,7 +811,7 @@ export function Timeline({ session }: { session: Session }) {
     return <DeadSessionNotice session={session} />;
   }
 
-  if (session.blocks.length === 0) return <div className="flex flex-1 flex-col items-center justify-center gap-4 pb-24"><BlackHole size={44} spin="slow" /><div className="text-center"><p className="text-[14px] text-mute">{language === "zh-CN" ? "任务通道已打开。" : "Mission channel open."}</p><p className="lbl mt-1.5 !text-[10px]">{language === "zh-CN" ? "输入你的第一个请求" : "TRANSMIT YOUR FIRST DIRECTIVE"}</p></div></div>;
+  if (session.blocks.length === 0) return <div className="flex flex-1 flex-col items-center justify-center gap-4 pb-24"><BlackHole size={44} spin="slow" /><div className="text-center"><p className="text-[14px] text-mute">{language === "zh-CN" ? "任务通道已打开。" : "Mission channel open."}</p><p className="lbl mt-1.5 !text-[10px]">{language === "zh-CN" ? "输入你的第一个请求" : "Type your first request"}</p></div></div>;
 
   const jumpToTurn = (id: string) => {
     const index = turns.findIndex((turn) => turn.id === id);

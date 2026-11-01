@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { exportSessionSupportBundle, openExternal, revealSupportBundle, searchSessionHistory } from "../../lib/hostActions";
 import { useDesktop, type ProjectMeta } from "../../state/store";
 import { usePreferences } from "../../state/preferences";
+import { useHomeWorkspace, type HomeWorkspaceMode } from "../../state/homeWorkspace";
 import { useI18n } from "../../lib/i18n";
 import { fmtBillingDate, fmtRelTime, fmtTokens } from "../../lib/format";
 import { Wordmark } from "../fx/Wordmark";
@@ -28,6 +29,12 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   const view = useDesktop((state) => state.view);
   const openSession = useDesktop((state) => state.openSession);
   const goHome = useDesktop((state) => state.goHome);
+  const homeMode = useHomeWorkspace((state) => state.mode);
+  const setHomeMode = useHomeWorkspace((state) => state.setMode);
+  const openWorkspace = (mode: HomeWorkspaceMode) => {
+    setHomeMode(mode);
+    goHome();
+  };
   const newProject = useDesktop((state) => state.newProject);
   const account = useDesktop((state) => state.account);
   const billing = useDesktop((state) => state.billing);
@@ -117,7 +124,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   return (
     <aside className="relative flex shrink-0 flex-col border-r border-line bg-panel" style={{ width }}>
       <div className="flex h-14 items-center border-b border-line px-4">
-        <button onClick={goHome} className="transition-opacity hover:opacity-70" title="Home">
+        <button onClick={() => openWorkspace("conversation")} className="transition-opacity hover:opacity-70" title="Home">
           <Wordmark size={14} markSpin={view === "home" ? "slow" : false} />
         </button>
         <button
@@ -134,13 +141,35 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
       <div className="p-2.5">
         <button
           onClick={() => void newProject()}
-          className="flex h-9 w-full items-center gap-2 rounded-[5px] border border-line2 bg-raise px-2.5 text-[12px] text-fg2 hover:border-line3 hover:text-fg"
+          className="sidebar-new flex h-9 w-full items-center gap-2 px-3 text-[length:var(--fs-sm)] text-fg2 hover:text-fg"
         >
           <Icon name="plus" size={12} className="text-acc" />
           {t("newProject")}
-          <span className="ml-auto font-mono text-[10px] text-faint">Ctrl N</span>
+          <span className="ml-auto text-[length:var(--fs-xs)] text-faint">Ctrl N</span>
         </button>
-        <div className="mt-1.5 flex h-9 items-center gap-2 rounded-[5px] border border-line2 bg-void px-2.5 focus-within:border-line3">
+        <nav className="mt-2 flex flex-col gap-px" aria-label={t("navWorkspaces")}>
+          {([
+            ["conversation", "command", t("navChat")],
+            ["image", "layers", t("navImages")],
+            ["video", "play", t("navVideo")],
+            ["automations", "clock", t("navScheduled")],
+          ] as const).map(([id, icon, label]) => {
+            const current = view === "home" && homeMode === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => openWorkspace(id)}
+                aria-current={current ? "page" : undefined}
+                className={`sidebar-nav-item ${current ? "is-active" : ""}`}
+              >
+                <Icon name={icon} size={13} />
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="mt-2 flex h-9 items-center gap-2 rounded-[10px] border border-line2 bg-raise px-3 focus-within:border-line3">
           <Icon name="search" size={11} className={historySearching ? "animate-pulse text-acc" : "text-dim"} />
           <input
             value={sessionQuery}
@@ -163,8 +192,8 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
         >
           <Icon name="refresh" size={10} className={historySyncing ? "animate-orbit" : ""} />
           {historySyncing
-            ? (language === "zh-CN" ? "正在导入 CLI 历史" : "IMPORTING CLI HISTORY")
-            : (language === "zh-CN" ? "导入 CLI 历史" : "IMPORT CLI HISTORY")}
+            ? (language === "zh-CN" ? "正在导入 CLI 历史" : "Importing CLI history")
+            : (language === "zh-CN" ? "导入 CLI 历史" : "Import CLI history")}
           {historyCount > 0 && <span className="ml-auto text-faint">{historyCount}</span>}
         </button>
         {historyError && (
@@ -381,7 +410,7 @@ function ProjectRow({ project, active, expanded, count, onToggle }: { project: P
 
   return (
     <div
-      className={`group relative mb-px flex h-8 items-center gap-1 rounded-[4px] px-1 ${active ? "bg-high text-fg" : "text-fg2 hover:bg-high/60"}`}
+      className={`group relative mb-px flex h-8 items-center gap-1 rounded-[10px] px-1 ${active ? "bg-high text-fg" : "text-fg2 hover:bg-high/60"}`}
       onContextMenu={(event) => {
         event.preventDefault();
         setMenu(true);
@@ -518,7 +547,7 @@ function MissionRow({ meta, status, completionUnread, active, tokens, onOpen }: 
       role="button"
       tabIndex={0}
       aria-label={displayTitle}
-      className={`group relative mb-px cursor-pointer rounded-[4px] border-l-2 px-2 py-1.5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-acc ${active ? "border-acc bg-high" : "border-transparent hover:bg-high/60"}`}
+      className={`group relative mb-px cursor-pointer rounded-[10px] px-2.5 py-1.5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-acc ${active ? "bg-high" : "hover:bg-high/60"}`}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;

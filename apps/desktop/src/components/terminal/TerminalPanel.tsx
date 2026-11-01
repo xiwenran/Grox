@@ -38,7 +38,7 @@ export function TerminalPanel({ embedded = false }: { embedded?: boolean }) {
       >
         {calls.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <span className="lbl !text-[9.5px]">{t("noTerminal").toUpperCase()}</span>
+            <span className="lbl !text-[9.5px]">{t("noTerminal")}</span>
           </div>
         ) : (
           <div className="space-y-3">
@@ -90,7 +90,7 @@ export function TerminalPanel({ embedded = false }: { embedded?: boolean }) {
     >
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line bg-panel px-3">
         <Icon name="terminal" size={12} className="text-acc" />
-        <span className="font-mono text-[10px] tracking-[0.14em] text-fg2">{t("terminal").toUpperCase()}</span>
+        <span className="font-mono text-[10px] tracking-[0.14em] text-fg2">{t("terminal")}</span>
         {calls.length > 0 && (
           <span className="font-mono text-[9px] text-faint">
             {calls.length} {language === "zh-CN" ? "条命令" : calls.length === 1 ? "COMMAND" : "COMMANDS"}

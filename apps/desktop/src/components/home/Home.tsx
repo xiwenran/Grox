@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useDesktop } from "../../state/store";
+import { useHomeWorkspace } from "../../state/homeWorkspace";
 import type { PromptAttachment, SessionStatus } from "../../bridge/types";
 import { fmtRelTime, fmtTokens } from "../../lib/format";
 import { MAX_ATTACHMENTS, prepareAttachment, validateAttachmentSet } from "../../lib/attachments";
@@ -21,7 +22,7 @@ const AutomationsStudio = lazy(() => import("./AutomationsStudio").then((module)
 
 export function Home() {
   const { language, t } = useI18n();
-  const [workspaceMode, setWorkspaceMode] = useState<"conversation" | "image" | "video" | "automations">("conversation");
+  const workspaceMode = useHomeWorkspace((state) => state.mode);
   const [q, setQ] = useState("");
   const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState("");
@@ -166,7 +167,6 @@ export function Home() {
     return (
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-base">
         <div className="home-nebula opacity-40" />
-        <WorkspaceTabs mode={workspaceMode} onChange={setWorkspaceMode} />
         <StageTransition stageKey={workspaceMode} variant="panel" className="relative z-[1]">
           <Suspense fallback={<div className="flex flex-1 items-center justify-center"><BlackHole size={28} spin /></div>}>
             {workspaceMode === "automations"
@@ -183,14 +183,13 @@ export function Home() {
   return (
     <div className="relative flex-1 overflow-x-hidden overflow-y-auto bg-base">
       <div className="home-nebula opacity-65" />
-      <WorkspaceTabs mode={workspaceMode} onChange={setWorkspaceMode} />
 
-      <div className="relative z-[1] mx-auto flex min-h-full w-full max-w-[980px] flex-col items-center justify-center px-6 pb-16 pt-24 sm:px-10">
+      <div className="relative z-[1] mx-auto flex min-h-full w-full max-w-[980px] flex-col items-center justify-center px-6 pb-16 pt-16 sm:px-10">
         <div className="animate-mission-in animate-bh-breathe" style={{ animationDelay: "0.04s" }}>
-          <BlackHole size={92} spin="slow" />
+          <BlackHole size={72} spin="slow" />
         </div>
-        <h1 className="mt-5 animate-mission-in text-[30px] font-semibold tracking-[0.32em] text-fg" style={{ animationDelay: "0.11s", marginRight: "-0.32em" }}>
-          GROX
+        <h1 className="mt-5 animate-mission-in text-[28px] font-semibold tracking-tight text-fg" style={{ animationDelay: "0.11s" }}>
+          Grox
         </h1>
         <p className="mt-3 animate-mission-in text-center text-[14px] text-mute" style={{ animationDelay: "0.17s" }}>
           {language === "zh-CN" ? "把想做的事交给 Grok Build" : "Give Grok Build something worth making"}
@@ -249,10 +248,10 @@ export function Home() {
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-1.5">
+              <button onClick={() => fileRef.current?.click()} disabled={readingFiles || attachments.length >= MAX_ATTACHMENTS} aria-label={t("addAttachment")} className="flex h-8 w-8 items-center justify-center rounded-full border border-line2 bg-raise text-fg2 hover:border-line3 hover:bg-high hover:text-fg disabled:opacity-40" title={language === "zh-CN" ? "上传文件；也支持粘贴剪贴板图片" : "Attach files; clipboard images are also supported"}>{readingFiles ? <span className="plan-spinner" /> : <Icon name="plus" size={14} />}</button>
               <ProviderSwitcher />
-              <ChipSelect label={<span className="text-fg2">{currentModel?.label ?? model.toUpperCase()}</span>} items={models.map((item) => ({ id: item.id, label: item.label, hint: item.tagline }))} activeId={model} onSelect={setModel} width={260} />
+              <ChipSelect label={<span className="text-fg2">{currentModel?.label ?? model}</span>} items={models.map((item) => ({ id: item.id, label: item.label, hint: item.tagline }))} activeId={model} onSelect={setModel} width={260} />
               <PromptOptionsMenu mode={mode} effort={effort} efforts={models.find((item) => item.id === model)?.efforts} permissionMode={permissionMode} onMode={setMode} onEffort={setEffort} onPermission={setPermissionMode} />
-              <button onClick={() => fileRef.current?.click()} disabled={readingFiles || attachments.length >= MAX_ATTACHMENTS} className="flex h-8 items-center gap-1.5 rounded-full border border-line2 px-3 text-[11px] text-dim hover:border-line3 hover:text-fg2 disabled:opacity-40" title={language === "zh-CN" ? "上传文件；也支持粘贴剪贴板图片" : "Attach files; clipboard images are also supported"}><Icon name="clip" size={12} />{readingFiles ? (language === "zh-CN" ? "读取中" : "Reading") : (language === "zh-CN" ? "附件" : "Attach")}</button>
               <button onClick={() => void launch()} disabled={!hasPrompt || readingFiles} className={`ml-auto flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ${hasPrompt ? (auth.required ? "border border-gold/50 bg-gold/10 text-gold hover:bg-gold/15" : "bg-acc text-base hover:bg-acc-deep") : "bg-high text-faint"}`} title={auth.required ? (language === "zh-CN" ? "配置账户后发送" : "Connect an account to send") : (language === "zh-CN" ? "开始任务" : "Start")}><Icon name="arrowUp" size={15} strokeWidth={2} /></button>
             </div>
             {attachmentError && <p className="border-t border-red/20 px-4 py-2 text-[11px] text-red">{attachmentError}</p>}
@@ -322,30 +321,4 @@ function recentStatusPresentation(status: SessionStatus, zh: boolean): { tone: s
     default:
       return null;
   }
-}
-
-function WorkspaceTabs({ mode, onChange }: { mode: "conversation" | "image" | "video" | "automations"; onChange(mode: "conversation" | "image" | "video" | "automations"): void }) {
-  const { language } = useI18n();
-  const zh = language === "zh-CN";
-  return (
-    <div role="tablist" aria-label={zh ? "工作台类型" : "Workspace type"} className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line2 bg-panel/90 p-1 shadow-lg backdrop-blur animate-mission-in" style={{ animationDelay: "0.02s" }}>
-      {([
-        ["conversation", zh ? "对话" : "CHAT"],
-        ["image", zh ? "图片" : "IMAGE"],
-        ["video", zh ? "视频" : "VIDEO"],
-        ["automations", zh ? "已安排" : "SCHEDULED"],
-      ] as const).map(([id, label]) => (
-        <button
-          key={id}
-          role="tab"
-          aria-selected={mode === id}
-          onClick={() => onChange(id)}
-          className={`flex h-8 items-center gap-1.5 rounded-full px-4 text-[12px] transition-colors ${mode === id ? "bg-acc text-base" : "text-dim hover:bg-high hover:text-fg2"}`}
-        >
-          {id === "conversation" ? <Icon name="command" size={11} /> : id === "image" ? <Icon name="layers" size={11} /> : id === "video" ? <Icon name="play" size={11} /> : <Icon name="clock" size={11} />}
-          {label}
-        </button>
-      ))}
-    </div>
-  );
 }

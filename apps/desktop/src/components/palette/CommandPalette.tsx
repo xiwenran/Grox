@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDesktop } from "../../state/store";
 import { EFFORTS } from "../../bridge/types";
-import { fmtRelTime } from "../../lib/format";
+import { fmtRelTime, capWord } from "../../lib/format";
 import { Icon, type IconProps } from "../fx/Icon";
 import { useI18n } from "../../lib/i18n";
 import { useImeGuard } from "../../lib/ime";
@@ -86,7 +86,7 @@ export function CommandPalette() {
       {
         id: "effort",
         icon: "layers",
-        label: language === "zh-CN" ? `切换推理强度 — ${effort.toUpperCase()}` : `Cycle effort — ${effort.toUpperCase()}`,
+        label: language === "zh-CN" ? `切换推理强度 — ${capWord(effort)}` : `Cycle effort — ${capWord(effort)}`,
         run: close(() => {
           const i = EFFORTS.indexOf(effort);
           setEffort(EFFORTS[(i + 1) % EFFORTS.length]);

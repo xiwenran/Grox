@@ -59,3 +59,10 @@ export function baseName(p: string): string {
   const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
   return parts[parts.length - 1] ?? p;
 }
+
+/** Sentence-case a short UI token ("agent" → "Agent", "in_progress" → "In progress"). */
+export function capWord(value: string): string {
+  const text = value.replace(/_/g, " ").trim();
+  if (!text) return text;
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}

@@ -39,7 +39,7 @@ const NO_RUNTIME_COMMANDS: SlashCommand[] = [];
 const NO_QUEUED_PROMPTS: QueuedPrompt[] = [];
 
 export function Composer() {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const [slashIdx, setSlashIdx] = useState(0);
   const [attachmentError, setAttachmentError] = useState("");
   const [readingFiles, setReadingFiles] = useState(false);
@@ -494,7 +494,7 @@ export function Composer() {
                     ? (language === "zh-CN" ? `当前：${model}；本轮完成后切换至：${pendingModel}` : `Current: ${model}; switches after this turn: ${pendingModel}`)
                     : undefined}
                 >
-                  {currentModel?.label ?? model.toUpperCase()}
+                  {currentModel?.label ?? model}
                   {pendingModel && <span className="text-gold"> · {language === "zh-CN" ? "等待" : "QUEUED"}</span>}
                 </span>
               }
@@ -516,18 +516,17 @@ export function Composer() {
               className="flex h-8 items-center gap-1.5 rounded-full border border-acc/30 bg-acc/5 px-3 font-mono text-[10.5px] text-acc transition-colors hover:border-acc/60 hover:bg-acc/10 disabled:opacity-40"
             >
               <Icon name="search" size={11} />
-              {language === "zh-CN" ? "深度研究" : "RESEARCH"}
+              {language === "zh-CN" ? "深度研究" : "Research"}
             </button>}
 
             <button
               onClick={() => fileRef.current?.click()}
               disabled={creating || readingFiles || attachments.length >= MAX_ATTACHMENTS}
               title={language === "zh-CN" ? "上传文件；也可直接粘贴剪贴板图片" : "Upload files; clipboard images can also be pasted"}
-              className="flex h-8 items-center gap-1.5 rounded-full border border-line2 px-3 font-mono text-[10.5px] text-dim transition-colors hover:border-line3 hover:text-fg2 disabled:opacity-40"
+              aria-label={t("addAttachment")}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-line2 bg-raise text-fg2 transition-colors hover:border-line3 hover:bg-high hover:text-fg disabled:opacity-40"
             >
-              <Icon name="clip" size={11} />
-              {readingFiles && <span className="plan-spinner !h-[10px] !w-[10px] !basis-[10px]" />}
-              {readingFiles ? (language === "zh-CN" ? "读取中" : "READING") : (language === "zh-CN" ? "附件" : "ATTACH")}
+              {readingFiles ? <span className="plan-spinner" /> : <Icon name="plus" size={14} />}
             </button>
 
             <div className="flex-1" />

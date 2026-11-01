@@ -36,8 +36,8 @@ export function ThinkingBlock({ block, processing }: { block: ThinkingBlock; pro
         <BlackHole size={13} spin={live} />
         <span className={`shrink-0 text-[10.5px] font-medium ${live ? "text-fg2" : "text-dim"}`}>
           {live
-            ? language === "zh-CN" ? "思考中" : "THINKING"
-            : `${language === "zh-CN" ? "思考" : "THOUGHT"}${block.elapsedMs ? ` · ${fmtDuration(block.elapsedMs).toUpperCase()}` : ""}`}
+            ? language === "zh-CN" ? "思考中" : "Thinking"
+            : `${language === "zh-CN" ? "思考" : "Thought"}${block.elapsedMs ? ` · ${fmtDuration(block.elapsedMs)}` : ""}`}
         </span>
         {live && <span className="h-1 w-1 animate-pulse-dot rounded-full bg-acc" />}
         {!expanded && preview && (
