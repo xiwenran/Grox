@@ -13,6 +13,24 @@ function displayDeepResearchPrompt(text: string): string {
   }
 }
 
+/**
+ * 带图片的提示会被 CLI 持久化成
+ * `<image_files>…</image_files> <user_query>正文</user_query> <system-reminder>…</system-reminder>`。
+ * 只有剥掉这些附加信封后正文才是纯 user_query；否则同一条用户消息会以
+ * 信封原文出现在磁盘预览里，与本地乐观气泡内容键不同而重复显示。
+ */
+function stripUserQueryDecorations(text: string): string {
+  let next = text.trim().replace(/^<image_files>[\s\S]*?<\/image_files>\s*/i, "");
+  for (;;) {
+    const trimmed = next.replace(/\s*<system-reminder>[\s\S]*?<\/system-reminder>\s*$/i, "");
+    if (trimmed === next) break;
+    next = trimmed;
+  }
+  next = next.trim();
+  // 只在剥离后确实露出 user_query 信封时采用，避免误伤普通用户正文。
+  return /<user_query>[\s\S]*<\/user_query>/i.test(next) ? next : text.trim();
+}
+
 function interruptedUserQuery(text: string): string | null {
   const match = text.trim().match(
     /^The user interrupted the previous turn:\s*<user_query>\s*([\s\S]*?)\s*<\/user_query>\s*Make sure to complete any unfinished tasks from previous turns\.?$/i,
@@ -22,7 +40,7 @@ function interruptedUserQuery(text: string): string | null {
 
 /** Grok Build 回放的模型输入信封不是用户消息，所有历史入口统一在这里过滤。 */
 export function displayReplayUserPrompt(text: string): string {
-  const trimmed = text.trim();
+  const trimmed = stripUserQueryDecorations(text);
   // 在线 ACP 回放还会包含这条合成续传输入；真实用户块由桌面 journal 保留。
   if (interruptedUserQuery(trimmed) !== null) return "";
   if (/^<(?:user_info|git_status|rules)>[\s\S]*<\/(?:user_info|git_status|rules)>/i.test(trimmed)) {
@@ -40,7 +58,7 @@ export function displayReplayUserPrompt(text: string): string {
  * 协议信封显示给用户或直接丢掉整条消息。
  */
 export function displayDiskUserPrompt(text: string): string {
-  const trimmed = text.trim();
+  const trimmed = stripUserQueryDecorations(text);
   const interrupted = interruptedUserQuery(trimmed);
   if (interrupted !== null) return interrupted;
   const query = trimmed.match(/^<user_query>\s*([\s\S]*?)\s*<\/user_query>$/i);

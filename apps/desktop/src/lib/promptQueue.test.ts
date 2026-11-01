@@ -10,6 +10,7 @@ import {
   normalizeQueueText,
   queueHasSameText,
   rehomeHeldQueueForRecovery,
+  visibleQueuedPrompts,
   settleQueueOnIdle,
   stripCliOwnedEntries,
   stripHeldByCliEntries,
@@ -312,3 +313,22 @@ it("reorders queued slash commands and attachment rows without dropping data", (
   expect(moveQueueEntry(queue, 1, -1)).toEqual([queue[1], queue[0]]);
   expect(moveQueueEntry(queue, 0, -1)).toEqual(queue);
 });
+
+describe("visibleQueuedPrompts", () => {
+  it("Host 已领取（sending）的行不再显示为等待发送，但磁盘队列保留它以便崩溃回队", () => {
+    const queue = [
+      { id: "claimed", state: "sending" as const, text: "打不开" },
+      { id: "next", state: "queued" as const, text: "继续" },
+    ];
+    expect(visibleQueuedPrompts(queue).map((item) => item.id)).toEqual(["next"]);
+    expect(visibleQueuedPrompts([{ id: "only", state: "sending" as const }])).toHaveLength(0);
+    // 原数组不被修改：持久化/崩溃恢复仍看得到 sending 行。
+    expect(queue).toHaveLength(2);
+    expect(nextLocalDrainIndex(queue)).toBe(1);
+  });
+
+  it("旧数据没有 state 字段时按等待发送处理", () => {
+    expect(visibleQueuedPrompts([{ id: "legacy" }])).toHaveLength(1);
+  });
+});
+

@@ -721,4 +721,43 @@ describe("AcpBridge live streaming projection", () => {
     expect(events.some((event) => event.type === "thinking_append" && event.delta === "先分析")).toBe(true);
     expect(events.some((event) => event.type === "assistant_append" && event.delta === "最终答案")).toBe(true);
   });
+
+  it("CLI 自发回合（task-completed 唤醒）结束时发出 idle，会话不再卡在运行中", () => {
+    const { events, internal } = bridgeHarness();
+    internal.projectHostSessionEvent(hostEvent(
+      1,
+      "agent_message_chunk",
+      { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "后台任务完成了" } },
+      [{ action: "open", blockType: "assistant", blockId: "assistant-wake", startedAt: 1_001 }],
+    ));
+    internal.projectHostSessionEvent(hostEvent(
+      2,
+      "turn_completed",
+      { sessionUpdate: "turn_completed", stop_reason: "end_turn" },
+      [],
+    ));
+    internal.flushStreamAppends();
+    const statuses = events.filter((event) => event.type === "status").map((event) => event.status);
+    expect(statuses).toEqual(["idle"]);
+  });
+
+  it("Grox 自己的前台回合仍以 RPC 返回为准，turn_completed 不抢先宣布结束", () => {
+    const { events, internal } = bridgeHarness();
+    (internal as unknown as { activePromptSessions: Set<string> }).activePromptSessions.add("session-live");
+    internal.projectHostSessionEvent(hostEvent(
+      1,
+      "agent_message_chunk",
+      { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "前台回答" } },
+      [{ action: "open", blockType: "assistant", blockId: "assistant-fg", startedAt: 1_001 }],
+    ));
+    internal.projectHostSessionEvent(hostEvent(2, "turn_completed", { sessionUpdate: "turn_completed" }, []));
+    expect(events.some((event) => event.type === "status")).toBe(false);
+  });
+
+  it("没有自发活动时迟到的 turn_completed 不会重复发出 idle", () => {
+    const { events, internal } = bridgeHarness();
+    internal.projectHostSessionEvent(hostEvent(1, "turn_completed", { sessionUpdate: "turn_completed" }, []));
+    expect(events.some((event) => event.type === "status")).toBe(false);
+  });
 });
+

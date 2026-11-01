@@ -61,6 +61,16 @@ export function nextLocalDrainIndex(queue: readonly QueueEntryLike[]): number {
   );
 }
 
+/**
+ * 用户可见的“等待发送”列表。Host 领取后的行（state=sending）仍留在磁盘队列里，
+ * 只为崩溃后能回队；它已经作为当前回合发出，不能再显示成“等待发送 N”。
+ */
+export function visibleQueuedPrompts<T extends { id: string; state?: QueueEntryLike["state"] }>(
+  queue: readonly T[],
+): T[] {
+  return queue.filter((item) => item.state !== "sending");
+}
+
 /** Drop rows whose text matches the live turn's primary user bubble. */
 export function filterQueueGhostsByLiveText<T extends { text?: string }>(
   queue: readonly T[],

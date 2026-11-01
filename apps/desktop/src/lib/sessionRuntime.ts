@@ -177,6 +177,18 @@ export function settleLiveTextBlocks(blocks: readonly SessionBlock[]): SessionBl
   });
 }
 
+/**
+ * Grox 的前台 RPC 已返回后，CLI 仍可能自己跑一轮（后台终端完成唤醒等）。
+ * 实时文本安静一段时间后必须回到可发送的 idle：此前这里写成 "connecting"，
+ * 它不是终态，队列永远不会排空，会话一直显示运行中。
+ */
+export function settlePostPromptContinuation(blocks: readonly SessionBlock[]): {
+  status: SessionStatus;
+  blocks: SessionBlock[];
+} {
+  return { status: "idle", blocks: settleLiveTextBlocks(blocks) };
+}
+
 /** Stop a post-prompt continuation in the UI so Send comes back immediately. */
 export function settleLiveProcessBlocks(blocks: readonly SessionBlock[]): SessionBlock[] {
   const now = Date.now();
@@ -215,6 +227,24 @@ export function shouldDrainLocalQueue(input: {
     && !input.restoring
     && !input.suppressed
     && input.queueLength > 0;
+}
+
+/** parkInterruptedSession 发布的“检测到未完成的会话回合，提示队列已暂停”横幅。 */
+export const TURN_INTERRUPTED_NOTICE_ID = "error-environment-SESSION_TURN_INTERRUPTED";
+
+/**
+ * 暂停横幅只在仍有会话“已暂停且还有待发送内容”时有意义。恢复队列、
+ * 清空队列或队列发完后，它必须自动消失，不能一直挂在顶部误报运行环境错误。
+ */
+export function pruneResolvedTurnInterruptedNotice<N extends { id: string }>(
+  notices: readonly N[],
+  parked: Readonly<Record<string, boolean>>,
+  queues: Readonly<Record<string, readonly { id: string; state?: string }[] | undefined>>,
+): readonly N[] {
+  if (!notices.some((notice) => notice.id === TURN_INTERRUPTED_NOTICE_ID)) return notices;
+  const stillHeld = Object.entries(parked).some(([sessionId, isParked]) =>
+    isParked && (queues[sessionId] ?? []).some((item) => item.state !== "sending"));
+  return stillHeld ? notices : notices.filter((notice) => notice.id !== TURN_INTERRUPTED_NOTICE_ID);
 }
 
 /** Apply park/unpark to the reactive mirror of the runtime queue gate. */

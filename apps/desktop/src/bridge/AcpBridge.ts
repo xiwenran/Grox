@@ -263,6 +263,15 @@ interface ReplayContentCursor {
   toolBlocks: Map<string, string>;
 }
 
+/** 这些实时更新说明 Agent 正在跑一轮（不论是否由 Grox 发起）。 */
+export function isUnsolicitedTurnActivity(type: string | undefined): boolean {
+  return type === "agent_message_chunk"
+    || type === "agent_thought_chunk"
+    || type === "tool_call"
+    || type === "tool_call_update"
+    || type === "plan";
+}
+
 function isMethodUnavailable(error: unknown): boolean {
   return error instanceof AcpRpcError && (error.code === -32601 || error.code === -32602);
 }
@@ -864,6 +873,11 @@ export class AcpBridge implements GrokBridge {
   private usage = new Map<string, Usage>();
   private sessionOptions = new Map<string, PromptOptions>();
   private activePromptSessions = new Set<string>();
+  /**
+   * CLI 自己发起的回合（如后台终端任务完成后的 task-completed 唤醒）没有
+   * Grox 的 session/prompt RPC 可等待；只能靠其 turn_completed 宣布结束。
+   */
+  private unsolicitedTurnSessions = new Set<string>();
   /** 本轮已经收到 ACP 文本事件；用于避免 Host 最终文本补齐产生重复气泡。 */
   private liveAssistantSessions = new Set<string>();
   /** 客户端操作 id 只用于把“发送前 Stop”归属到同一 Host 回合。 */
@@ -2049,6 +2063,7 @@ export class AcpBridge implements GrokBridge {
     // result. Once a rewind has succeeded, those late events are all dead
     // branch data; only our explicit canonical replay may repopulate state.
     if (this.rewoundSessions.has(sessionId) && !this.canonicalReplaySessions.has(sessionId)) return;
+    this.noteUnsolicitedTurnActivity(sessionId, type);
     const workflowCompletionContinuation = isWorkflowCompletionContinuation(update);
     const completionRunId = workflowCompletionRunId(update);
     const cancelledWorkflowCompletion = Boolean(
@@ -2343,6 +2358,7 @@ export class AcpBridge implements GrokBridge {
         return;
       }
       case "turn_completed":
+        if (this.completeUnsolicitedTurn(sessionId, record(update.usage))) return;
         if (record(update.usage)) this.emitUsage(sessionId, record(update.usage)!);
         return;
       default:
@@ -2526,6 +2542,7 @@ export class AcpBridge implements GrokBridge {
         break;
       }
       case "turn_completed":
+        if (this.completeUnsolicitedTurn(sessionId, record(update.usage))) break;
         if (record(update.usage)) this.emitUsage(sessionId, record(update.usage)!);
         break;
       case "auto_compact_started":
@@ -2623,6 +2640,24 @@ export class AcpBridge implements GrokBridge {
       });
       cursor.assistantId = undefined;
     }
+  }
+
+  /** 没有 Grox 前台回合在途时出现的实时输出，属于 CLI 自发回合。 */
+  private noteUnsolicitedTurnActivity(sessionId: string, type: string | undefined) {
+    if (!isUnsolicitedTurnActivity(type)) return;
+    if (this.activePromptSessions.has(sessionId) || this.replaying.has(sessionId)) return;
+    this.unsolicitedTurnSessions.add(sessionId);
+  }
+
+  /**
+   * CLI 自发回合结束：发出 idle，让会话脱离“运行中”并排空本地队列。
+   * Grox 自己的前台回合仍以 RPC 返回为准，这里不抢先宣布结束。
+   */
+  private completeUnsolicitedTurn(sessionId: string, usageValue?: JsonObject): boolean {
+    if (!this.unsolicitedTurnSessions.delete(sessionId)) return false;
+    if (this.activePromptSessions.has(sessionId) || this.replaying.has(sessionId)) return false;
+    this.finishTurn(sessionId, usageValue);
+    return true;
   }
 
   private finishTurn(sessionId: string, usageValue?: JsonObject, status: SessionStatus = "idle") {
@@ -3741,6 +3776,7 @@ export class AcpBridge implements GrokBridge {
     // Register before any await. This is the critical Send → provider-switch
     // race: provider activation must see this request immediately.
     this.activePromptSessions.add(sessionId);
+    this.unsolicitedTurnSessions.delete(sessionId);
     const turnId = uid();
     this.foregroundTurnIds.set(sessionId, turnId);
     let terminalStatus: SessionStatus = "idle";

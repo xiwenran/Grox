@@ -49,6 +49,8 @@ import {
   settleLiveProcessBlocks,
   settleLiveTextBlocks,
   shouldDrainLocalQueue,
+  settlePostPromptContinuation,
+  pruneResolvedTurnInterruptedNotice,
   shouldArmPostPromptSettle,
   shouldPromotePostPrompt,
   statusAfterGateResolve,
@@ -783,14 +785,17 @@ export const useDesktop = create<DesktopState>((set, get) => {
       const current = get().sessions[sessionId];
       if (!current || !promptReturnedSessions.has(sessionId)) return;
       if (current.status !== "running" && !turnHasLiveText(current.blocks)) return;
+      // 权限/提问卡仍在等用户时不能被安静计时器改成 idle。
+      if (current.status === "awaiting_permission" || current.status === "awaiting_input" || current.status === "stopping") return;
+      const settled = settlePostPromptContinuation(current.blocks);
       set({
         sessions: {
           ...get().sessions,
           [sessionId]: {
             ...current,
-            status: "connecting",
+            status: settled.status,
             updatedAt: Date.now(),
-            blocks: settleLiveTextBlocks(current.blocks),
+            blocks: settled.blocks,
           },
         },
       });
@@ -3598,4 +3603,17 @@ export const useDesktop = create<DesktopState>((set, get) => {
       }
     },
   };
+});
+
+// 队列恢复、清空或发完后，自动撤下“检测到未完成的会话回合”横幅。
+useDesktop.subscribe((state, previous) => {
+  if (state.queueDrainParked === previous.queueDrainParked
+    && state.promptQueues === previous.promptQueues
+    && state.runtimeNotices === previous.runtimeNotices) return;
+  const runtimeNotices = pruneResolvedTurnInterruptedNotice(
+    state.runtimeNotices,
+    state.queueDrainParked,
+    state.promptQueues,
+  );
+  if (runtimeNotices !== state.runtimeNotices) useDesktop.setState({ runtimeNotices: [...runtimeNotices] });
 });

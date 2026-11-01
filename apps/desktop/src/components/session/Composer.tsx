@@ -4,7 +4,7 @@
    Slash opens the command menu; Enter transmits after IME composition commits.
    ───────────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDesktop, type QueuedPrompt } from "../../state/store";
 import {
   EFFORTS,
@@ -12,6 +12,7 @@ import {
   type SlashCommand,
 } from "../../bridge/types";
 import { deriveSessionSnapshot } from "../../lib/sessionRuntime";
+import { visibleQueuedPrompts } from "../../lib/promptQueue";
 import { ChipSelect } from "../common/ChipSelect";
 import { PromptOptionsMenu, ProviderSwitcher } from "../common/PromptControls";
 import { Icon } from "../fx/Icon";
@@ -101,7 +102,8 @@ export function Composer() {
   const setPlanPreviewOpen = useDesktop((s) => s.setPlanPreviewOpen);
   const runtimeCommands = useDesktop((s) => s.activeId ? s.slashCommands[s.activeId] ?? NO_RUNTIME_COMMANDS : NO_RUNTIME_COMMANDS);
   const promptQueues = useDesktop((s) => s.promptQueues);
-  const queue = activeId ? promptQueues[activeId] ?? NO_QUEUED_PROMPTS : NO_QUEUED_PROMPTS;
+  const fullQueue = activeId ? promptQueues[activeId] ?? NO_QUEUED_PROMPTS : NO_QUEUED_PROMPTS;
+  const queue = useMemo(() => visibleQueuedPrompts(fullQueue), [fullQueue]);
   const queueParked = useDesktop((s) => Boolean(activeId && s.queueDrainParked[activeId]));
 
   const openExtensionSettings = (section: "mcp" | "skills" | "plugins") => {

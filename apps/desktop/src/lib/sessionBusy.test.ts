@@ -6,7 +6,9 @@ import {
   sessionLooksBusy,
   settleLiveProcessBlocks,
   settleLiveTextBlocks,
+  settlePostPromptContinuation,
   shouldArmPostPromptSettle,
+  shouldDrainLocalQueue,
   shouldPromotePostPrompt,
 } from "./sessionRuntime";
 
@@ -182,5 +184,22 @@ describe("settleLiveTextBlocks", () => {
     ]);
     expect(settled[0]).toMatchObject({ type: "thinking", live: false });
     expect(settled[1]).toMatchObject({ type: "tool", call: { status: "running" } });
+  });
+});
+
+describe("CLI 自发回合的安静收尾", () => {
+  it("前台 RPC 返回后 CLI 唤醒回合安静下来，会话回到可发送并允许排空队列", () => {
+    const settled = settlePostPromptContinuation([liveThought]);
+    expect(settled.status).toBe("idle");
+    expect(settled.blocks[0]).toMatchObject({ type: "thinking", live: false });
+    expect(sessionAcceptsNewPrimaryPrompt(settled)).toBe(true);
+    expect(shouldDrainLocalQueue({
+      status: settled.status,
+      providerSwitching: false,
+      restoring: false,
+      suppressed: false,
+      queueLength: 1,
+      hasLiveProcess: false,
+    })).toBe(true);
   });
 });
