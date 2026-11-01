@@ -121,3 +121,14 @@
 3. **CLI 1.0.70 漂移对 UI**：权限卡文案/Always allow、plugins skills 计数、`[ui] simple_mode` 废弃等仍是行为/配置层差异；**不会**单独解释本次 hooks 崩溃。verifiedIntegration 仍写 1.0.5，勿把 ACP 握手当成完整桌面融合验证。
 4. **Headless 网络**：冒烟时 `-p` 曾卡在 HTTPS `SYN_SENT`——与壳 UI hooks 无关，但发任务时若模型通道不通会表现为长时间无回复。
 
+## 本机桌面两处错误修复（2026-11-01 15:10 Asia/Shanghai）
+
+### 1) 红字「工作区不存在：D:/Github/Grox」
+- **根因**：`apps/desktop/src/demo/data.ts` 的 `DEMO_CWD` 仍是上游 Windows 演示路径；`store` 冷启动把该值当作初始 `workspace`。本机 WebView 又没有可用的 `grok.workspace` 缓存时，会在校验/连接前把无效路径露到 UI。
+- **改动**：`DEMO_CWD` → `/Users/xili/Grox`；ACP 冷启动不再用演示盘符路径；启动时清掉 letter-drive 残留；`AcpBridge.connect` 先 `validate_workspace`，失败回退 `desktop_environment.defaultWorkspace` 并写入 `grok.workspace`。
+- **配置备份**：`~/Library/Application Support/dev.grox.desktop.backup-20261101-150741`
+
+### 2) 账户弹窗「运行时就绪信号属于已替换的 ACP 通道」
+- **根因**：账户设置 `reconfigureRuntime` 强制重连时，旧代次 `finalize_agent_exit` 仍可能调度自动重连；前端 `onExit` 还会抢走 `boot` Promise，与 `force_reconnect` 的 `mark_runtime_ready` 竞态，抛出 `ACP_RUNTIME_GENERATION_STALE`。
+- **改动**：Host 在已有更新代次 spawn 时跳过自动重连；`mark_runtime_ready` 若 stale 但已有就绪通道则跟新通道；前端重配置期间禁止 exit 投影抢 boot，并对 stale 做一次跟通道重试；AccountSetup 在 starting/reconnecting/providerSwitching 时禁用「继续」。
+

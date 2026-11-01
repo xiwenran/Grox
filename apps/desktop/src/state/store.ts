@@ -140,6 +140,25 @@ import { usePreviewCapability } from "./previewCapabilityStore";
 import { useProviderCapability } from "./providerCapabilityStore";
 import { emptyCapabilityState } from "./capabilityTypes";
 import type { DesktopState, InspectorTab, ProjectMeta, QueuedPrompt, SessionComposerState, View } from "./storeTypes";
+
+/** Windows drive demo leftovers (and any letter-drive path) are unusable on this Mac host. */
+function isUnusableWorkspacePath(path: string): boolean {
+  const normalized = path.trim().replace(/\\/g, "/");
+  if (!normalized) return true;
+  if (/^[A-Za-z]:\//.test(normalized)) return true;
+  return false;
+}
+
+function initialWorkspace(): string {
+  try {
+    const cached = localStorage.getItem("grok.workspace")?.trim() || "";
+    if (cached && !isUnusableWorkspacePath(cached)) return cached;
+  } catch {
+    // ignore storage access failures during module init
+  }
+  return bridge.kind === "mock" ? DEMO_CWD : "";
+}
+
 export type { InspectorTab, ProjectMeta, QueuedPrompt, SessionComposerState, View } from "./storeTypes";
 
 interface SessionFlags {
@@ -1511,7 +1530,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
     runtimeOccupancy: { activeTurnSessionIds: [], lifecycleActive: false, pendingLifecycle: 0 },
     auth: { required: false, inProgress: false },
     bridgeKind: bridge.kind,
-    workspace: DEMO_CWD,
+    workspace: initialWorkspace(),
     view: "home",
     projects: loadProjects(),
     activeProjectId: null,
@@ -1613,7 +1632,12 @@ export const useDesktop = create<DesktopState>((set, get) => {
       persistSessionCatalog(visibleSessionIndex);
       const cachedWorkspace = (() => {
         try {
-          return localStorage.getItem("grok.workspace")?.trim() || "";
+          const cached = localStorage.getItem("grok.workspace")?.trim() || "";
+          if (!cached || isUnusableWorkspacePath(cached)) {
+            if (cached) localStorage.removeItem("grok.workspace");
+            return "";
+          }
+          return cached;
         } catch {
           return "";
         }

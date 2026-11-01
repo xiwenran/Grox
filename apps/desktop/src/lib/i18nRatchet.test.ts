@@ -41,7 +41,8 @@ const BASELINE: Record<string, number> = {
   "src/components/session/ToolCallCard.tsx": 18,
   "src/components/session/TurnChangeCard.tsx": 7,
   "src/components/session/blocks.tsx": 10,
-  "src/components/settings/AccountSetup.tsx": 14,
+  // 14 -> 15：账户设置在 ACP 重连中禁用「继续」的 title 提示（2026-11-01）。
+  "src/components/settings/AccountSetup.tsx": 15,
   "src/components/settings/SettingsModal.tsx": 170,
   "src/components/terminal/TerminalPanel.tsx": 3,
   "src/components/update/UpdateNotice.tsx": 21,

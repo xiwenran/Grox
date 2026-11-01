@@ -140,6 +140,20 @@ pub(crate) async fn ensure_agent_runtime_ready(
         auth,
     };
     if let Err(error) = state.mark_runtime_ready(&connection).await {
+        // A overlapping exit/finalize or force-reconnect can replace the child
+        // between initialize and mark_ready. If a newer channel is already ready,
+        // follow it instead of failing AccountSetup with GENERATION_STALE.
+        if error.code == "ACP_RUNTIME_GENERATION_STALE" {
+            if let Some(ready) = state.ready_connection().await {
+                tracing::warn!(
+                    target: "grox::runtime",
+                    stale_generation = generation,
+                    ready_generation = ready.generation,
+                    "runtime ready raced a replaced ACP channel; adopting live generation"
+                );
+                return Ok(ready);
+            }
+        }
         discard_failed_runtime(state, leases, generation, error.clone()).await;
         return Err(error);
     }
@@ -692,6 +706,11 @@ async fn finalize_agent_exit(
     let Some(mut process) = process else {
         return;
     };
+    // spawn_acp_process bumps next_generation before killing the previous child.
+    // The dying stdout task must not schedule a competing automatic reconnect
+    // while a forced replacement is still connecting.
+    let newer_spawn_started =
+        state.next_generation.load(Ordering::Relaxed) != generation;
     let occupancy = state.sessions.snapshot();
     let mut affected_session_ids = state.client_callbacks.bound_session_ids();
     affected_session_ids.extend(occupancy.active_turn_session_ids.iter().cloned());
@@ -755,6 +774,14 @@ async fn finalize_agent_exit(
             interrupted_session_ids: interrupted_session_ids.clone(),
         },
     );
+    if newer_spawn_started {
+        tracing::info!(
+            target: "grox::runtime",
+            generation,
+            "skipping automatic reconnect because a newer ACP generation is already spawning"
+        );
+        return;
+    }
     schedule_automatic_runtime_reconnect(
         app.clone(),
         Arc::clone(state),

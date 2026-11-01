@@ -832,6 +832,15 @@ function combinedDisplayTexts(value: unknown): string[] | undefined {
   return segments.length >= 2 ? segments : undefined;
 }
 
+function isStaleAcpGenerationError(cause: unknown): boolean {
+  const text = errorText(cause);
+  return (
+    text.includes("ACP_RUNTIME_GENERATION_STALE")
+    || text.includes("已替换的 ACP 通道")
+    || text.includes("待恢复的 ACP 通道已退出或被替换")
+  );
+}
+
 export class AcpBridge implements GrokBridge {
   readonly kind = "acp" as const;
 
@@ -897,6 +906,8 @@ export class AcpBridge implements GrokBridge {
   private browserUseEnabled = localStorage.getItem("grox.browserUseEnabled") !== "0";
   private workspace = "";
   private workspaceSelectionGeneration = 0;
+  /** Provider/settings forced reconnect owns boot; exit events must not steal it. */
+  private runtimeReconfigureInFlight: Promise<unknown> | null = null;
   private activeComputerSessions = new Set<string>();
   private activeComputerToolCalls = new Set<string>();
   private workflowChildTraces = new Map<string, { sessionId: string; runId: string; trace: WorkflowAgentTrace }>();
@@ -1440,7 +1451,16 @@ export class AcpBridge implements GrokBridge {
   private async connect(): Promise<void> {
     this.emit({ type: "runtime_state", state: "starting" });
     const environment = await invoke<DesktopEnvironment>("desktop_environment");
-    this.workspace = localStorage.getItem("grok.workspace") ?? environment.defaultWorkspace;
+    const cached = localStorage.getItem("grok.workspace")?.trim() || "";
+    const preferred = cached || environment.defaultWorkspace;
+    try {
+      this.workspace = await invoke<string>("validate_workspace", { cwd: preferred });
+    } catch {
+      this.workspace = await invoke<string>("validate_workspace", {
+        cwd: environment.defaultWorkspace,
+      });
+    }
+    localStorage.setItem("grok.workspace", this.workspace);
 
     if (this.unlisten.length === 0) this.unlisten.push(
       await listen<HostSessionEvent>("host-session-event", ({ payload }) => {
@@ -1658,21 +1678,43 @@ export class AcpBridge implements GrokBridge {
    * 写入失败时只在旧代次仍存活的情况下恢复调度。
    */
   private async reconfigureRuntime<T>(change: () => Promise<T>): Promise<T> {
-    const previousGeneration = this.acpGeneration;
-    await invoke("agent_runtime_pause");
+    // Wait for the current ACP channel before pausing it. Account setup must
+    // not pause/replace a generation that is still booting.
+    await this.ensureReady().catch(() => undefined);
+    const run = (async () => {
+      const previousGeneration = this.acpGeneration;
+      await invoke("agent_runtime_pause");
+      try {
+        // SessionCoordinator 的 lifecycle permit 会等待 session/new|load 和
+        // 全部活动 turn；不再用 WebView 集合复制一次运行时 drain 事实。
+        return await this.withLifecycleGate(async () => {
+          const result = await change();
+          try {
+            await this.restartAgent();
+          } catch (error) {
+            // A force-reconnect can lose the mark-ready race to an overlapping
+            // exit/finalize. One follow-up connect on the live channel recovers.
+            if (isStaleAcpGenerationError(error)) {
+              await this.initializeAgent(false);
+              this.emit({ type: "runtime_state", state: "ready" });
+            } else {
+              throw error;
+            }
+          }
+          return result;
+        });
+      } catch (error) {
+        await invoke("agent_runtime_resume", { generation: previousGeneration }).catch((resumeError) => {
+          this.diagnostics.push(`自动化调度未能恢复：${errorText(resumeError)}`);
+        });
+        throw error;
+      }
+    })();
+    this.runtimeReconfigureInFlight = run;
     try {
-      // SessionCoordinator 的 lifecycle permit 会等待 session/new|load 和
-      // 全部活动 turn；不再用 WebView 集合复制一次运行时 drain 事实。
-      return await this.withLifecycleGate(async () => {
-        const result = await change();
-        await this.restartAgent();
-        return result;
-      });
-    } catch (error) {
-      await invoke("agent_runtime_resume", { generation: previousGeneration }).catch((resumeError) => {
-        this.diagnostics.push(`自动化调度未能恢复：${errorText(resumeError)}`);
-      });
-      throw error;
+      return await run;
+    } finally {
+      if (this.runtimeReconfigureInFlight === run) this.runtimeReconfigureInFlight = null;
     }
   }
 
@@ -1710,6 +1752,14 @@ export class AcpBridge implements GrokBridge {
     this.loadPromises.clear();
     this.replayCursors.clear();
     this.sessionOptions.clear();
+    // Provider/settings force-reconnect already owns boot + connect_lock. Letting
+    // the dying generation install a second reconnect projection races mark_ready
+    // and surfaces "运行时就绪信号属于已替换的 ACP 通道" in AccountSetup.
+    if (this.runtimeReconfigureInFlight) {
+      this.emit({ type: "runtime_state", state: "reconnecting" });
+      if (diagnostic) this.diagnostics.push(message);
+      return;
+    }
     if (!this.reconnectProjection) {
       let resolve!: () => void;
       let reject!: (cause: unknown) => void;

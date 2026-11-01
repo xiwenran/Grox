@@ -20,7 +20,7 @@ const usage = (partial: Partial<Usage>): Usage => ({
   ...partial,
 });
 
-export const DEMO_CWD = "D:/Github/Grox";
+export const DEMO_CWD = "/Users/xili/Grox";
 
 export function seedSessions(): Session[] {
   const now = Date.now();

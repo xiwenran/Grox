@@ -21,6 +21,8 @@ export function AccountSetup() {
   const setOpen = useDesktop((state) => state.setAccountSetupOpen);
   const runtime = useDesktop((state) => state.runtime);
   const runtimeBusy = useDesktop((state) => state.runtimeBusy);
+  const runtimeConnection = useDesktop((state) => state.runtimeConnection);
+  const providerSwitching = useDesktop((state) => state.providerSwitching);
   const auth = useDesktop((state) => state.auth);
   const cancelAuthentication = useDesktop((state) => state.cancelAuthentication);
   const installOfficialRuntime = useDesktop((state) => state.installOfficialRuntime);
@@ -66,7 +68,15 @@ export function AccountSetup() {
     );
   }
 
+  // Do not let Continue race a boot/force-reconnect that still owns the ACP channel.
+  const reconnectBlocking = providerSwitching
+    || runtimeConnection === "starting"
+    || runtimeConnection === "reconnecting"
+    || runtimeBusy;
+  const continueDisabled = busy || auth.inProgress || reconnectBlocking;
+
   const submit = async () => {
+
     const wasComplete = localStorage.getItem("grox.accountSetupComplete") === "1";
     setBusy(true);
     setError(null);
@@ -130,6 +140,8 @@ export function AccountSetup() {
       baseUrl={baseUrl}
       setBaseUrl={setBaseUrl}
       busy={busy}
+      continueDisabled={continueDisabled}
+      reconnectBlocking={reconnectBlocking}
       error={error}
       auth={auth}
       onClose={() => setOpen(false)}
@@ -154,6 +166,8 @@ function AccountSetupDialog({
   baseUrl,
   setBaseUrl,
   busy,
+  continueDisabled,
+  reconnectBlocking,
   error,
   auth,
   onClose,
@@ -174,6 +188,8 @@ function AccountSetupDialog({
   baseUrl: string;
   setBaseUrl(value: string): void;
   busy: boolean;
+  continueDisabled: boolean;
+  reconnectBlocking: boolean;
   error: string | null;
   auth: AuthState;
   onClose(): void;
@@ -248,11 +264,14 @@ function AccountSetupDialog({
               : (language === "zh-CN" ? "稍后设置，先进入应用" : "Set up later")}
           </button>
           <button
-            disabled={busy || auth.inProgress}
+            disabled={continueDisabled}
             onClick={onSubmit}
             className="flex h-9 min-w-[132px] items-center justify-center gap-2 rounded-full bg-acc px-5 text-[12px] font-medium text-base hover:bg-acc-deep disabled:opacity-50"
+            title={reconnectBlocking
+              ? (language === "zh-CN" ? "等待 Agent 重连完成" : "Wait for Agent reconnect")
+              : undefined}
           >
-            {busy && <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-base" />}
+            {(busy || reconnectBlocking) && <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-base" />}
             {t("continue")}
           </button>
         </div>
