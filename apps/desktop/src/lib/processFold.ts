@@ -1,10 +1,10 @@
 /**
  * Process-panel fold policy.
  *
- * 思考、工具调用和计划是有意义的审计轨迹：回合结束后它们必须仍然可见，
- * 否则用户会认为模型根本没有思考、也没有调用工具。只有不含这些内容的
- * 回合（纯问答）才在结束时折叠成一行「已处理」摘要，让最终答案保持主体
- * 地位。手动折叠的选择会被记住，优先级高于默认策略。
+ * 运行中的回合展开过程；回合结束后，思考、工具调用和计划统一收进一张
+ * 「已处理 · N 段思考 · N 个工具」卡片并默认折叠——卡片标题本身就把审计
+ * 轨迹的存在和数量写明（避免用户以为模型没思考），点开即可逐条查看，
+ * 让最终答案保持主体地位。手动展开/折叠的选择会被记住，优先级高于默认策略。
  *
  * A leftover thinking.live after the session is already idle is a label
  * bug, not an open turn. Completed conversations always fold; the last
@@ -53,13 +53,15 @@ export function clearProcessOpenMemory(sessionId?: string): void {
   }
 }
 
-export function initialProcessOpen(complete: boolean, hasInspectableProcess = false): boolean {
-  return !complete || hasInspectableProcess;
+// `hasInspectableProcess` is kept for call-site compatibility; finished turns
+// fold regardless, because the card header already summarizes the trail.
+export function initialProcessOpen(complete: boolean, _hasInspectableProcess = false): boolean {
+  return !complete;
 }
 
 /**
  * Prefer the operator's remembered choice; otherwise the default policy
- * (live 一直展开；结束后只有不含审计轨迹的回合才折叠)。
+ * (live 一直展开；结束后折叠成「已处理」卡片)。
  */
 export function resolveInitialProcessOpen(
   sessionId: string,
@@ -75,7 +77,7 @@ export function resolveInitialProcessOpen(
 /**
  * Decide the next open state when `complete` flips.
  * - live: force open
- * - just finished: 含思考/工具/计划的回合保持展开，纯文字回合折叠
+ * - just finished: fold into the 已处理 card
  * - already complete (no transition): keep current manual state
  */
 export function nextProcessOpenOnCompleteChange(args: {
@@ -85,7 +87,7 @@ export function nextProcessOpenOnCompleteChange(args: {
   hasInspectableProcess?: boolean;
 }): boolean {
   if (!args.complete) return true;
-  if (!args.wasComplete && args.complete) return Boolean(args.hasInspectableProcess);
+  if (!args.wasComplete && args.complete) return false;
   return args.currentOpen;
 }
 

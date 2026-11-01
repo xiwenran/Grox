@@ -490,8 +490,8 @@ function TurnGroup({ turn, sessionId, status, active, workflow, onProcessInspect
     active,
     sessionTerminal: isSessionTerminal(status),
   });
-  // 思考 / 工具 / 计划是审计轨迹：回合结束后仍然默认展开，否则用户会以为
-  // 模型没思考、没调用工具。纯文字回合才折叠成一行摘要。手动选择优先。
+  // 运行中展开；回合结束后折叠成一张「已处理 · N 段思考 · N 个工具」卡片，
+  // 标题行本身就说明了思考/工具次数，点开即可审计。手动选择优先。
   // Persist across Virtuoso remounts so expand → scroll does not re-collapse
   // and thrash scroll position.
   const hasInspectableProcess = turnHasInspectableProcess(turn.blocks);
@@ -535,17 +535,17 @@ function TurnGroup({ turn, sessionId, status, active, workflow, onProcessInspect
       <section className="timeline-turn">
         {user && <UserMsg block={user} />}
         {deepResearch && <DeepResearchToolCard run={workflow} query={query} />}
-        {!deepResearch && <div className="process-live mb-3">
-          <div className="mb-2 flex min-h-7 items-center gap-2">
-            <BlackHole size={22} spin />
+        {!deepResearch && <div className="process-card process-card--live is-open mb-3" data-testid="process-card">
+          <div className="process-card__head">
+            <BlackHole size={20} spin />
             <span className="text-[14px] font-medium text-fg2">{status === "awaiting_permission" ? (language === "zh-CN" ? "等待批准" : "Awaiting approval") : status === "awaiting_input" ? (language === "zh-CN" ? "等待你的回答" : "Awaiting input") : (language === "zh-CN" ? "Grok 正在处理" : "Grok is working")}</span>
             <span className="h-1 w-1 animate-pulse-dot rounded-full bg-acc" />
             <span className="font-mono text-[12px] tracking-[0.08em] text-faint">{language === "zh-CN" ? `${liveBlocks.length} 条事件` : `${liveBlocks.length} events`}</span>
           </div>
-          {processBlocks.length > 0 ? <div className="process-sequence process-rail ml-[7px] pl-5">
+          {processBlocks.length > 0 ? <div className="process-card__body process-sequence process-rail">
             <RenderSequence blocks={processBlocks} sessionId={sessionId} processing />
           </div> : !streamingAnswer ? (
-            <div className="process-sequence process-rail ml-[7px] pl-5">
+            <div className="process-card__body process-sequence process-rail">
               <div className="mb-3 flex items-center gap-2 text-[13px] text-dim">
                 <span className="h-1 w-1 animate-pulse-dot rounded-full bg-acc-dim" />
                 {language === "zh-CN" ? "等待模型返回第一个事件…" : "Waiting for the first model event…"}
@@ -592,20 +592,21 @@ function TurnGroup({ turn, sessionId, status, active, workflow, onProcessInspect
        * invocation, nor evidence that a provider hid one. Keep the transcript
        * quiet in that case instead of manufacturing a "process" row.
        */}
-      {!deepResearch && process.length > 0 && <div className="process-complete mb-3">
+      {/* One card: header = 已处理 · summary (click to fold), body = thinking + tool rows. */}
+      {!deepResearch && process.length > 0 && <div className={`process-card mb-3${processOpen ? " is-open" : ""}`} data-testid="process-card">
         <button
           type="button"
-          className="process-summary"
+          className="process-card__head process-summary"
           onClick={() => commitProcessOpen(!processOpen, { inspect: true })}
           aria-expanded={processOpen}
         >
-          <Icon name={processOpen ? "chevronDown" : "chevronRight"} size={9} className="shrink-0 text-dim" />
+          <Icon name="check" size={11} className="shrink-0 text-green" />
           <span className="shrink-0 text-[13px] font-medium text-fg2">{language === "zh-CN" ? "已处理" : "Processed"}</span>
-          <span className="min-w-0 flex-1 truncate text-[13px] text-dim" title={processSummary}>{processSummary}{elapsed ? ` · ${(elapsed / 1000).toFixed(1)}s` : ""}</span>
-          <Icon name="check" size={9} className="text-green" />
+          <span className="min-w-0 flex-1 truncate text-[13px] text-dim" title={processSummary}>{processSummary ? `· ${processSummary}` : ""}{elapsed ? ` · ${(elapsed / 1000).toFixed(1)}s` : ""}</span>
+          <Icon name="chevronDown" size={11} className="process-card__chevron shrink-0 text-dim" />
         </button>
         {processOpen && (
-          <div className="process-sequence process-rail process-sequence--bounded ml-[7px] mt-1.5 border-l border-line2 pb-1 pl-4 pt-1.5">
+          <div className="process-card__body process-sequence process-rail process-sequence--bounded">
             <RenderSequence blocks={process} sessionId={sessionId} processing={false} />
           </div>
         )}

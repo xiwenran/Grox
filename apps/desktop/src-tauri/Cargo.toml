@@ -10,6 +10,14 @@ rust-version = "1.77.2"
 # project its own workspace root.
 [workspace]
 
+# The executable is named "Grox" so macOS shows "Grox" in the Dock / menu bar
+# even under `tauri dev` (which runs the raw cargo binary). The package name
+# stays `grox-desktop` (Cargo.lock / release scripts); the bundle identifier
+# dev.grox.desktop is unchanged, so app data is preserved.
+[[bin]]
+name = "Grox"
+path = "src/main.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

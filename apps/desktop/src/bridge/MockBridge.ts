@@ -151,6 +151,7 @@ export class MockBridge implements GrokBridge {
       subscriptionTier: "SuperGrok",
       creditUsagePercent: 24,
       periodType: "weekly",
+      periodEnd: new Date(Date.now() + 3 * 86_400_000).toISOString(),
       onDemandEnabled: false,
     };
   }

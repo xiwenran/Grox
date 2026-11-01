@@ -59,8 +59,8 @@ describe("initialProcessOpen", () => {
     expect(initialProcessOpen(false)).toBe(true);
   });
 
-  it("keeps a finished turn open when it has thinking / tools / plan", () => {
-    expect(initialProcessOpen(true, true)).toBe(true);
+  it("folds a finished turn with thinking / tools / plan into the 已处理 card", () => {
+    expect(initialProcessOpen(true, true)).toBe(false);
   });
 
   it("folds a finished turn that only produced text", () => {
@@ -89,14 +89,14 @@ describe("nextProcessOpenOnCompleteChange", () => {
     })).toBe(true);
   });
 
-  it("keeps thinking and tool calls visible after the turn finishes", () => {
-    // 回归防护：PR #22 曾无条件折叠，用户因此认为模型没思考、没调用工具。
+  it("folds thinking and tool calls into the summary card once the turn finishes", () => {
+    // 卡片标题写明「N 段思考 · N 个工具」，折叠后用户仍能看到模型思考/调用过工具。
     expect(nextProcessOpenOnCompleteChange({
       wasComplete: false,
       complete: true,
       currentOpen: true,
       hasInspectableProcess: true,
-    })).toBe(true);
+    })).toBe(false);
   });
 
   it("collapses a finished turn that only produced text", () => {
@@ -131,7 +131,7 @@ describe("process open memory (Virtuoso remount safety)", () => {
 
   it("defaults by policy when nothing remembered", () => {
     expect(resolveInitialProcessOpen("s1", "t-missing", true)).toBe(false);
-    expect(resolveInitialProcessOpen("s1", "t-missing", true, true)).toBe(true);
+    expect(resolveInitialProcessOpen("s1", "t-missing", true, true)).toBe(false);
     expect(resolveInitialProcessOpen("s1", "t-missing", false)).toBe(true);
   });
 

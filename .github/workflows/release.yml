@@ -129,7 +129,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $binary = "apps/desktop/src-tauri/target/release/grox-desktop.exe"
+          $binary = "apps/desktop/src-tauri/target/release/Grox.exe"
           if (-not (Test-Path -LiteralPath $binary)) {
             throw "Portable binary not found: $binary"
           }

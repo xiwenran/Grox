@@ -1609,6 +1609,12 @@ pre.font-mono,
   box-shadow: 0 0 0 1px var(--face-ring, transparent);
   vertical-align: middle;
 }
+.grok-face__gaze {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
 .grok-face__eyes {
   display: flex;
   align-items: center;
@@ -1943,4 +1949,46 @@ textarea:focus-visible,
   background: var(--color-fg);
   opacity: 0.72;
   transition: width 240ms var(--ease-mission);
+}
+
+/* Process card: one collapsible card — header "已处理 · summary" + the
+   thinking / tool rows inside. Soft fill + shadow, no solid lines. */
+.process-card {
+  border-radius: var(--radius-card);
+  background: var(--f1, var(--color-raise));
+  box-shadow: var(--sh1);
+}
+.process-card__head,
+.process-card .process-summary {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+.process-card button.process-card__head:hover {
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  box-shadow: none;
+}
+.process-card.is-open > button.process-card__head {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.process-card__chevron {
+  transform: rotate(-90deg);
+  transition: transform 160ms var(--ease-mission);
+}
+.process-card.is-open .process-card__chevron {
+  transform: rotate(0deg);
+}
+.process-card__body {
+  padding: 2px 14px 12px 36px;
+  border-left: 0;
 }

@@ -6,7 +6,7 @@ use std::{
 use serde_json::{json, Value};
 
 fn spawn_fixture(scenario: &str) -> std::process::Child {
-    Command::new(env!("CARGO_BIN_EXE_grox-desktop"))
+    Command::new(env!("CARGO_BIN_EXE_Grox"))
         .args(["--mock-acp-fixture", scenario])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
