@@ -81,3 +81,20 @@
 - 目标 CLI：跟随本机 `grok --version`；官方有更新先 `grok update`，再跑上表冒烟  
 - 每升一大截（跨 5+ 小版本）核对 https://x.ai/changelog/build 中权限/会话/MCP/Memory/Worktree  
 - 通过后更新 `.grox/official-cli.json` 的 verifiedIntegration（不要只改数字不测）
+
+
+## 冒烟结果（2026-11-01 14:24–14:30 Asia/Shanghai）
+
+| 检查 | 结果 |
+|------|------|
+| CLI 升级到 1.0.70 | ✅ `grok 1.0.70 (f50904eaee6c)`；官方 `grok update` 曾卡住，改用 GCS 直链安装 |
+| ACP `initialize`（`grok agent stdio`） | ✅ 返回 `agentVersion: 1.0.70`，含 loadSession / MCP / hooks 等能力 |
+| Headless 只读 `-p` 回合 | ❌ 进程卡在对外 HTTPS `SYN_SENT`（疑似模型/CDN 网络不通），无 stdout |
+| Grox 桌面重启 | ✅ Host `0.3.5` pid 起来；**尚未**再打出 `Agent runtime ready`（需在 UI 里打开项目/发任务才会拉 ACP） |
+| 本机 Accessibility 驱动窗口 | ❌ osascript 无辅助访问，无法代点 UI |
+| 上游 verifiedIntegration 文件 | 仍写 1.0.5；**未**因本次冒烟改成 verified（ACP 握手通过 ≠ 完整桌面融合验证） |
+
+### 后续建议
+1. 网络恢复后重跑：`grok --cwd <项目> --permission-mode dontAsk -p '只读列目录'`  
+2. 在已打开的 Grox 窗口选项目发一句只读任务，确认日志再出现 `Agent runtime ready` 且用的是 1.0.70  
+3. 通过后再更新 `.grox/official-cli.json` 的 verifiedIntegration
