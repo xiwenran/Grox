@@ -98,3 +98,26 @@
 1. 网络恢复后重跑：`grok --cwd <项目> --permission-mode dontAsk -p '只读列目录'`  
 2. 在已打开的 Grox 窗口选项目发一句只读任务，确认日志再出现 `Agent runtime ready` 且用的是 1.0.70  
 3. 通过后再更新 `.grox/official-cli.json` 的 verifiedIntegration
+
+
+## UI 崩溃修复（2026-11-01 14:36 Asia/Shanghai）
+
+| 项 | 内容 |
+|----|------|
+| 症状 | AppErrorBoundary：「Rendered fewer hooks than expected…」/「界面遇到异常，但会话没有被删除」 |
+| 根因 | `apps/desktop/src/components/settings/AccountSetup.tsx`：在 `if (!open) return null`（以及 `runtime?.selectionRequired` 分支）**之后**调用 `useModalA11y`，开关对话框时 hooks 数量不稳定 |
+| 修复 | 表单 UI 抽到仅在打开且非安装向导时挂载的 `AccountSetupDialog`；`useModalA11y` 只存在于该子组件 |
+| 验证 | `vitest` SettingsCredentials + useModalA11y 通过；`pnpm typecheck` 通过；`pnpm desktop:dev` 仍在跑，Vite 已 HMR `AccountSetup.tsx` |
+| 用户动作 | ErrorBoundary 已捕获时需点「重新载入界面」（或整窗重载）；热更新不会自动清掉已展示的错误页 |
+
+本崩溃与 CLI 1.0.70 无直接协议耦合：是壳侧 React Rules of Hooks 违规；关账户设置/稍后设置时即可触发。
+
+## 启动与 UI 健康快审（同日）
+
+仍存在的白屏 / 假启动风险：
+
+1. **直接跑 `target/debug/grox-desktop` 不带 Vite**：开发态前端依赖 Vite `:1420`；只起 debug 二进制会白屏或旧资源。正确路径：`pnpm desktop:dev`（Vite + tauri）。
+2. **ErrorBoundary 兜底**：会话数据不删，但界面停在错误页直到用户重载——本次 hooks 崩溃即此路径。
+3. **CLI 1.0.70 漂移对 UI**：权限卡文案/Always allow、plugins skills 计数、`[ui] simple_mode` 废弃等仍是行为/配置层差异；**不会**单独解释本次 hooks 崩溃。verifiedIntegration 仍写 1.0.5，勿把 ACP 握手当成完整桌面融合验证。
+4. **Headless 网络**：冒烟时 `-p` 曾卡在 HTTPS `SYN_SENT`——与壳 UI hooks 无关，但发任务时若模型通道不通会表现为长时间无回复。
+

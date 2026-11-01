@@ -64,4 +64,33 @@ describe("provider credentials", () => {
     expect(container.querySelector<HTMLInputElement>('input[placeholder="xai-…"]')?.type).toBe("password");
     await act(async () => root.unmount());
   });
+
+  it("开关账户设置对话框时不触发 hooks 数量变化崩溃", async () => {
+    useDesktop.setState({
+      accountSetupOpen: false,
+      runtime: null,
+      auth: { required: true, inProgress: false },
+    });
+    const { container, root } = await render(<AccountSetup />);
+    expect(container.innerHTML).toBe("");
+
+    await act(async () => {
+      useDesktop.setState({ accountSetupOpen: true });
+      await Promise.resolve();
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeTruthy();
+
+    await act(async () => {
+      useDesktop.setState({ accountSetupOpen: false });
+      await Promise.resolve();
+    });
+    expect(container.innerHTML).toBe("");
+
+    await act(async () => {
+      useDesktop.setState({ accountSetupOpen: true });
+      await Promise.resolve();
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeTruthy();
+    await act(async () => root.unmount());
+  });
 });

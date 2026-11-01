@@ -1,7 +1,7 @@
-import { useState } from "react";
-import type { ProviderKind } from "../../bridge/types";
+import { useState, type Dispatch, type SetStateAction } from "react";
+import type { AuthState, ProviderKind } from "../../bridge/types";
 import { useDesktop } from "../../state/store";
-import { useI18n } from "../../lib/i18n";
+import { useI18n, type TranslationKey } from "../../lib/i18n";
 import { formatGroxError, toGroxError } from "../../lib/errorModel";
 import { Icon } from "../fx/Icon";
 import { useModalA11y } from "../../hooks/useModalA11y";
@@ -32,6 +32,8 @@ export function AccountSetup() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Hooks must stay above every return. The dialog body that calls useModalA11y
+  // only mounts while open, so its hook count stays stable across open/close.
   if (!open) return null;
 
   if (runtime?.selectionRequired) {
@@ -113,7 +115,73 @@ export function AccountSetup() {
     }
   };
 
-  const dialogRef = useModalA11y(() => setOpen(false));
+  return (
+    <AccountSetupDialog
+      t={t}
+      language={language}
+      kind={kind}
+      setKind={setKind}
+      apiKey={apiKey}
+      setApiKey={setApiKey}
+      apiKeyHidden={apiKeyHidden}
+      setApiKeyHidden={setApiKeyHidden}
+      providerName={providerName}
+      setProviderName={setProviderName}
+      baseUrl={baseUrl}
+      setBaseUrl={setBaseUrl}
+      busy={busy}
+      error={error}
+      auth={auth}
+      onClose={() => setOpen(false)}
+      onDefer={deferSetup}
+      onCancelSignIn={() => void cancelSignIn()}
+      onSubmit={() => void submit()}
+    />
+  );
+}
+
+function AccountSetupDialog({
+  t,
+  language,
+  kind,
+  setKind,
+  apiKey,
+  setApiKey,
+  apiKeyHidden,
+  setApiKeyHidden,
+  providerName,
+  setProviderName,
+  baseUrl,
+  setBaseUrl,
+  busy,
+  error,
+  auth,
+  onClose,
+  onDefer,
+  onCancelSignIn,
+  onSubmit,
+}: {
+  t: (key: TranslationKey) => string;
+  language: string;
+  kind: ProviderKind;
+  setKind(value: ProviderKind): void;
+  apiKey: string;
+  setApiKey(value: string): void;
+  apiKeyHidden: boolean;
+  setApiKeyHidden: Dispatch<SetStateAction<boolean>>;
+  providerName: string;
+  setProviderName(value: string): void;
+  baseUrl: string;
+  setBaseUrl(value: string): void;
+  busy: boolean;
+  error: string | null;
+  auth: AuthState;
+  onClose(): void;
+  onDefer(): void;
+  onCancelSignIn(): void;
+  onSubmit(): void;
+}) {
+  const dialogRef = useModalA11y(onClose);
   return (
     <div className="settings-shell fixed inset-0 z-[70] flex items-center justify-center bg-void/80 p-5 backdrop-blur-[4px]">
       <div
@@ -131,7 +199,7 @@ export function AccountSetup() {
             <h1 className="text-[18px] font-medium text-fg">{t("firstRunTitle")}</h1>
             <p className="mt-1 text-[12px] leading-relaxed text-dim">{t("firstRunBody")}</p>
           </div>
-          <button onClick={() => setOpen(false)} className="text-dim hover:text-fg" title="Close">
+          <button onClick={onClose} className="text-dim hover:text-fg" title="Close">
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -174,14 +242,14 @@ export function AccountSetup() {
         {error && <p className="mt-3 rounded-[4px] border border-red/30 bg-red/5 px-3 py-2 text-[10px] text-red">{error}</p>}
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
-          <button onClick={() => auth.inProgress ? void cancelSignIn() : deferSetup()} disabled={busy && !auth.inProgress} className="h-9 rounded-full px-3 text-[12px] text-dim hover:bg-high hover:text-fg2 disabled:opacity-50">
+          <button onClick={() => auth.inProgress ? onCancelSignIn() : onDefer()} disabled={busy && !auth.inProgress} className="h-9 rounded-full px-3 text-[12px] text-dim hover:bg-high hover:text-fg2 disabled:opacity-50">
             {auth.inProgress
               ? (language === "zh-CN" ? "取消登录" : "Cancel sign-in")
               : (language === "zh-CN" ? "稍后设置，先进入应用" : "Set up later")}
           </button>
           <button
             disabled={busy || auth.inProgress}
-            onClick={() => void submit()}
+            onClick={onSubmit}
             className="flex h-9 min-w-[132px] items-center justify-center gap-2 rounded-full bg-acc px-5 text-[12px] font-medium text-base hover:bg-acc-deep disabled:opacity-50"
           >
             {busy && <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-base" />}
