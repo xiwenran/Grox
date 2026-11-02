@@ -6,17 +6,15 @@
 import { useEffect, useState } from "react";
 import { useDesktop } from "../../state/store";
 import { gitSummary } from "../../lib/hostActions";
-import { fmtCost, fmtTokens, capWord } from "../../lib/format";
+import { fmtCost, fmtTokens } from "../../lib/format";
 import { BlackHole } from "../fx/BlackHole";
 import { useI18n } from "../../lib/i18n";
 
 export function StatusBar() {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const activeId = useDesktop((s) => s.activeId);
   const sessionStatus = useDesktop((s) => (s.activeId ? s.sessions[s.activeId]?.status : undefined));
   const usage = useDesktop((s) => (s.activeId ? s.sessions[s.activeId]?.usage : undefined));
-  const model = useDesktop((s) => s.model);
-  const effort = useDesktop((s) => s.effort);
   const runtimeConnection = useDesktop((s) => s.runtimeConnection);
   const workspace = useDesktop((s) => s.workspace);
   const [branch, setBranch] = useState<string | null>(null);
@@ -83,37 +81,87 @@ export function StatusBar() {
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        {usage && usage.contextUsed > 0 && (
-          <>
-            <span className="flex items-center gap-1.5">
-              <span>{language === "zh-CN" ? "上下文" : "Context"}</span>
-              <span className="relative h-[3px] w-14 overflow-hidden rounded-full bg-high">
-                <span
-                  className={`absolute inset-y-0 left-0 ${ctxPct > 80 ? "bg-gold" : "bg-acc"}`}
-                  style={{ width: `${ctxPct}%` }}
-                />
-              </span>
-              <span className={`tnum ${ctxPct > 80 ? "text-gold" : "text-fg2"}`}>{ctxPct}%</span>
-            </span>
-            <Sep />
-            <span className="tnum">
-              <span className="text-faint">↑</span> {fmtTokens(usage.inputTokens)}
-              <span className="text-faint"> ↓</span> {fmtTokens(usage.outputTokens)}
-            </span>
-            <Sep />
-            <span className="tnum text-fg2">{fmtCost(usage.costUSD)}</span>
-            <Sep />
-            <span className="tnum">{usage.turns} {language === "zh-CN" ? "轮" : "turns"}</span>
-            <Sep />
-          </>
-        )}
-        <span className="text-fg2">{model.replace(/-/g, "‑")}</span>
-        <Sep />
-        <span>{language === "zh-CN" ? "强度" : "Effort"} {capWord(effort)}</span>
-      </div>
+      {usage && (usage.contextUsed > 0 || usage.inputTokens + usage.outputTokens > 0) && (
+        <div className="flex items-center gap-1">
+          {usage.contextMax > 0 && (
+            <HoverDetail
+              trigger={
+                <>
+                  <ContextRing pct={ctxPct} />
+                  <span className={`tnum ${ctxPct > 80 ? "text-gold" : "text-fg2"}`}>{ctxPct}%</span>
+                </>
+              }
+              label={t("sbContext")}
+            >
+              <p className="text-[13px] leading-[1.55] text-fg2">
+                {t("sbContextDetail")
+                  .replace("{used}", fmtTokens(usage.contextUsed))
+                  .replace("{max}", fmtTokens(usage.contextMax))
+                  .replace("{pct}", String(ctxPct))}
+              </p>
+            </HoverDetail>
+          )}
+          <HoverDetail
+            trigger={
+              <>
+                <span>{t("sbSession")}</span>
+                <span className="tnum text-fg2">{fmtTokens(usage.inputTokens + usage.outputTokens)}</span>
+                {usage.costUSD > 0 && <span className="tnum text-fg2">· {fmtCost(usage.costUSD)}</span>}
+              </>
+            }
+            label={t("sbSessionTitle")}
+          >
+            <p className="mb-2 text-[12px] font-semibold text-faint">{t("sbSessionTitle")}</p>
+            <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1.5 text-[13px]">
+              <dt className="text-dim">{t("sbInput")}</dt><dd className="tnum text-right text-fg2">{fmtTokens(usage.inputTokens)}</dd>
+              {usage.cacheReadTokens > 0 && <><dt className="pl-3 text-dim">{t("sbCacheRead")}</dt><dd className="tnum text-right text-fg2">{fmtTokens(usage.cacheReadTokens)}</dd></>}
+              <dt className="text-dim">{t("sbOutput")}</dt><dd className="tnum text-right text-fg2">{fmtTokens(usage.outputTokens)}</dd>
+              <dt className="text-dim">{t("sbTurns")}</dt><dd className="tnum text-right text-fg2">{usage.turns}</dd>
+              {usage.costUSD > 0 && <><dt className="text-dim">{t("sbCost")}</dt><dd className="tnum text-right text-fg2">{fmtCost(usage.costUSD)}</dd></>}
+            </dl>
+            <p className="mt-2 text-[12px] leading-[1.55] text-faint">{t("sbInputHint")}</p>
+          </HoverDetail>
+        </div>
+      )}
     </footer>
   );
 }
 
 const Sep = () => <span className="text-faint">·</span>;
+
+/** 12px ring: a compact context gauge instead of a long bar. */
+function ContextRing({ pct }: { pct: number }) {
+  const r = 4.5;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="shrink-0 -rotate-90">
+      <circle cx="6" cy="6" r={r} fill="none" strokeWidth="2" className="stroke-high" />
+      <circle
+        cx="6" cy="6" r={r} fill="none" strokeWidth="2" strokeLinecap="round"
+        className={pct > 80 ? "stroke-gold" : "stroke-acc"}
+        strokeDasharray={`${(c * Math.max(0, Math.min(100, pct))) / 100} ${c}`}
+      />
+    </svg>
+  );
+}
+
+/** Ghost button with a small rounded popover shown on hover or keyboard focus. */
+function HoverDetail({ trigger, label, children }: { trigger: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <span className="group/hd relative">
+      <button
+        type="button"
+        aria-label={label}
+        className="flex h-6 items-center gap-1.5 rounded-full px-2 text-[13px] text-dim hover:bg-raise hover:text-fg2 focus-visible:bg-raise"
+      >
+        {trigger}
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none invisible absolute bottom-full right-0 z-40 mb-2 w-[280px] rounded-[14px] bg-raise p-3 opacity-0 shadow-[0_16px_44px_rgba(60,70,150,0.18),0_2px_8px_rgba(60,70,150,0.08)] transition-opacity duration-150 group-hover/hd:visible group-hover/hd:opacity-100 group-hover/hd:delay-[380ms] group-focus-within/hd:visible group-focus-within/hd:opacity-100"
+      >
+        {children}
+      </span>
+    </span>
+  );
+}
