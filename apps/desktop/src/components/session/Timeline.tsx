@@ -19,6 +19,7 @@ import {
 import { isSessionHistoryPending } from "../../lib/sessionShell";
 import { deadSessionCopy, isDeadSessionView } from "../../lib/sessionUnavailable";
 import { useDesktop } from "../../state/store";
+import { estimateTurnHeight, TURN_VIRTUALIZE_MIN, useTurnVirtualizer } from "../../lib/turnVirtualizer";
 import { MarkdownImageScopeContext } from "../../lib/markdownImages";
 import { Icon } from "../fx/Icon";
 import { BlackHole } from "../fx/BlackHole";
@@ -661,6 +662,7 @@ export function Timeline({ session }: { session: Session }) {
   const turns = useMemo(() => groupTurns(session.blocks), [session.blocks]);
   const imageScope = useMemo(() => ({ sessionId: session.id, cwd: session.cwd }), [session.id, session.cwd]);
   const [visibleCount, setVisibleCount] = useState(TIMELINE_TURN_WINDOW_INITIAL);
+  const virtualizer = useTurnVirtualizer(scrollerRef, session.id);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const sessionRunning = deriveSessionSnapshot({ status: session.status, blocks: session.blocks }).busy;
   const wasRunningRef = useRef(sessionRunning);
@@ -879,8 +881,25 @@ export function Timeline({ session }: { session: Session }) {
         {visibleTurns.map((turn, visibleIndex) => {
           const absoluteIndex = hiddenCount + visibleIndex;
           const user = turn.blocks.find((block): block is Extract<SessionBlock, { type: "user" }> => block.type === "user");
+          // Far-off turns keep their wrapper (rail jumps / scrollIntoView still
+          // work) but render as an empty block of their measured height.
+          const rendered = turns.length < TURN_VIRTUALIZE_MIN
+            || absoluteIndex >= turns.length - 2
+            || virtualizer.near.has(turn.id);
+          if (!rendered) {
+            return (
+              <div
+                key={turn.id}
+                ref={virtualizer.register(turn.id)}
+                data-turn-id={turn.id}
+                data-virtual="true"
+                className="timeline-content mx-auto"
+                style={{ height: virtualizer.height(turn.id) ?? estimateTurnHeight(turn.blocks.length) }}
+              />
+            );
+          }
           return (
-            <div key={turn.id} data-turn-id={turn.id} className="timeline-content mx-auto">
+            <div key={turn.id} ref={virtualizer.register(turn.id)} data-turn-id={turn.id} className="timeline-content mx-auto">
               <MemoTurnGroup
                 turn={turn}
                 sessionId={session.id}
