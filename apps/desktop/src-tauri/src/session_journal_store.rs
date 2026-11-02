@@ -69,11 +69,17 @@ impl SessionJournalStore {
         let incoming = current_journal_metadata(content, id)
             .map_err(SessionJournalWriteError::InvalidIncoming)?;
         if path.is_file() {
-            let current = read_bounded_text(path, max_bytes).map_err(|error| {
-                SessionJournalWriteError::Storage(format!("无法读取现有应用会话 journal：{error}"))
-            })?;
-            let current_saved_at = validate_current_journal(&current, id)
-                .map_err(SessionJournalWriteError::Storage)?;
+            // The file we wrote last time is unchanged (same mtime + size):
+            // reuse its savedAt instead of re-reading and parsing megabytes.
+            let current_saved_at = match known_saved_at(path) {
+                Some(saved_at) => saved_at,
+                None => {
+                    let current = read_bounded_text(path, max_bytes).map_err(|error| {
+                        SessionJournalWriteError::Storage(format!("无法读取现有应用会话 journal：{error}"))
+                    })?;
+                    validate_current_journal(&current, id).map_err(SessionJournalWriteError::Storage)?
+                }
+            };
             if current_saved_at >= incoming.saved_at {
                 return Err(SessionJournalWriteError::Conflict(format!(
                     "应用会话 journal 写入冲突：磁盘版本 {current_saved_at} 不早于提交版本 {}",
@@ -84,6 +90,7 @@ impl SessionJournalStore {
 
         atomic_write_bounded_private(path, content, max_bytes)
             .map_err(SessionJournalWriteError::Storage)?;
+        remember_saved_at(path, incoming.saved_at);
         if legacy.is_file() {
             if let Err(error) = fs::remove_file(legacy) {
                 // 新版 journal 已经持久化；保留旧文件并通过状态诊断暴露即可。
@@ -331,5 +338,32 @@ mod tests {
             "sequences": [2],
         });
         assert!(current_journal_metadata(&value.to_string(), "session-1").is_err());
+    }
+}
+
+type WrittenJournal = (u64, std::time::SystemTime, u64);
+
+fn written_journals() -> &'static std::sync::Mutex<std::collections::HashMap<std::path::PathBuf, WrittenJournal>> {
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<std::path::PathBuf, WrittenJournal>>> =
+        std::sync::OnceLock::new();
+    CACHE.get_or_init(Default::default)
+}
+
+fn file_stamp(path: &Path) -> Option<(std::time::SystemTime, u64)> {
+    let metadata = fs::metadata(path).ok()?;
+    Some((metadata.modified().ok()?, metadata.len()))
+}
+
+fn known_saved_at(path: &Path) -> Option<u64> {
+    let (modified, len) = file_stamp(path)?;
+    let cache = written_journals().lock().ok()?;
+    let (saved_at, cached_modified, cached_len) = cache.get(path)?;
+    (*cached_modified == modified && *cached_len == len).then_some(*saved_at)
+}
+
+fn remember_saved_at(path: &Path, saved_at: u64) {
+    let Some((modified, len)) = file_stamp(path) else { return };
+    if let Ok(mut cache) = written_journals().lock() {
+        cache.insert(path.to_path_buf(), (saved_at, modified, len));
     }
 }

@@ -6,8 +6,15 @@ import { displayReplayUserPrompt } from "./replayUserPrompt";
 const MAX_JOURNAL_BLOCKS = 600;
 const MAX_BODY_TEXT = 64_000;
 const MAX_TOOL_TEXT = 16_000;
-/** Live streaming debounce — short enough that a hard crash loses little UI journal. */
-const LIVE_SAVE_DEBOUNCE_MS = 250;
+/**
+ * Live checkpoint interval while a turn streams. This journal is only a UI
+ * cache — the official CLI already appends every update to its own
+ * `updates.jsonl` and Grox replays that on resume — so, like Codex's rollout
+ * recorder and the CLI, we don't rewrite the whole transcript per token: one
+ * throttled checkpoint every few seconds, a full flush at turn end, and on
+ * window hide / quit.
+ */
+export const LIVE_CHECKPOINT_MS = 5_000;
 /** Completed turns flush immediately (0). */
 const TERMINAL_SAVE_DEBOUNCE_MS = 0;
 
@@ -260,9 +267,18 @@ export function rememberSessionJournalSnapshot(snapshot: SessionJournalSnapshot)
   journalWriteConflicts.delete(snapshot.appSessionId);
 }
 
-function writePayload(id: string, content: string): Promise<void> {
+const pendingSessions = new Map<string, Session>();
+
+function writeSnapshot(session: Session): Promise<void> {
+  const snapshot = nextSessionJournalSnapshot(session);
+  return writePayload(session.id, JSON.stringify(snapshot), snapshot.hostEvents);
+}
+
+function writePayload(id: string, content: string, hostEvents?: SessionJournalSnapshot["hostEvents"]): Promise<void> {
   if (journalWriteConflicts.has(id)) return Promise.resolve();
   pendingPayloads.set(id, content);
+  if (hostEvents) pendingHostMeta.set(id, hostEvents);
+  else pendingHostMeta.delete(id);
   const prior = inFlight.get(id) ?? Promise.resolve();
   const next = prior
     .catch(() => {})
@@ -276,8 +292,10 @@ function writePayload(id: string, content: string): Promise<void> {
       const toWrite = pendingPayloads.get(id);
       if (toWrite === undefined) return;
       pendingPayloads.delete(id);
+      const acknowledged = pendingHostMeta.get(id);
+      pendingHostMeta.delete(id);
       await invoke("write_session_journal", { id, content: toWrite });
-      clearAcknowledgedHostEvents(id, toWrite);
+      clearAcknowledgedHostEvents(id, acknowledged);
     })
     .catch((cause) => {
       if (String(cause).includes("journal 写入冲突")) journalWriteConflicts.add(id);
@@ -290,13 +308,11 @@ function writePayload(id: string, content: string): Promise<void> {
   return next;
 }
 
-function clearAcknowledgedHostEvents(id: string, content: string): void {
-  let acknowledged: SessionJournalSnapshot["hostEvents"];
-  try {
-    acknowledged = (JSON.parse(content) as Partial<SessionJournalSnapshot>).hostEvents;
-  } catch {
-    return;
-  }
+// Host-event acks travel beside the payload, so a 2 MB journal is never parsed
+// back after it was written.
+const pendingHostMeta = new Map<string, NonNullable<SessionJournalSnapshot["hostEvents"]>>();
+
+function clearAcknowledgedHostEvents(id: string, acknowledged: SessionJournalSnapshot["hostEvents"]): void {
   const pending = pendingHostEvents.get(id);
   if (!acknowledged || !pending || pending.streamId !== acknowledged.streamId) return;
   for (const sequence of acknowledged.sequences) pending.sequences.delete(sequence);
@@ -317,22 +333,25 @@ export function scheduleSaveSessionJournal(session: Session): void {
   if (!session.id || session.blocks.length === 0) return;
   if (session.id.startsWith("draft-") || session.id.startsWith("pending-")) return;
 
-  const content = JSON.stringify(nextSessionJournalSnapshot(session));
-  const delay = isSessionTerminal(session.status) ? TERMINAL_SAVE_DEBOUNCE_MS : LIVE_SAVE_DEBOUNCE_MS;
-
-  const previous = timers.get(session.id);
-  if (previous !== undefined) window.clearTimeout(previous);
-
-  if (delay <= 0) {
+  const terminal = isSessionTerminal(session.status) && TERMINAL_SAVE_DEBOUNCE_MS <= 0;
+  if (terminal) {
+    const previous = timers.get(session.id);
+    if (previous !== undefined) window.clearTimeout(previous);
     timers.delete(session.id);
-    void writePayload(session.id, content);
+    pendingSessions.delete(session.id);
+    void writeSnapshot(session);
     return;
   }
-
+  // Throttle, not debounce: remember the newest session object (no
+  // serialization here) and write it once when the checkpoint timer fires.
+  pendingSessions.set(session.id, session);
+  if (timers.has(session.id)) return;
   timers.set(session.id, window.setTimeout(() => {
     timers.delete(session.id);
-    void writePayload(session.id, content);
-  }, delay));
+    const latest = pendingSessions.get(session.id);
+    pendingSessions.delete(session.id);
+    if (latest) void writeSnapshot(latest);
+  }, LIVE_CHECKPOINT_MS));
 }
 
 /** Force any debounced snapshot for one session to disk now. */
@@ -342,7 +361,8 @@ export function flushSessionJournal(session: Session): void {
   const previous = timers.get(session.id);
   if (previous !== undefined) window.clearTimeout(previous);
   timers.delete(session.id);
-  void writePayload(session.id, JSON.stringify(nextSessionJournalSnapshot(session)));
+  pendingSessions.delete(session.id);
+  void writeSnapshot(session);
 }
 
 /**
@@ -355,10 +375,9 @@ export function flushAllPendingSessionJournals(
   for (const [id, timer] of [...timers.entries()]) {
     window.clearTimeout(timer);
     timers.delete(id);
-    const session = sessions[id];
-    if (session && session.blocks.length > 0) {
-      void writePayload(id, JSON.stringify(nextSessionJournalSnapshot(session)));
-    }
+    const session = sessions[id] ?? pendingSessions.get(id);
+    pendingSessions.delete(id);
+    if (session && session.blocks.length > 0) void writeSnapshot(session);
   }
 }
 
@@ -366,6 +385,8 @@ export function cancelPendingSessionJournal(id: string): void {
   const timer = timers.get(id);
   if (timer !== undefined) window.clearTimeout(timer);
   timers.delete(id);
+  pendingSessions.delete(id);
+  pendingHostMeta.delete(id);
   pendingPayloads.delete(id);
   journalSavedAt.delete(id);
   journalWriteConflicts.delete(id);
