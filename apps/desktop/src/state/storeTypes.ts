@@ -131,6 +131,8 @@ export interface DesktopState extends CapabilityState {
   closePreview(): void;
   sendPrompt(text: string, attachments?: PromptAttachment[], targetSessionId?: string, modeOverride?: AgentMode, submission?: ComposerSubmission, queueItemId?: string): boolean;
   interjectPrompt(text: string, attachments?: PromptAttachment[], targetSessionId?: string, submission?: ComposerSubmission): Promise<boolean>;
+  /** Send a queued prompt into the running turn now (Codex-style steering). */
+  steerQueuedPrompt(sessionId: string, queueId: string): Promise<"interjected" | "restarted" | "skipped">;
   removeQueuedPrompt(sessionId: string, queueId: string): void;
   updateQueuedPrompt(sessionId: string, queueId: string, text: string): void;
   moveQueuedPrompt(sessionId: string, queueId: string, direction: -1 | 1): void;

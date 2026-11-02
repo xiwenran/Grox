@@ -3228,6 +3228,57 @@ export const useDesktop = create<DesktopState>((set, get) => {
       }
     },
 
+    async steerQueuedPrompt(sessionId, queueId) {
+      const state = get();
+      const session = state.sessions[sessionId];
+      const queue = state.promptQueues[sessionId] ?? [];
+      const item = queue.find((entry) => entry.id === queueId);
+      if (!session || !item || item.state === "sending" || item.source === "cli") return "skipped";
+      if (session.status !== "running" || state.providerSwitching) return "skipped";
+      if (!item.text.trim() && item.attachments.length === 0) return "skipped";
+      // Take the row out first so a turn that ends mid-request cannot also
+      // drain it as the next turn (no duplicate send).
+      const withoutItem = { ...get().promptQueues, [sessionId]: queue.filter((entry) => entry.id !== queueId) };
+      set({ promptQueues: withoutItem });
+      savePromptQueues(withoutItem);
+      const putBackFirst = () => {
+        const current = get().promptQueues[sessionId] ?? [];
+        if (current.some((entry) => entry.id === queueId)) return;
+        const promptQueues = { ...get().promptQueues, [sessionId]: [{ ...item, state: "queued" as const }, ...current] };
+        set({ promptQueues });
+        savePromptQueues(promptQueues);
+      };
+      try {
+        // grok CLI ≥1.0 accepts x.ai/interject while a turn runs: the text is
+        // folded into the current turn, exactly like Enter in the CLI's own UI.
+        const accepted = await bridge.interject(sessionId, item.text, {
+          model: item.model,
+          effort: item.effort,
+          mode: item.mode,
+          attachments: item.attachments,
+        });
+        if (accepted) return "interjected";
+      } catch (error) {
+        putBackFirst();
+        set({ startupError: `引导失败：${errorText(error)}` });
+        return "skipped";
+      }
+      // Runtime without interjection: stop this turn and send the prompt as
+      // the very next one.
+      putBackFirst();
+      bridge.cancel(sessionId);
+      const startedAt = Date.now();
+      const timer = window.setInterval(() => {
+        const status = get().sessions[sessionId]?.status;
+        if (status === "running" || status === "stopping") {
+          if (Date.now() - startedAt < 20_000) return;
+        }
+        window.clearInterval(timer);
+        get().resumePromptQueue(sessionId);
+      }, 150);
+      return "restarted";
+    },
+
     removeQueuedPrompt(sessionId, queueId) {
       const queue = get().promptQueues[sessionId] ?? [];
       if (queue.some((item) => item.id === queueId && item.state === "sending")) return;

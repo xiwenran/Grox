@@ -135,6 +135,8 @@ const zh = {
   versionCheckedOnLaunch: "启动时检查一次 GitHub 发布。",
   checkForUpdates: "检查更新",
   changelog: "更新日志",
+  steerQueued: "引导",
+  steerQueuedHint: "立即插入正在进行的回合（输入框为空时再按一次 Enter 也可以）",
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
@@ -164,6 +166,7 @@ const en: Record<keyof typeof zh, string> = {
   imagePreview: "Image preview", closeImagePreview: "Close preview (Esc)", imageMissing: "Image file not found",
   commandPaletteMenu: "Command palette ⌘K", defaultOpenApp: "Default app for files", defaultOpenAppHint: "Used when Grox opens a file; lists installed editors, terminals and Finder.", defaultOpenSystem: "System default",
   versionAndUpdates: "Version & updates", versionCurrent: "Current version", versionLatest: "latest", versionUpdateAvailable: "Update available", versionUpToDate: "Up to date", versionChecking: "Checking for updates…", versionCheckFailed: "Update check failed: ", versionCheckedOnLaunch: "GitHub releases are checked once at launch.", checkForUpdates: "Check for updates", changelog: "Changelog",
+  steerQueued: "Steer", steerQueuedHint: "Send into the running turn now (or press Enter again on an empty composer)",
 };
 
 export type TranslationKey = keyof typeof zh;

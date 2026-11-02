@@ -59,6 +59,7 @@ export function Composer() {
   const setAccountSetupOpen = useDesktop((s) => s.setAccountSetupOpen);
   const interjectPrompt = useDesktop((s) => s.interjectPrompt);
   const removeQueuedPrompt = useDesktop((s) => s.removeQueuedPrompt);
+  const steerQueuedPrompt = useDesktop((s) => s.steerQueuedPrompt);
   const updateQueuedPrompt = useDesktop((s) => s.updateQueuedPrompt);
   const moveQueuedPrompt = useDesktop((s) => s.moveQueuedPrompt);
   const moveQueuedAttachment = useDesktop((s) => s.moveQueuedAttachment);
@@ -335,6 +336,15 @@ export function Composer() {
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      // Codex-style steering: Enter on an empty composer while a turn runs
+      // sends the first queued prompt into that turn right away.
+      const steerTarget = activeId && status === "running" && !text.trim() && attachments.length === 0
+        ? queue.find((item) => item.state !== "sending" && item.source !== "cli")
+        : undefined;
+      if (steerTarget && activeId) {
+        void steerQueuedPrompt(activeId, steerTarget.id);
+        return;
+      }
       void send();
     }
   };
@@ -465,6 +475,7 @@ export function Composer() {
                       placeholder={item.attachments.length > 0 ? (language === "zh-CN" ? "图片消息" : "Image prompt") : undefined}
                       className="min-w-0 flex-1 bg-transparent text-[13px] text-fg2 outline-none placeholder:text-faint"
                     />
+                    {status === "running" && item.source !== "cli" && <button disabled={item.state === "sending"} onClick={() => activeId && void steerQueuedPrompt(activeId, item.id)} className="queue-steer rounded-full px-2 py-0.5 text-[12px] text-acc enabled:hover:bg-acc/10 disabled:opacity-25" title={t("steerQueuedHint")}>{t("steerQueued")}</button>}
                     <button disabled={item.state === "sending" || queue[index - 1]?.state === "sending" || index === 0} onClick={() => activeId && moveQueuedPrompt(activeId, item.id, -1)} className="text-faint enabled:hover:text-fg disabled:opacity-25" title={language === "zh-CN" ? "上移" : "Move up"}><Icon name="arrowUp" size={9} /></button>
                     <button disabled={item.state === "sending" || queue[index + 1]?.state === "sending" || index === queue.length - 1} onClick={() => activeId && moveQueuedPrompt(activeId, item.id, 1)} className="rotate-180 text-faint enabled:hover:text-fg disabled:opacity-25" title={language === "zh-CN" ? "下移" : "Move down"}><Icon name="arrowUp" size={9} /></button>
                     <button disabled={item.state === "sending"} onClick={() => activeId && removeQueuedPrompt(activeId, item.id)} className="text-faint enabled:hover:text-red disabled:opacity-25" title={language === "zh-CN" ? "移出队列" : "Remove from queue"}>
