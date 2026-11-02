@@ -14,7 +14,9 @@ import {
 import { deriveSessionSnapshot } from "../../lib/sessionRuntime";
 import { visibleQueuedPrompts } from "../../lib/promptQueue";
 import { ChipSelect } from "../common/ChipSelect";
-import { PromptOptionsMenu, ProviderSwitcher } from "../common/PromptControls";
+import { PromptOptionsMenu, ProviderMarker } from "../common/PromptControls";
+import { WorkspacePicker } from "../common/WorkspacePicker";
+import { isDraftSessionId } from "../../lib/projectCatalog";
 import { Icon } from "../fx/Icon";
 import { useI18n } from "../../lib/i18n";
 import {
@@ -76,6 +78,7 @@ export function Composer() {
   const emergencyStopComputer = useDesktop((s) => s.emergencyStopComputer);
   const compact = useDesktop((s) => s.compact);
   const status = useDesktop((s) => (s.activeId ? s.sessions[s.activeId]?.status ?? null : null));
+  const sessionCwd = useDesktop((s) => (s.activeId ? s.sessions[s.activeId]?.cwd : undefined));
   const restoring = useDesktop((s) => Boolean(s.activeId && s.restoringSessionId === s.activeId));
   const creating = useDesktop((s) => Boolean(s.activeId?.startsWith("pending-")));
   const computerRunning = useDesktop((s) => {
@@ -497,7 +500,7 @@ export function Composer() {
 
           {/* control strip */}
           <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-1.5">
-            <ProviderSwitcher />
+            <WorkspacePicker locked={!isDraftSessionId(activeId)} path={sessionCwd} />
 
             <ChipSelect
               label={
@@ -516,6 +519,7 @@ export function Composer() {
               onSelect={setModel}
               width={240}
             />
+            <ProviderMarker />
 
             <PromptOptionsMenu mode={mode} effort={effort} efforts={models.find((item) => item.id === model)?.efforts} permissionMode={permissionMode} onMode={setMode} onEffort={setEffort} onPermission={setPermissionMode} />
 

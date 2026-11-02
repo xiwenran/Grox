@@ -6,7 +6,24 @@ import { useProviderCapability } from "../../state/providerCapabilityStore";
 import { Icon } from "../fx/Icon";
 import { ChipSelect, SectionedSelect } from "./ChipSelect";
 
-export function ProviderSwitcher() {
+/** Small marker beside the model chip, shown only when a non-default provider
+ * (anything other than Grok OAuth) is active. Switching lives in Settings. */
+export function ProviderMarker() {
+  const { t } = useI18n();
+  const provider = useProviderCapability((state) => state.provider);
+  const profiles = useProviderCapability((state) => state.profiles);
+  const activeProfileId = useProviderCapability((state) => state.activeProfileId);
+  if (provider.kind === "oauth" && !activeProfileId) return null;
+  const name = profiles.find((profile) => profile.id === activeProfileId)?.name
+    ?? (provider.kind === "official" ? "xAI API" : "OpenAI API");
+  return (
+    <span title={t("providerMarkerTitle")} className="max-w-[120px] truncate rounded-full bg-acc/10 px-2 py-0.5 text-[12px] text-acc">
+      {name}
+    </span>
+  );
+}
+
+export function ProviderSwitcher({ variant = "chip", menuPlacement = "up", align = "start" }: { variant?: "chip" | "field"; menuPlacement?: "up" | "down"; align?: "start" | "end" } = {}) {
   const { language } = useI18n();
   const provider = useProviderCapability((state) => state.provider);
   const profiles = useProviderCapability((state) => state.profiles);
@@ -38,6 +55,9 @@ export function ProviderSwitcher() {
       activeId={activeId}
       disabled={switching}
       width={330}
+      variant={variant}
+      menuPlacement={menuPlacement}
+      align={align}
       onSelect={(id) => {
         if (id === activeId || id === "official") return;
         if (id === "oauth") void configure({ kind: "oauth" }).catch(() => {});

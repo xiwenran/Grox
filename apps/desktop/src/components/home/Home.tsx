@@ -10,7 +10,8 @@ import { attachExplicitPromptImages } from "../../lib/pathAttachments";
 import { BlackHole } from "../fx/BlackHole";
 import { Icon } from "../fx/Icon";
 import { ChipSelect } from "../common/ChipSelect";
-import { PromptOptionsMenu, ProviderSwitcher } from "../common/PromptControls";
+import { PromptOptionsMenu, ProviderMarker } from "../common/PromptControls";
+import { WorkspacePicker } from "../common/WorkspacePicker";
 import { useI18n } from "../../lib/i18n";
 import { useImeGuard } from "../../lib/ime";
 import { clearDraftBuffer, loadDraftBuffer, saveDraftBuffer } from "../../lib/draftPersistence";
@@ -235,8 +236,9 @@ export function Home() {
             )}
             <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-1.5">
               <button onClick={() => fileRef.current?.click()} disabled={readingFiles || attachments.length >= MAX_ATTACHMENTS} aria-label={t("addAttachment")} className="flex h-8 w-8 items-center justify-center rounded-full border border-line2 bg-raise text-fg2 hover:border-line3 hover:bg-high hover:text-fg disabled:opacity-40" title={language === "zh-CN" ? "上传文件；也支持粘贴剪贴板图片" : "Attach files; clipboard images are also supported"}>{readingFiles ? <span className="plan-spinner" /> : <Icon name="plus" size={14} />}</button>
-              <ProviderSwitcher />
+              <WorkspacePicker />
               <ChipSelect label={<span className="text-fg2">{currentModel?.label ?? model}</span>} items={models.map((item) => ({ id: item.id, label: item.label, hint: item.tagline }))} activeId={model} onSelect={setModel} width={260} />
+              <ProviderMarker />
               <PromptOptionsMenu mode={mode} effort={effort} efforts={models.find((item) => item.id === model)?.efforts} permissionMode={permissionMode} onMode={setMode} onEffort={setEffort} onPermission={setPermissionMode} />
               <button onClick={() => void launch()} disabled={!hasPrompt || readingFiles} className={`ml-auto flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ${hasPrompt ? (auth.required ? "border border-gold/50 bg-gold/10 text-gold hover:bg-gold/15" : "bg-acc text-base hover:bg-acc-deep") : "bg-high text-faint"}`} title={auth.required ? (language === "zh-CN" ? "配置账户后发送" : "Connect an account to send") : (language === "zh-CN" ? "开始任务" : "Start")}><Icon name="arrowUp" size={15} strokeWidth={2} /></button>
             </div>

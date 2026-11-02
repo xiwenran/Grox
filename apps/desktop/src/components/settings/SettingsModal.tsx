@@ -15,7 +15,7 @@ import { Wordmark } from "../fx/Wordmark";
 import { ChipSelect } from "../common/ChipSelect";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { AccountAvatar } from "../common/AccountAvatar";
-import { CLI_EFFORT_ORDER, cliEffortLabel, permissionLabel } from "../common/PromptControls";
+import { CLI_EFFORT_ORDER, cliEffortLabel, permissionLabel, ProviderSwitcher } from "../common/PromptControls";
 import {
   getAvailableOpenApplications,
   getDefaultOpenApplication,
@@ -466,6 +466,7 @@ function Account() {
     </div>
     <div className="mt-3 flex gap-2">{provider.kind === "oauth" && !account?.authenticated && <ActionButton tone="accent" onClick={() => openSetup(true)}>{t("login")}</ActionButton>}{provider.kind === "oauth" && account?.authenticated && <ActionButton tone="danger" onClick={() => { setActionError(""); void logout().catch((cause) => setActionError(providerErrorText(cause))); }}>{t("logout")}</ActionButton>}<ActionButton onClick={() => { setActionError(""); void openExternal("https://grok.com/supergrok?referrer=grok-build").catch((cause) => setActionError(providerErrorText(cause))); }}>{t("upgrade")}</ActionButton></div>
     {actionError && <p role="alert" className="mt-2 rounded-[4px] border border-red/30 bg-red/5 px-3 py-2 text-[13px] text-red">{actionError}</p>}
+    <div className="mt-4"><Row label={t("activeProvider")} hint={t("activeProviderHint")}><ProviderSwitcher variant="field" menuPlacement="down" align="end" /></Row></div>
     <ProviderAndModels />
     <div className="mt-8 border-t border-line pt-6"><ConfigDocumentsPanel /></div>
   </div>;

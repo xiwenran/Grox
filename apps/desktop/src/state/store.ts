@@ -2251,6 +2251,28 @@ export const useDesktop = create<DesktopState>((set, get) => {
       }
     },
 
+    async switchDraftWorkspace(cwd) {
+      try {
+        const before = get();
+        const target = cwd ?? await invoke<string | null>("pick_workspace");
+        if (!target || samePath(target, before.workspace)) return;
+        const draftId = before.view === "session" && before.activeId && isDraftSessionId(before.activeId) ? before.activeId : null;
+        const composer = draftId ? before.sessionComposers[draftId] : undefined;
+        const text = composer?.text ?? "";
+        const attachments = composer?.attachments ?? [];
+        if (draftId) void clearDraftBuffer(before.workspace).catch(() => {});
+        await get().setWorkspace(target, { restoreProject: true });
+        if (!draftId) return;
+        await get().newSession();
+        if (text || attachments.length > 0) {
+          get().setDraft(text);
+          get().setComposerAttachments(attachments);
+        }
+      } catch (error) {
+        set({ startupError: errorText(error) });
+      }
+    },
+
     async openProject(id) {
       const project = get().projects.find(
         (entry) => entry.id === id || samePath(entry.path, id) || entry.id === projectId(id),

@@ -102,7 +102,7 @@ export default function App() {
         s.setPaletteOpen(!s.paletteOpen);
       } else if (mod && e.key.toLowerCase() === "n") {
         e.preventDefault();
-        void s.newProject();
+        void s.newSession();
       } else if (mod && e.key === ",") {
         e.preventDefault();
         s.setSettingsOpen(true);

@@ -86,6 +86,9 @@ export interface DesktopState extends CapabilityState {
   openSession(id: string): Promise<void>;
   newSession(launch?: { text: string; attachments?: PromptAttachment[] }): Promise<void>;
   newProject(): Promise<void>;
+  /** Composer folder picker: move the unsent draft (text + attachments) to
+   * another project folder. `undefined` opens the system folder dialog. */
+  switchDraftWorkspace(cwd?: string): Promise<void>;
   openProject(id: string): Promise<void>;
   renameProject(id: string, name: string): void;
   pinProject(id: string): void;

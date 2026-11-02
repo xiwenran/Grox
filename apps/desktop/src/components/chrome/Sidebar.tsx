@@ -38,7 +38,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   const view = useDesktop((state) => state.view);
   const openSession = useDesktop((state) => state.openSession);
   const goHome = useDesktop((state) => state.goHome);
-  const newProject = useDesktop((state) => state.newProject);
+  const newSession = useDesktop((state) => state.newSession);
   const account = useDesktop((state) => state.account);
   const billing = useDesktop((state) => state.billing);
   const setSettingsOpen = useDesktop((state) => state.setSettingsOpen);
@@ -140,11 +140,11 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
 
       <div className="p-2.5">
         <button
-          onClick={() => void newProject()}
+          onClick={() => void newSession()}
           className="sidebar-new flex h-9 w-full items-center gap-2 px-3 text-[length:var(--fs-sm)] text-fg2 hover:text-fg"
         >
           <Icon name="plus" size={12} className="text-acc" />
-          {t("newProject")}
+          {t("newSessionAction")}
           <span className="ml-auto text-[length:var(--fs-xs)] text-faint">Ctrl N</span>
         </button>
         <div className="mt-2 flex h-9 items-center gap-2 rounded-[10px] border border-line2 bg-raise px-3 focus-within:border-line3">
