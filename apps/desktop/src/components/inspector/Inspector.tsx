@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useDesktop, type InspectorTab } from "../../state/store";
 import type { DiffHunk, PlanStep, Session, WorkflowRun, WorkspaceEntry } from "../../bridge/types";
 import { fmtCost, fmtDuration, fmtTokens, capWord } from "../../lib/format";
@@ -30,7 +31,9 @@ export function Inspector() {
   const { t, language } = useI18n();
   const tab = useDesktop((s) => s.inspectorTab);
   const setTab = useDesktop((s) => s.setInspectorTab);
-  const session = useDesktop((s) => (s.activeId ? s.sessions[s.activeId] : null));
+  // Only whether a session exists; the tabs that need the full transcript
+  // subscribe themselves, so streaming tokens don't re-render the panel.
+  const hasSession = useDesktop((s) => Boolean(s.activeId && s.sessions[s.activeId]));
   const width = usePreferences((state) => state.inspectorWidth);
   const setWidth = usePreferences((state) => state.setInspectorWidth);
   const tabs: { id: InspectorTab; label: string }[] = [
@@ -63,15 +66,13 @@ export function Inspector() {
 
       <div className={tab === "preview" ? "min-h-0 flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-3"}>
         {tab === "files" ? (
-          <FilesTab session={session ?? undefined} />
+          <FilesTab />
         ) : tab === "preview" ? (
           <PreviewTab />
-        ) : !session ? (
+        ) : !hasSession ? (
           <Empty text={t("noMission")} />
-        ) : tab === "tasks" ? (
-          <TasksTab session={session} />
         ) : (
-          <UsageTab session={session} />
+          <SessionTab tab={tab} />
         )}
       </div>
     </aside>
@@ -85,9 +86,15 @@ const Empty = ({ text }: { text: string }) => (
   </div>
 );
 
+function SessionTab({ tab }: { tab: InspectorTab }) {
+  const session = useDesktop((s) => (s.activeId ? s.sessions[s.activeId] : null));
+  if (!session) return null;
+  return tab === "tasks" ? <TasksTab session={session} /> : <UsageTab session={session} />;
+}
+
 /* ── FILES ─────────────────────────────────────────────────────────────── */
 
-function FilesTab({ session }: { session?: Session }) {
+function FilesTab() {
   const { t, language } = useI18n();
   const zh = language === "zh-CN";
   const workspaceFiles = useDesktop((state) => state.workspaceFiles);
@@ -95,12 +102,40 @@ function FilesTab({ session }: { session?: Session }) {
   const workspaceDiffs = useDesktop((state) => state.workspaceDiffs);
   const workspaceDiffReady = useDesktop((state) => state.workspaceDiffReady);
   const openPreview = useDesktop((state) => state.openPreview);
-  const toolHunks: DiffHunk[] = (session?.blocks ?? []).flatMap((b) =>
-    b.type === "tool" && b.call.diff ? b.call.diff : [],
-  );
+  const refreshFiles = useDesktop((state) => state.refreshWorkspaceFiles);
+  const refreshDiffs = useDesktop((state) => state.refreshWorkspaceDiffs);
+  // Shallow-compared: the hunk objects keep their identity while other blocks
+  // stream, so this tab doesn't re-render per token.
+  const toolHunks: DiffHunk[] = useDesktop(useShallow((state) => {
+    const session = state.activeId ? state.sessions[state.activeId] : undefined;
+    return (session?.blocks ?? []).flatMap((b) => (b.type === "tool" && b.call.diff ? b.call.diff : []));
+  }));
+  const [loading, setLoading] = useState(false);
+  const reload = () => {
+    setLoading(true);
+    void Promise.all([refreshFiles(), refreshDiffs()]).finally(() => setLoading(false));
+  };
+  // Fetch only when the 文件 tab is opened (or its workspace changes) — no polling.
+  useEffect(reload, [workspace]); // eslint-disable-line react-hooks/exhaustive-deps
   const hunks = workspaceDiffReady ? workspaceDiffs : toolHunks;
   const tree = useMemo(() => buildFileTree(workspaceFiles), [workspaceFiles]);
-  if (hunks.length === 0 && tree.length === 0) return <Empty text={t("noFiles")} />;
+  const refreshButton = (
+    <button
+      type="button"
+      onClick={reload}
+      disabled={loading}
+      title={t("refresh")}
+      className="ml-auto rounded-[8px] px-2 py-0.5 text-[13px] text-dim hover:bg-raise hover:text-fg disabled:opacity-50"
+    >
+      {loading ? t("filesLoading") : t("refresh")}
+    </button>
+  );
+  if (hunks.length === 0 && tree.length === 0) return (
+    <div>
+      <div className="flex px-1">{refreshButton}</div>
+      <Empty text={loading ? t("filesLoading") : t("noFiles")} />
+    </div>
+  );
   const add = hunks.reduce((n, h) => n + h.added, 0);
   const del = hunks.reduce((n, h) => n + h.removed, 0);
   return (
@@ -110,11 +145,14 @@ function FilesTab({ session }: { session?: Session }) {
           <span className="lbl !text-[13px]">{workspaceDiffReady ? (zh ? "工作区差异" : "WORKING TREE DIFF") : (zh ? "会话差异" : "SESSION DIFF")}</span>
           <span className="tnum text-[13px] text-diff-add-fg">+{add}</span>
           <span className="tnum text-[13px] text-diff-del-fg">−{del}</span>
+          {refreshButton}
         </div>
-        <DiffView diff={hunks} />
-      </> : <div className="mb-3 rounded-[4px] border border-line bg-raise px-3 py-3 text-[13px] leading-relaxed text-dim">
+        <DiffView diff={hunks} collapsed />
+      </> : <>
+      <div className="mb-2 flex px-1">{refreshButton}</div>
+      <div className="mb-3 rounded-[4px] border border-line bg-raise px-3 py-3 text-[13px] leading-relaxed text-dim">
         {zh ? "当前工作区没有可显示的未提交差异。" : "No uncommitted working-tree diff is available."}
-      </div>}
+      </div></>}
       <div className="mb-2 mt-4 px-1"><span className="lbl !text-[13px]">{t("projectResources")}</span></div>
       <div className="space-y-px">
         {tree.map((node) => <FileTreeNode key={node.path} node={node} workspace={workspace} onOpen={(path) => void openPreview(path)} />)}

@@ -385,7 +385,6 @@ function setSessionFlag(id: string, patch: SessionFlags) {
 /* StrictMode mounts effects twice in dev — subscribe once, ever. */
 let bridgeSubscribed = false;
 let workspaceWatchTimer: number | undefined;
-let workspaceWatchTick = 0;
 let pendingLaunch: { text: string; attachments: PromptAttachment[] } | undefined;
 let providerRestoreGeneration = 0;
 let capabilityLoadPromise: Promise<void> | undefined;
@@ -1800,9 +1799,8 @@ export const useDesktop = create<DesktopState>((set, get) => {
             window.setTimeout(() => {
               if (get().auth.inProgress) return;
               if (get().view !== "session") return;
-              void get().refreshWorkspaceFiles();
+              // Files and git diff load only when the 文件 tab is opened.
               void get().refreshProjectPreview(false);
-              void get().refreshWorkspaceDiffs();
             }, 1_500);
 
             window.setTimeout(() => {
@@ -1814,10 +1812,11 @@ export const useDesktop = create<DesktopState>((set, get) => {
 
             if (workspaceWatchTimer === undefined) {
               workspaceWatchTimer = window.setInterval(() => {
+                if (get().projectPreview.status !== "starting") return;
                 if (document.visibilityState !== "visible" || get().auth.inProgress || get().view !== "session") return;
-                workspaceWatchTick += 1;
-                void get().refreshWorkspaceDiffs();
-                if (workspaceWatchTick % 3 === 0) void get().refreshWorkspaceFiles();
+                // No background diff/file polling: the 文件 tab fetches on open
+                // or on its refresh button. Only a starting preview server is
+                // followed until it is up.
                 if (get().projectPreview.status === "starting") void get().refreshProjectPreview();
               }, 2_000);
             }
@@ -2420,8 +2419,6 @@ export const useDesktop = create<DesktopState>((set, get) => {
         planPreviewOpen: false,
       });
       if (!isCurrentSelection()) return;
-      void get().refreshWorkspaceFiles();
-      void get().refreshWorkspaceDiffs();
       void get().refreshProjectPreview(false);
     },
 
@@ -2781,7 +2778,6 @@ export const useDesktop = create<DesktopState>((set, get) => {
           from: "HEAD",
           to: "working",
           includePatch: true,
-          includeContent: true,
           maxPatchBytes: 2_000_000,
           maxPatchLines: 20_000,
         });

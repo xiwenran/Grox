@@ -20,7 +20,11 @@ export function mapGitDiffs(value: unknown): DiffHunk[] {
     const file = entry as Record<string, unknown>;
     const path = typeof file.path === "string" ? file.path : "unknown";
     const patch = typeof file.patch === "string" ? file.patch : "";
-    if (!patch && typeof file.oldText !== "string" && typeof file.newText !== "string") return [];
+    if (!patch && typeof file.oldText !== "string" && typeof file.newText !== "string") {
+      // Without file contents (binary, or too large for a patch) keep the row
+      // so the file still appears with its counts.
+      return [{ path, lines: [], added: Number(file.additions) || 0, removed: Number(file.deletions) || 0 }];
+    }
     if (patch) return [patchLines(path, patch, Number(file.additions) || 0, Number(file.deletions) || 0)];
     const oldText = typeof file.oldText === "string" ? file.oldText : "";
     const newText = typeof file.newText === "string" ? file.newText : "";
