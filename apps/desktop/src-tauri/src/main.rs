@@ -24,6 +24,7 @@ mod host_logging;
 mod host_prefs;
 mod interaction_service;
 mod mcp_leases;
+mod markdown_images;
 mod media_service;
 #[cfg(debug_assertions)]
 mod mock_acp_fixture;
@@ -1429,6 +1430,46 @@ fn persist_session_tool_images(
         });
     }
     Ok(references)
+}
+
+/// Map local image references in assistant Markdown (session-relative
+/// `images/1.jpg`, absolute paths, `file://` URLs) to real image files and
+/// grant exactly those files to the asset protocol. Unresolvable entries are
+/// `None`, so the frontend can show a quiet placeholder instead of a broken icon.
+#[tauri::command]
+fn resolve_markdown_images(
+    app: tauri::AppHandle,
+    session_id: Option<String>,
+    cwd: Option<String>,
+    sources: Vec<String>,
+) -> Result<Vec<Option<String>>, String> {
+    if sources.len() > markdown_images::MAX_SOURCES_PER_CALL {
+        return Err("单次最多解析 64 张图片".into());
+    }
+    let session_dir = match session_id.as_deref() {
+        Some(id) if safe_session_storage_id(id).is_ok() => grok_home()
+            .ok()
+            .and_then(|home| markdown_images::find_cli_session_dir(&home, id)),
+        _ => None,
+    };
+    let cwd = cwd
+        .filter(|value| !value.trim().is_empty())
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute());
+    let home = user_home().ok();
+    Ok(sources
+        .iter()
+        .map(|source| {
+            let path = markdown_images::resolve_image(
+                source,
+                cwd.as_deref(),
+                session_dir.as_deref(),
+                home.as_deref(),
+            )?;
+            app.asset_protocol_scope().allow_file(&path).ok()?;
+            Some(path_for_webview(&path))
+        })
+        .collect())
 }
 
 #[tauri::command]
@@ -6675,6 +6716,7 @@ fn main() {
             read_session_journal,
             write_session_journal,
             persist_session_tool_images,
+            resolve_markdown_images,
             delete_session_journal,
             session_journal_status,
             read_draft,

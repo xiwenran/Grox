@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { ImageLightbox } from "../common/ImageLightbox";
 import type { SessionBlock, ToolCall, ToolKind } from "../../bridge/types";
 import { fmtDuration } from "../../lib/format";
 import { Icon, type IconProps } from "../fx/Icon";
@@ -379,10 +380,7 @@ function ToolImages({ images }: { images: NonNullable<ToolCall["images"]> }) {
           </button>
         ))}
       </div>
-      {selected && <div role="dialog" aria-modal="true" aria-label={language === "zh-CN" ? "图片预览" : "Image preview"} onClick={() => setActive(null)} className="fixed inset-0 z-[90] flex items-center justify-center bg-void/90 p-8 backdrop-blur-sm animate-fade-up">
-        <button onClick={() => setActive(null)} className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-[4px] border border-line2 bg-panel text-dim hover:text-fg" title={language === "zh-CN" ? "关闭预览" : "Close preview"}><Icon name="x" size={13} /></button>
-        <img onClick={(event) => event.stopPropagation()} src={selected.src} alt="Tool output enlarged" className="max-h-full max-w-full rounded-[5px] border border-line2 bg-void object-contain shadow-2xl" />
-      </div>}
+      {selected && <ImageLightbox src={selected.src} alt="" onClose={() => setActive(null)} />}
     </>
   );
 }

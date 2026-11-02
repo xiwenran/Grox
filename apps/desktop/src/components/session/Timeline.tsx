@@ -19,6 +19,7 @@ import {
 import { isSessionHistoryPending } from "../../lib/sessionShell";
 import { deadSessionCopy, isDeadSessionView } from "../../lib/sessionUnavailable";
 import { useDesktop } from "../../state/store";
+import { MarkdownImageScopeContext } from "../../lib/markdownImages";
 import { Icon } from "../fx/Icon";
 import { BlackHole } from "../fx/BlackHole";
 import { AssistantMsg, SystemEvent, UserMsg } from "./blocks";
@@ -658,6 +659,7 @@ export function Timeline({ session }: { session: Session }) {
   const userTookOverRef = useRef(false);
   const settleTimerRef = useRef<number | undefined>(undefined);
   const turns = useMemo(() => groupTurns(session.blocks), [session.blocks]);
+  const imageScope = useMemo(() => ({ sessionId: session.id, cwd: session.cwd }), [session.id, session.cwd]);
   const [visibleCount, setVisibleCount] = useState(TIMELINE_TURN_WINDOW_INITIAL);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const sessionRunning = deriveSessionSnapshot({ status: session.status, blocks: session.blocks }).busy;
@@ -834,6 +836,7 @@ export function Timeline({ session }: { session: Session }) {
   };
 
   return (
+    <MarkdownImageScopeContext.Provider value={imageScope}>
     <div className="relative flex min-h-0 flex-1">
       <div
         ref={scrollerRef}
@@ -885,5 +888,6 @@ export function Timeline({ session }: { session: Session }) {
       )}
       <RequestNodeRail markers={markers} language={language} scrollerRef={scrollerRef} onJump={jumpToTurn} />
     </div>
+    </MarkdownImageScopeContext.Provider>
   );
 }

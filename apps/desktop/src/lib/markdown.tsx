@@ -7,11 +7,29 @@ import markedKatex from "marked-katex-extension";
 import "katex/dist/katex.min.css";
 import { invoke } from "@tauri-apps/api/core";
 import type { MouseEvent } from "react";
-import { memo, useMemo } from "react";
+import { memo, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ImageLightbox } from "../components/common/ImageLightbox";
+import { cachedImageUrl, classifyImageSource, MarkdownImageScopeContext, resolveLocalImages } from "./markdownImages";
+import { useI18n } from "./i18n";
 import { isSafeMarkdownOpenUrl } from "./openUrlSafety";
 
 const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
 const escapeHtml = (text: string) => text.replace(/[&<>"]/g, (char) => ESCAPES[char]);
+
+/*
+ * Images keep their original reference in data-md-src. Only sources the
+ * webview can load itself (https, data:image, blob) get a src up front; local
+ * paths are resolved by the host after render (see markdownImages.ts), so the
+ * webview never requests them against the app origin and shows a broken icon.
+ */
+function renderImage(href: string, title: string | null | undefined, text: string): string {
+  const source = href.trim();
+  const kind = classifyImageSource(source);
+  if (kind === "blocked") return escapeHtml(text);
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+  const srcAttr = kind === "remote" ? ` src="${escapeHtml(source)}"` : "";
+  return `<img data-md-src="${escapeHtml(source)}"${srcAttr} alt="${escapeHtml(text)}"${titleAttr} loading="lazy">`;
+}
 
 function renderCodeBlock(text: string, lang: string): string {
   const language = lang.trim().toLowerCase();
@@ -40,6 +58,9 @@ marked.use({
   renderer: {
     code({ text, lang }) {
       return renderCodeBlock(text, lang ?? "");
+    },
+    image({ href, title, text }) {
+      return renderImage(href ?? "", title, text ?? "");
     },
   },
 });
@@ -167,10 +188,56 @@ export function renderMarkdownHtml(text: string): string {
   });
 }
 
+function showMissing(image: HTMLImageElement, label: string) {
+  const placeholder = document.createElement("span");
+  placeholder.className = "md-img-missing";
+  const source = image.getAttribute("data-md-src") ?? "";
+  placeholder.title = source;
+  placeholder.textContent = `🖼 ${image.alt || source.split("/").pop() || ""} · ${label}`;
+  image.replaceWith(placeholder);
+}
+
 export const Markdown = memo(function Markdown({ text, className = "", streaming = false }: { text: string; className?: string; streaming?: boolean }) {
   const html = useMemo(() => renderMarkdownHtml(text), [text]);
+  const scope = useContext(MarkdownImageScopeContext);
+  const { t } = useI18n();
+  const missingLabel = t("imageMissing");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const pendingImages: HTMLImageElement[] = [];
+    for (const image of root.querySelectorAll<HTMLImageElement>("img[data-md-src]:not([src])")) {
+      const source = image.getAttribute("data-md-src") ?? "";
+      const cached = cachedImageUrl(scope, source);
+      if (cached) image.src = cached;
+      else if (cached === null) showMissing(image, missingLabel);
+      else pendingImages.push(image);
+    }
+    if (pendingImages.length === 0) return;
+    let cancelled = false;
+    const sources = pendingImages.map((image) => image.getAttribute("data-md-src") ?? "");
+    void resolveLocalImages(scope, sources).then((urls) => {
+      if (cancelled) return;
+      pendingImages.forEach((image, index) => {
+        if (!image.isConnected) return;
+        const url = urls.get(sources[index]);
+        if (url) image.src = url;
+        else showMissing(image, missingLabel);
+      });
+    });
+    return () => { cancelled = true; };
+  }, [html, scope.sessionId, scope.cwd, missingLabel]);
+
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     const target = event.target as Element;
+    if (target instanceof HTMLImageElement && target.hasAttribute("data-md-src")) {
+      event.preventDefault();
+      if (target.currentSrc || target.src) setPreview({ src: target.currentSrc || target.src, alt: target.alt });
+      return;
+    }
     const copyButton = target.closest("[data-code-copy]");
     if (copyButton instanceof HTMLElement) {
       const code = copyButton.closest(".md-code")?.querySelector("pre code")?.textContent ?? "";
@@ -199,10 +266,14 @@ export const Markdown = memo(function Markdown({ text, className = "", streaming
     }
   };
   return (
-    <div
-      className={`md ${streaming ? "md-streaming" : ""} ${className}`}
-      onClick={handleClick}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <>
+      <div
+        ref={rootRef}
+        className={`md ${streaming ? "md-streaming" : ""} ${className}`}
+        onClick={handleClick}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      {preview && <ImageLightbox src={preview.src} alt={preview.alt} onClose={() => setPreview(null)} />}
+    </>
   );
 });

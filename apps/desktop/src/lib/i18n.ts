@@ -118,6 +118,9 @@ const zh = {
   importAction: "导入",
   importing: "导入中…",
   sessionsSuffix: " 个会话",
+  imagePreview: "图片预览",
+  closeImagePreview: "关闭预览（Esc）",
+  imageMissing: "找不到图片文件",
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
@@ -144,6 +147,7 @@ const en: Record<keyof typeof zh, string> = {
   loading: "Loading", error: "Error", model: "Model", elapsed: "Elapsed", sessionSpan: "Session span", context: "Context", turns: "Turns",
   cost: "Cost", inputTokens: "Input tokens", outputTokens: "Output tokens", cacheRead: "Cache read", sessionId: "Mission ID",
   effortXhighHint: "Maximum reasoning for the hardest tasks.", effortHighHint: "Thorough reasoning and quality. Recommended.", effortMediumHint: "Strong quality with a faster turnaround.", effortLowHint: "Fastest responses. Best for simple tasks.", permAsk: "Ask", permAuto: "Auto-review", permAlways: "Always approve", permAskHint: "Ask before running tools (CLI default)", permAutoHint: "Grok reviews tool calls automatically", permAlwaysHint: "Skip all prompts (YOLO)", modeSection: "Mode", modeDefault: "Default", modeDefaultHint: "Work on the task directly", modePlan: "Plan mode", modePlanShort: "Plan", modePlanHint: "Plan first; edit after approval", permSection: "Permissions", effortSection: "Reasoning effort", promptOptionsTitle: "Mode, permissions and reasoning effort", effortSettingHint: "Options come from the official CLI (reasoning_effort).", permSettingHint: "The official CLI's three modes: Ask (CLI default), Auto-review, Always approve. Always approve requires confirmation and cannot run with Computer Use.", permModeLabel: "Permission mode", cliDefault: "CLI default", importCliHistory: "Import CLI history", importCliHistoryHint: "Scan ~/.grok/sessions and add sessions you ran in the terminal to the sidebar.", importCliHistoryFailed: "Import failed: ", importAction: "Import", importing: "Importing…", sessionsSuffix: " sessions",
+  imagePreview: "Image preview", closeImagePreview: "Close preview (Esc)", imageMissing: "Image file not found",
 };
 
 export type TranslationKey = keyof typeof zh;
