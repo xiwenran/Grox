@@ -53,7 +53,9 @@ export default function App() {
   const ready = useDesktop((s) => s.ready);
   const view = useDesktop((s) => s.view);
   const activeId = useDesktop((s) => s.activeId);
-  const session = useDesktop((s) => (s.activeId ? s.sessions[s.activeId] : null));
+  // Boolean only: subscribing to the whole session re-rendered the entire
+  // shell (title bar, sidebar, status bar…) on every streamed token.
+  const session = useDesktop((s) => Boolean(s.activeId && s.sessions[s.activeId]));
   const inspectorOpen = useDesktop((s) => s.inspectorOpen);
   const terminalOpen = useDesktop((s) => s.terminalOpen);
   const previewOpen = useDesktop((s) => s.previewOpen);
@@ -153,7 +155,7 @@ export default function App() {
             >
               {inSession && session ? (
                 <>
-                  <Timeline session={session} />
+                  <ActiveTimeline />
                   <Composer />
                 </>
               ) : inSession && !session ? (
@@ -180,4 +182,9 @@ export default function App() {
     </div>
     </AppErrorBoundary>
   );
+}
+
+function ActiveTimeline() {
+  const session = useDesktop((s) => (s.activeId ? s.sessions[s.activeId] : null));
+  return session ? <Timeline session={session} /> : null;
 }

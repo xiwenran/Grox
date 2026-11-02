@@ -689,11 +689,30 @@ export function Timeline({ session }: { session: Session }) {
     [turns, visibleCount],
   );
 
+  const markersCacheRef = useRef<{ heads: SessionBlock[]; language: string; markers: RequestMarker[] } | null>(null);
   const markers = useMemo<RequestMarker[]>(() => {
+    // Streaming only grows the last turn; reuse markers while the prompt heads
+    // are unchanged instead of re-deriving previews for every turn per token.
+    const heads = turns.map((turn) => turn.blocks[0]);
+    const cached = markersCacheRef.current;
+    if (cached && cached.language === language && cached.heads.length === heads.length
+      && cached.heads.every((head, index) => head === heads[index])) {
+      // Only the newest turn's reply preview can change while streaming.
+      const last = turns.at(-1);
+      const lastMarker = last ? requestPreview(last, language) : undefined;
+      const prev = cached.markers.at(-1);
+      if (!last || !lastMarker || !prev || prev.id !== lastMarker.id) return cached.markers;
+      if (prev.response === lastMarker.response && prev.prompt === lastMarker.prompt) return cached.markers;
+      const updated = [...cached.markers.slice(0, -1), { ...lastMarker, index: prev.index }];
+      markersCacheRef.current = { heads, language, markers: updated };
+      return updated;
+    }
     const requests = turns
       .map((turn) => requestPreview(turn, language))
       .filter((marker): marker is Omit<RequestMarker, "index"> => Boolean(marker));
-    return requests.map((marker, index) => ({ ...marker, index }));
+    const next = requests.map((marker, index) => ({ ...marker, index }));
+    markersCacheRef.current = { heads, language, markers: next };
+    return next;
   }, [language, turns]);
 
   const stopFollowForInspect = useCallback(() => {

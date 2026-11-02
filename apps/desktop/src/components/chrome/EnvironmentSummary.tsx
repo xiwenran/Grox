@@ -108,7 +108,7 @@ export function EnvironmentSummary() {
   const workspace = useDesktop((state) => state.workspace);
   const runtimeOccupancy = useDesktop((state) => state.runtimeOccupancy);
   const activeId = useDesktop((state) => state.activeId);
-  const session = useDesktop((state) => (state.activeId ? state.sessions[state.activeId] : null));
+  const blocks = useDesktop((state) => (state.activeId ? state.sessions[state.activeId]?.blocks : undefined));
   const composer = useDesktop((state) => (state.activeId ? state.sessionComposers[state.activeId] : null));
   const setComposerAttachments = useDesktop((state) => state.setComposerAttachments);
   const openProjectInExplorer = useDesktop((state) => state.openProjectInExplorer);
@@ -122,7 +122,7 @@ export function EnvironmentSummary() {
         label: attachment.name,
       });
     }
-    for (const block of session?.blocks ?? []) {
+    for (const block of blocks ?? []) {
       if (block.type === "user") {
         for (const attachment of block.attachments ?? []) {
           const key = `attachment:${attachment.name}`;
@@ -130,13 +130,13 @@ export function EnvironmentSummary() {
         }
       }
       if (block.type === "user" || block.type === "assistant") {
-        for (const url of linksFromText(block.text)) {
+        for (const url of cachedLinks(block)) {
           if (!items.has(url)) items.set(url, { id: url, kind: "link", label: url.replace(/^https?:\/\//, ""), url });
         }
       }
     }
     return [...items.values()];
-  }, [composer?.attachments, session]);
+  }, [composer?.attachments, blocks]);
 
   const loadSummary = async () => {
     const generation = ++loadGenerationRef.current;
@@ -693,4 +693,16 @@ function SummaryRow({ icon, label, children }: { icon: "edit" | "branch" | "cloc
       {children}
     </div>
   );
+}
+
+// Blocks are immutable, so links are parsed once per block object instead of
+// re-scanning the whole transcript on every streamed token.
+const linkCache = new WeakMap<object, string[]>();
+function cachedLinks(block: { text: string }): string[] {
+  let links = linkCache.get(block);
+  if (!links) {
+    links = linksFromText(block.text);
+    linkCache.set(block, links);
+  }
+  return links;
 }

@@ -20,21 +20,22 @@ export function WorkbenchPanel() {
   const [launchError, setLaunchError] = useState("");
   const toggleTerminal = useDesktop((state) => state.toggleTerminal);
   const activeId = useDesktop((state) => state.activeId);
-  const session = useDesktop((state) => (state.activeId ? state.sessions[state.activeId] : null));
+  const sessionTitle = useDesktop((state) => (state.activeId ? state.sessions[state.activeId]?.title : undefined));
   const newSession = useDesktop((state) => state.newSession);
-  const running = Object.values(useDesktop((state) => state.sessions)).filter((item) => (
+  // A number, so the panel doesn't re-render on every streamed token.
+  const running = useDesktop((state) => Object.values(state.sessions).filter((item) => (
     deriveSessionSnapshot({ status: item.status, blocks: item.blocks }).busy
-  )).length;
+  )).length);
   const width = usePreferences((state) => state.inspectorWidth);
   const setWidth = usePreferences((state) => state.setInspectorWidth);
 
   const launchSide = async () => {
     const text = draft.trim();
     if (!text || launching) return;
-    const context = session
+    const context = sessionTitle !== undefined
       ? (zh
-          ? `【并行侧任务】主会话 ${session.title} 仍在进行。请独立完成：\n${text}`
-          : `[Side agent] Main mission "${session.title}" continues in parallel. Complete independently:\n${text}`)
+          ? `【并行侧任务】主会话 ${sessionTitle} 仍在进行。请独立完成：\n${text}`
+          : `[Side agent] Main mission "${sessionTitle}" continues in parallel. Complete independently:\n${text}`)
       : text;
     setLaunching(true);
     setLaunchError("");

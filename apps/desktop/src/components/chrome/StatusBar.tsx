@@ -13,14 +13,15 @@ import { useI18n } from "../../lib/i18n";
 export function StatusBar() {
   const { language } = useI18n();
   const activeId = useDesktop((s) => s.activeId);
-  const session = useDesktop((s) => (s.activeId ? s.sessions[s.activeId] : null));
+  const sessionStatus = useDesktop((s) => (s.activeId ? s.sessions[s.activeId]?.status : undefined));
+  const usage = useDesktop((s) => (s.activeId ? s.sessions[s.activeId]?.usage : undefined));
   const model = useDesktop((s) => s.model);
   const effort = useDesktop((s) => s.effort);
   const runtimeConnection = useDesktop((s) => s.runtimeConnection);
   const workspace = useDesktop((s) => s.workspace);
   const [branch, setBranch] = useState<string | null>(null);
 
-  const status = session?.status ?? "idle";
+  const status = sessionStatus ?? "idle";
   const presentation = runtimeConnection === "reconnecting"
     ? { zh: "正在重连", en: "Reconnecting", tone: "text-gold", spin: "slow" as const }
     : runtimeConnection === "offline"
@@ -44,7 +45,6 @@ export function StatusBar() {
                     : status === "awaiting_input"
                       ? { zh: "等待输入", en: "Awaiting input", tone: "text-gold", spin: "slow" as const }
                       : { zh: "已完成", en: "Completed", tone: "text-mute", spin: false as const };
-  const usage = session?.usage;
   const ctxPct =
     usage && usage.contextMax > 0
       ? Math.min(100, Math.round((usage.contextUsed / usage.contextMax) * 100))

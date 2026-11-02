@@ -1,6 +1,7 @@
 /* Home — a calm starting surface: choose a medium, describe the work, begin. */
 
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useDesktop } from "../../state/store";
 import type { PromptAttachment, SessionStatus } from "../../bridge/types";
 import { fmtRelTime, fmtTokens } from "../../lib/format";
@@ -29,7 +30,12 @@ export function Home() {
   const draftLoadedRef = useRef(false);
   const { onCompositionStart, onCompositionEnd, isImeBlocking } = useImeGuard();
   const sessionIndex = useDesktop((s) => s.sessionIndex);
-  const sessions = useDesktop((s) => s.sessions);
+  // Status + token summary only (shallow), not the full transcripts.
+  const sessions = useDesktop(useShallow((s) => {
+    const out: Record<string, string> = {};
+    for (const [id, item] of Object.entries(s.sessions)) out[id] = `${item.status}|${(item.usage.inputTokens ?? 0) + (item.usage.outputTokens ?? 0)}`;
+    return out;
+  }));
   const newSession = useDesktop((s) => s.newSession);
   const openSession = useDesktop((s) => s.openSession);
   const workspace = useDesktop((s) => s.workspace);
@@ -254,8 +260,8 @@ export function Home() {
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {recent.map((mission, index) => {
-                const tokens = (sessions[mission.id]?.usage.inputTokens ?? 0) + (sessions[mission.id]?.usage.outputTokens ?? 0);
-                const status = sessions[mission.id]?.status ?? mission.lastStatus ?? "idle";
+                const tokens = Number(sessions[mission.id]?.split("|")[1] ?? 0);
+                const status = (sessions[mission.id]?.split("|")[0] as typeof mission.lastStatus) ?? mission.lastStatus ?? "idle";
                 const attention = recentStatusPresentation(status, language === "zh-CN");
                 const title = mission.title?.trim()
                   || mission.summary?.trim().slice(0, 48)

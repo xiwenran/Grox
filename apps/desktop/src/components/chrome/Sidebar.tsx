@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { exportSessionSupportBundle, openExternal, revealSupportBundle, searchSessionHistory } from "../../lib/hostActions";
+import { useShallow } from "zustand/react/shallow";
 import { useDesktop, type ProjectMeta } from "../../state/store";
 import { usePreferences } from "../../state/preferences";
 import { useI18n } from "../../lib/i18n";
 import { fmtBillingDate, fmtRelTime, fmtTokens } from "../../lib/format";
 import { Wordmark } from "../fx/Wordmark";
 import { Icon } from "../fx/Icon";
-import type { Session, SessionMeta, SessionStatus } from "../../bridge/types";
+import type { SessionMeta, SessionStatus } from "../../bridge/types";
 import { BlackHole } from "../fx/BlackHole";
 import { normalizeSessionQuery, sessionMatchesLoadedContent } from "../../lib/sessionSearch";
 import { projectId, samePath } from "../../lib/projectCatalog";
@@ -22,7 +23,15 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   const setTheme = usePreferences((state) => state.setTheme);
   const toggleSidebar = usePreferences((state) => state.toggleSidebar);
   const sessionIndex = useDesktop((state) => state.sessionIndex);
-  const sessions = useDesktop((state) => state.sessions);
+  // Per-row summary only (status + token total), shallow-compared, so the
+  // sidebar doesn't re-render on every streamed token.
+  const sessions = useDesktop(useShallow((state) => {
+    const out: Record<string, LoadedSummary> = {};
+    for (const [id, item] of Object.entries(state.sessions)) {
+      out[id] = `${item.status}|${(item.usage.inputTokens ?? 0) + (item.usage.outputTokens ?? 0)}`;
+    }
+    return out;
+  }));
   const activeId = useDesktop((state) => state.activeId);
   const activeProjectId = useDesktop((state) => state.activeProjectId);
   const projects = useDesktop((state) => state.projects);
@@ -76,7 +85,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   const sidebarSessions = orderedSessions.filter((session) => !session.archived);
   const matchedSessions = normalizedQuery
     ? sidebarSessions.filter((meta) =>
-        historyMatches.has(meta.id) || sessionMatchesLoadedContent(meta, sessions[meta.id], normalizedQuery)
+        historyMatches.has(meta.id) || sessionMatchesLoadedContent(meta, useDesktop.getState().sessions[meta.id], normalizedQuery)
       )
     : sidebarSessions;
   const matchedWorkspaceKeys = new Set(matchedSessions.map((session) => projectId(session.cwd)));
@@ -268,6 +277,9 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   );
 }
 
+/** `${status}|${tokens}` — a primitive so shallow equality works. */
+type LoadedSummary = string;
+
 function ProjectGroup({
   project,
   active,
@@ -283,7 +295,7 @@ function ProjectGroup({
   expanded: boolean;
   sessions: SessionMeta[];
   activeId: string | null;
-  loadedSessions: Record<string, Session>;
+  loadedSessions: Record<string, LoadedSummary>;
   onOpenSession(id: string): void;
   onToggle(): void;
 }) {
@@ -303,10 +315,10 @@ function ProjectGroup({
             <MissionRow
               key={meta.id}
               meta={meta}
-              status={loadedSessions[meta.id]?.status ?? meta.lastStatus ?? "idle"}
+              status={(loadedSessions[meta.id]?.split("|")[0] as SessionStatus | undefined) ?? meta.lastStatus ?? "idle"}
               completionUnread={Boolean(meta.completionUnread)}
               active={meta.id === activeId}
-              tokens={(loadedSessions[meta.id]?.usage.inputTokens ?? 0) + (loadedSessions[meta.id]?.usage.outputTokens ?? 0)}
+              tokens={Number(loadedSessions[meta.id]?.split("|")[1] ?? 0)}
               onOpen={() => onOpenSession(meta.id)}
             />
           ))}
