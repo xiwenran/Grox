@@ -375,7 +375,7 @@ function ToolImages({ images }: { images: NonNullable<ToolCall["images"]> }) {
       <div className="mt-2 grid grid-cols-2 gap-2">
         {rendered.map((image, index) => (
           <button key={`${image.src}-${index}`} onClick={() => setActive(index)} className="group/image relative overflow-hidden rounded-[4px] border border-line2 bg-void text-left" title={language === "zh-CN" ? "点击预览图片" : "Preview image"}>
-            <img src={image.src} alt="Tool output" className="max-h-44 w-full object-contain transition-transform duration-200 group-hover/image:scale-[1.015]" />
+            <img src={image.src} alt="Tool output" loading="lazy" decoding="async" className="max-h-44 w-full object-contain transition-transform duration-200 group-hover/image:scale-[1.015]" />
             <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-void/80 px-2 py-1 font-mono text-[12px] text-faint opacity-0 backdrop-blur-sm transition-opacity group-hover/image:opacity-100">{language === "zh-CN" ? "点击预览" : "PREVIEW"}</span>
           </button>
         ))}

@@ -32,7 +32,7 @@ const modeLabels: Record<RewindMode, { zh: string; en: string; zhHint: string; e
 function RewindSurface({ modal, onClose, children }: { modal: boolean; onClose(): void; children: React.ReactNode }) {
   if (!modal) return children;
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4" onMouseDown={onClose}>
       <div onMouseDown={(event) => event.stopPropagation()}>{children}</div>
     </div>,
     document.body,

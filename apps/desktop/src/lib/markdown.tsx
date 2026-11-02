@@ -28,7 +28,7 @@ function renderImage(href: string, title: string | null | undefined, text: strin
   if (kind === "blocked") return escapeHtml(text);
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
   const srcAttr = kind === "remote" ? ` src="${escapeHtml(source)}"` : "";
-  return `<img data-md-src="${escapeHtml(source)}"${srcAttr} alt="${escapeHtml(text)}"${titleAttr} loading="lazy">`;
+  return `<img data-md-src="${escapeHtml(source)}"${srcAttr} alt="${escapeHtml(text)}"${titleAttr} loading="lazy" decoding="async">`;
 }
 
 function renderCodeBlock(text: string, lang: string): string {

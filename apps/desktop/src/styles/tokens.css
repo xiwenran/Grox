@@ -2018,9 +2018,9 @@ textarea:focus-visible,
   font-size: 13px;
 }
 .image-lightbox {
-  background: color-mix(in srgb, var(--color-raise) 86%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  /* No backdrop-filter: blurring the whole transcript behind a full-window
+     overlay is expensive in WebKit. */
+  background: color-mix(in srgb, var(--color-raise) 94%, transparent);
 }
 .image-lightbox__img {
   border-radius: 16px;

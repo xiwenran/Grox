@@ -973,8 +973,11 @@ function ConfigDocumentsPanel() {
       }
     };
     void load();
-    const timer = window.setInterval(load, 1500);
-    return () => { live = false; window.clearInterval(timer); };
+    // Re-read when the window regains focus (e.g. after editing the file in
+    // another app) instead of polling the disk every 1.5 s.
+    const onFocus = () => { void load(); };
+    window.addEventListener("focus", onFocus);
+    return () => { live = false; window.removeEventListener("focus", onFocus); };
   }, [cwd, dirty]);
   const document = useMemo(() => documents.find((item) => item.id === active), [documents, active]);
   const canApply = !activeId || !activeStatus || activeStatus === "idle" || activeStatus === "failed" || activeStatus === "cancelled";

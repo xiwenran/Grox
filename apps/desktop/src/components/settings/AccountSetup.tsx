@@ -199,7 +199,7 @@ function AccountSetupDialog({
 }) {
   const dialogRef = useModalA11y(onClose);
   return (
-    <div className="settings-shell fixed inset-0 z-[70] flex items-center justify-center bg-void/80 p-5 backdrop-blur-[4px]">
+    <div className="settings-shell fixed inset-0 z-[70] flex items-center justify-center bg-void/80 p-5">
       <div
         ref={dialogRef}
         role="dialog"
@@ -316,7 +316,7 @@ function RuntimeInstallDialog({ runtimeBusy, installRuntime, error, heading, bod
 }) {
   const dialogRef = useModalA11y();
   return (
-    <div className="settings-shell fixed inset-0 z-[70] flex items-center justify-center bg-void/80 p-5 backdrop-blur-[4px]">
+    <div className="settings-shell fixed inset-0 z-[70] flex items-center justify-center bg-void/80 p-5">
       <div
         ref={dialogRef}
         role="dialog"
