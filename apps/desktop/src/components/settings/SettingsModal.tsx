@@ -17,6 +17,14 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { AccountAvatar } from "../common/AccountAvatar";
 import { CLI_EFFORT_ORDER, cliEffortLabel, permissionLabel } from "../common/PromptControls";
 import {
+  getAvailableOpenApplications,
+  getDefaultOpenApplication,
+  refreshOpenApplications,
+  setDefaultOpenApplication,
+  type OpenApplicationOption,
+} from "../../lib/defaultOpen";
+import { checkForUpdates, useUpdateStatus } from "../../lib/updateStatusStore";
+import {
   getSettingsCatalog,
   isSettingsSection,
   searchSettings,
@@ -129,12 +137,12 @@ export function SettingsModal() {
       role="dialog"
       aria-modal="true"
       aria-label={zh ? "设置" : "Settings"}
-      className="settings-shell fixed inset-0 z-50 flex items-center justify-center bg-void/75 p-5 backdrop-blur-[3px]"
+      className="settings-shell plain-overlay fixed inset-0 z-50 flex items-center justify-center p-5"
       onMouseDown={() => setOpen(false)}
     >
       <div
         ref={panelRef}
-        className="flex h-[min(820px,92vh)] w-[min(1180px,96vw)] overflow-hidden rounded-[9px] border border-line3 bg-panel shadow-2xl animate-fade-up"
+        className="flex h-[min(820px,92vh)] w-[min(1180px,96vw)] overflow-hidden rounded-[16px] border border-line3 bg-panel shadow-2xl"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <nav className="flex w-[246px] shrink-0 flex-col border-r border-line bg-void py-3">
@@ -264,6 +272,8 @@ function General() {
         <ActionButton disabled={historySyncing} onClick={() => void refreshHistory()}>{historySyncing ? t("importing") : t("importAction")}</ActionButton>
       </div>
     </Row>
+    <DefaultOpenApplicationRow />
+    <VersionAndUpdatesRow />
     <Row label={t("effortSection")} hint={t("effortSettingHint")}>
       <ChipSelect variant="field" menuPlacement="down" align="end" width={300} activeId={effort} label={cliEffortLabel(effort, t).label} items={CLI_EFFORT_ORDER.map((item) => ({ id: item, ...cliEffortLabel(item, t) }))} onSelect={(id) => setEffort(id as typeof effort)} aria-label={t("effortSection")} />
     </Row>
@@ -288,6 +298,70 @@ function General() {
     <Row label="Browser Use" hint={zh ? "默认开启。提供打开 URL 与本机 Chrome/Edge 无头截图 MCP；变更后需新建或重新加载会话。" : "On by default. Mounts URL open + headless Chrome/Edge screenshot MCP. Reload or create a session after changing."}><Toggle label="Browser Use" on={browserUse} onChange={setBrowserUse} /></Row>
     <Row label={zh ? "桌面通知" : "Desktop notifications"} hint={zh ? "窗口在后台时，权限批准与问答会弹出系统通知。" : "When Grox is in the background, permission and question prompts raise OS notifications."}><Toggle label={zh ? "桌面通知" : "Desktop notifications"} on={desktopNotify} onChange={(on) => { localStorage.setItem("grox.desktopNotify", on ? "1" : "0"); setDesktopNotify(on); if (on) void import("../../lib/notify").then((module) => module.ensureNotifyPermission()); }} /></Row>
   </div>;
+}
+
+function DefaultOpenApplicationRow() {
+  const { t } = useI18n();
+  const [applications, setApplications] = useState<OpenApplicationOption[]>(() => getAvailableOpenApplications());
+  const [application, setApplication] = useState<OpenApplicationOption>(() => getDefaultOpenApplication());
+  useEffect(() => {
+    let alive = true;
+    // The host caches discovery and rescans only when an Applications folder
+    // changes, so this is instant after the first time.
+    void refreshOpenApplications().then((items) => {
+      if (!alive) return;
+      setApplications(items);
+      setApplication(getDefaultOpenApplication());
+    });
+    return () => { alive = false; };
+  }, []);
+  const label = (item: OpenApplicationOption) => (item.isDefault ? t("defaultOpenSystem") : item.name);
+  const current = applications.find((item) => item.id === application.id) ?? application;
+  return (
+    <Row label={t("defaultOpenApp")} hint={t("defaultOpenAppHint")}>
+      <ChipSelect
+        variant="field"
+        menuPlacement="down"
+        align="end"
+        width={240}
+        activeId={current.id}
+        label={label(current)}
+        items={applications.map((item) => ({ id: item.id, label: label(item) }))}
+        onSelect={(id) => {
+          const next = applications.find((item) => item.id === id);
+          if (!next) return;
+          setDefaultOpenApplication(next);
+          setApplication(next);
+        }}
+        aria-label={t("defaultOpenApp")}
+      />
+    </Row>
+  );
+}
+
+function VersionAndUpdatesRow() {
+  const { t } = useI18n();
+  const status = useUpdateStatus((state) => state.status);
+  const checking = useUpdateStatus((state) => state.checking);
+  const error = useUpdateStatus((state) => state.error);
+  const hint = checking
+    ? t("versionChecking")
+    : error && !status
+      ? `${t("versionCheckFailed")}${error}`
+      : status
+        ? status.updateAvailable
+          ? `${t("versionUpdateAvailable")} v${status.latest.latestVersion}`
+          : `${t("versionUpToDate")} · ${t("versionLatest")} v${status.latest.latestVersion}`
+        : t("versionCheckedOnLaunch");
+  return (
+    <Row label={t("versionAndUpdates")} hint={hint}>
+      <div className="flex items-center gap-2">
+        {status && <span className="chip tnum">v{status.currentVersion}</span>}
+        <ActionButton disabled={checking} onClick={() => void checkForUpdates()}>{t("checkForUpdates")}</ActionButton>
+        <ActionButton onClick={() => window.dispatchEvent(new Event("grox:open-update-center"))}>{t("changelog")}</ActionButton>
+      </div>
+    </Row>
+  );
 }
 
 function ArchiveManager() {

@@ -1,46 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getUpdateStatus, openExternal as openExternalHost, installUpdate, rollbackUpdate } from "../../lib/hostActions";
+import { useEffect, useRef, useState } from "react";
+import { openExternal as openExternalHost, installUpdate, rollbackUpdate } from "../../lib/hostActions";
 import { useI18n } from "../../lib/i18n";
 import {
   readSkippedUpdateVersion,
   shouldAutoOpenUpdate,
-  shouldResetSessionDismiss,
   writeSkippedUpdateVersion,
 } from "../../lib/updateNoticePolicy";
+import { checkForUpdates, checkForUpdatesOnLaunch, useUpdateStatus } from "../../lib/updateStatusStore";
 import { Icon } from "../fx/Icon";
 import { Wordmark } from "../fx/Wordmark";
-
-interface UpdateInfo {
-  currentVersion: string;
-  latestVersion: string;
-  title: string;
-  notes: string;
-  releaseUrl: string;
-  publishedAt?: string;
-  installable: boolean;
-  assetName?: string;
-  requiresXattr: boolean;
-}
-
-interface ReleaseSummary {
-  version: string;
-  title: string;
-  notes: string;
-  releaseUrl: string;
-  publishedAt?: string;
-  installable: boolean;
-}
-
-interface UpdateStatus {
-  currentVersion: string;
-  updateAvailable: boolean;
-  latest: UpdateInfo;
-  history: ReleaseSummary[];
-  rollback?: ReleaseSummary | null;
-}
-
-const UPDATE_POLL_INTERVAL_MS = 2 * 60_000;
-const VISIBILITY_RECHECK_AFTER_MS = 30_000;
 
 const formatDate = (value: string | undefined, language: string) => value
   ? new Intl.DateTimeFormat(language, { dateStyle: "medium" }).format(new Date(value))
@@ -51,55 +19,29 @@ const releaseNotes = (notes: string, zh: boolean) => notes.trim() || (
 );
 
 /**
- * Keeps a lightweight release heartbeat while the app is open. A new release
- * becomes an actionable notice without requiring a full app restart; opening
- * the title-bar changelog always performs a fresh, user-visible check.
+ * Release dialog. GitHub is checked once at launch (updateStatusStore); a new
+ * release opens this dialog automatically. Opening 更新日志 shows the cached
+ * result instantly; only 检查更新 asks GitHub again.
  */
 export function UpdateNotice() {
   const { language } = useI18n();
   const zh = language === "zh-CN";
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<UpdateStatus | null>(null);
-  const [checking, setChecking] = useState(false);
+  const status = useUpdateStatus((state) => state.status);
+  const checking = useUpdateStatus((state) => state.checking);
+  const checkError = useUpdateStatus((state) => state.error);
+  const [actionError, setActionError] = useState("");
+  const error = actionError || checkError;
+  const setError = setActionError;
   const [installing, setInstalling] = useState(false);
   const [rollingBack, setRollingBack] = useState(false);
-  const [error, setError] = useState("");
-  const lastAutomaticCheck = useRef(0);
-  const inFlight = useRef(false);
   const sessionDismissed = useRef(false);
-  const lastLatestVersion = useRef<string | null>(null);
 
-  const check = useCallback(async (openWhenCurrent: boolean) => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setChecking(true);
-    setError("");
-    try {
-      const next = await getUpdateStatus<UpdateStatus>();
-      if (shouldResetSessionDismiss(lastLatestVersion.current, next.latest.latestVersion)) {
-        sessionDismissed.current = false;
-      }
-      lastLatestVersion.current = next.latest.latestVersion;
-      setStatus(next);
-      if (
-        openWhenCurrent
-        || shouldAutoOpenUpdate({
-          updateAvailable: next.updateAvailable,
-          latestVersion: next.latest.latestVersion,
-          skippedVersion: readSkippedUpdateVersion(),
-          sessionDismissed: sessionDismissed.current,
-        })
-      ) {
-        setOpen(true);
-      }
-    } catch (cause) {
-      if (openWhenCurrent) setOpen(true);
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      inFlight.current = false;
-      setChecking(false);
-    }
-  }, []);
+  const check = async (openWhenDone: boolean) => {
+    setActionError("");
+    if (openWhenDone) setOpen(true);
+    await checkForUpdates();
+  };
 
   const dismissForSession = () => {
     sessionDismissed.current = true;
@@ -113,27 +55,29 @@ export function UpdateNotice() {
   };
 
   useEffect(() => {
-    const automaticCheck = () => {
-      if (document.visibilityState !== "visible") return;
-      const now = Date.now();
-      if (now - lastAutomaticCheck.current < VISIBILITY_RECHECK_AFTER_MS) return;
-      lastAutomaticCheck.current = now;
-      void check(false);
-    };
+    void checkForUpdatesOnLaunch().then((next) => {
+      if (next && shouldAutoOpenUpdate({
+        updateAvailable: next.updateAvailable,
+        latestVersion: next.latest.latestVersion,
+        skippedVersion: readSkippedUpdateVersion(),
+        sessionDismissed: sessionDismissed.current,
+      })) setOpen(true);
+    });
     const openCenter = () => {
+      setActionError("");
       setOpen(true);
-      void check(true);
+      // Launch check failed or never ran: the dialog is the place to retry.
+      const current = useUpdateStatus.getState();
+      if (!current.status && !current.checking) void checkForUpdates();
     };
-    automaticCheck();
-    const timer = window.setInterval(automaticCheck, UPDATE_POLL_INTERVAL_MS);
-    document.addEventListener("visibilitychange", automaticCheck);
+    const checkNow = () => void check(true);
     window.addEventListener("grox:open-update-center", openCenter);
+    window.addEventListener("grox:check-updates", checkNow);
     return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", automaticCheck);
       window.removeEventListener("grox:open-update-center", openCenter);
+      window.removeEventListener("grox:check-updates", checkNow);
     };
-  }, [check]);
+  }, []);
 
   const install = async () => {
     if (!status?.updateAvailable) return;
@@ -174,8 +118,8 @@ export function UpdateNotice() {
   const published = formatDate(update?.publishedAt, language);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-void/80 p-5 backdrop-blur-[4px]">
-      <section className="flex max-h-[min(720px,92vh)] w-[min(620px,94vw)] flex-col overflow-hidden rounded-[9px] border border-line3 bg-panel shadow-2xl animate-fade-up" role="dialog" aria-modal="true" aria-labelledby="grox-update-title">
+    <div className="plain-overlay fixed inset-0 z-[70] flex items-center justify-center p-5">
+      <section className="flex max-h-[min(720px,92vh)] w-[min(620px,94vw)] flex-col overflow-hidden rounded-[16px] border border-line3 bg-panel shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="grox-update-title">
         <div className="flex items-center justify-between border-b border-line bg-void px-5 py-3">
           <Wordmark size={11} withMark />
           <div className="flex items-center gap-3">

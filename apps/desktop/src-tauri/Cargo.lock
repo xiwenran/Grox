@@ -1604,6 +1604,7 @@ dependencies = [
  "keyring",
  "libc",
  "percent-encoding",
+ "plist",
  "reqwest 0.12.28",
  "rfd",
  "semver",

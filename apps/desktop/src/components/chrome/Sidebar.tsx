@@ -33,6 +33,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   const account = useDesktop((state) => state.account);
   const billing = useDesktop((state) => state.billing);
   const setSettingsOpen = useDesktop((state) => state.setSettingsOpen);
+  const setPaletteOpen = useDesktop((state) => state.setPaletteOpen);
   const setAccountSetupOpen = useDesktop((state) => state.setAccountSetupOpen);
   const logout = useDesktop((state) => state.logout);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -251,6 +252,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
               />
             )}
             <MenuButton icon="gear" label={t("settings")} onClick={() => { setSettingsOpen(true); setAccountOpen(false); }} />
+            <MenuButton icon="command" label={t("commandPaletteMenu")} onClick={() => { setPaletteOpen(true); setAccountOpen(false); }} />
             {account?.authenticated ? (
               <MenuButton icon="external" label={t("upgrade")} onClick={() => void openExternal("https://grok.com/supergrok?referrer=grok-build")} />
             ) : (

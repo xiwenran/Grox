@@ -121,6 +121,20 @@ const zh = {
   imagePreview: "图片预览",
   closeImagePreview: "关闭预览（Esc）",
   imageMissing: "找不到图片文件",
+  commandPaletteMenu: "命令面板 ⌘K",
+  defaultOpenApp: "文件默认打开方式",
+  defaultOpenAppHint: "在 Grox 里打开文件时使用的应用；列表来自本机已安装的编辑器、终端和访达。",
+  defaultOpenSystem: "系统默认",
+  versionAndUpdates: "版本与更新",
+  versionCurrent: "当前版本",
+  versionLatest: "最新版本",
+  versionUpdateAvailable: "有新版本",
+  versionUpToDate: "已是最新",
+  versionChecking: "正在检查更新…",
+  versionCheckFailed: "检查更新失败：",
+  versionCheckedOnLaunch: "启动时检查一次 GitHub 发布。",
+  checkForUpdates: "检查更新",
+  changelog: "更新日志",
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
@@ -148,6 +162,8 @@ const en: Record<keyof typeof zh, string> = {
   cost: "Cost", inputTokens: "Input tokens", outputTokens: "Output tokens", cacheRead: "Cache read", sessionId: "Mission ID",
   effortXhighHint: "Maximum reasoning for the hardest tasks.", effortHighHint: "Thorough reasoning and quality. Recommended.", effortMediumHint: "Strong quality with a faster turnaround.", effortLowHint: "Fastest responses. Best for simple tasks.", permAsk: "Ask", permAuto: "Auto-review", permAlways: "Always approve", permAskHint: "Ask before running tools (CLI default)", permAutoHint: "Grok reviews tool calls automatically", permAlwaysHint: "Skip all prompts (YOLO)", modeSection: "Mode", modeDefault: "Default", modeDefaultHint: "Work on the task directly", modePlan: "Plan mode", modePlanShort: "Plan", modePlanHint: "Plan first; edit after approval", permSection: "Permissions", effortSection: "Reasoning effort", promptOptionsTitle: "Mode, permissions and reasoning effort", effortSettingHint: "Options come from the official CLI (reasoning_effort).", permSettingHint: "The official CLI's three modes: Ask (CLI default), Auto-review, Always approve. Always approve requires confirmation and cannot run with Computer Use.", permModeLabel: "Permission mode", cliDefault: "CLI default", importCliHistory: "Import CLI history", importCliHistoryHint: "Scan ~/.grok/sessions and add sessions you ran in the terminal to the sidebar.", importCliHistoryFailed: "Import failed: ", importAction: "Import", importing: "Importing…", sessionsSuffix: " sessions",
   imagePreview: "Image preview", closeImagePreview: "Close preview (Esc)", imageMissing: "Image file not found",
+  commandPaletteMenu: "Command palette ⌘K", defaultOpenApp: "Default app for files", defaultOpenAppHint: "Used when Grox opens a file; lists installed editors, terminals and Finder.", defaultOpenSystem: "System default",
+  versionAndUpdates: "Version & updates", versionCurrent: "Current version", versionLatest: "latest", versionUpdateAvailable: "Update available", versionUpToDate: "Up to date", versionChecking: "Checking for updates…", versionCheckFailed: "Update check failed: ", versionCheckedOnLaunch: "GitHub releases are checked once at launch.", checkForUpdates: "Check for updates", changelog: "Changelog",
 };
 
 export type TranslationKey = keyof typeof zh;

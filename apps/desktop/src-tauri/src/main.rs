@@ -152,6 +152,7 @@ use worktree_ownership::WorktreeOwnershipStore;
 
 const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/dandandujie/Grox/releases/latest";
+const RELEASE_HISTORY_PAGE: &str = "12";
 const RELEASES_URL: &str = "https://api.github.com/repos/dandandujie/Grox/releases";
 const GROK_INSTALL_PS1_URL: &str = "https://x.ai/cli/install.ps1";
 const GROK_INSTALL_SH_URL: &str = "https://x.ai/cli/install.sh";
@@ -4454,19 +4455,154 @@ fn app_icon_data_url(app_path: &Path, plist: &serde_json::Value) -> Option<Strin
     bytes.map(|bytes| format!("data:image/png;base64,{}", BASE64.encode(bytes)))
 }
 
+/// Parse an Info.plist (XML or binary) in-process. Spawning `plutil` for each
+/// of the ~200 bundles on a typical Mac made every menu open cost ~0.6s.
+#[cfg(target_os = "macos")]
+fn read_info_plist(plist_path: &Path) -> Option<serde_json::Value> {
+    let value = plist::Value::from_file(plist_path).ok()?;
+    serde_json::to_value(value).ok()
+}
+
+/// Open-with discovery cache. Spotlight + Info.plist inspection run again only
+/// when an application folder (or a vendor sub-folder) changes; icons are
+/// converted with `sips` at most once per bundle version.
+#[cfg(target_os = "macos")]
+#[derive(Default)]
+struct OpenApplicationCache {
+    fingerprint: Vec<(PathBuf, Option<SystemTime>)>,
+    applications: Option<Vec<OpenApplicationOption>>,
+    inspected: std::collections::HashMap<PathBuf, (Option<SystemTime>, Option<OpenApplicationOption>)>,
+}
+
+#[cfg(target_os = "macos")]
+static OPEN_APPLICATION_CACHE: std::sync::LazyLock<std::sync::Mutex<OpenApplicationCache>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(OpenApplicationCache::default()));
+
+/// Modification times of every application root and its first-level folders.
+/// Installing, removing or updating a top-level or vendor-nested bundle changes
+/// one of these, which is all the selector needs to notice.
+#[cfg(target_os = "macos")]
+fn application_folders_fingerprint(roots: &[PathBuf]) -> Vec<(PathBuf, Option<SystemTime>)> {
+    let mtime = |path: &Path| fs::metadata(path).and_then(|meta| meta.modified()).ok();
+    let mut fingerprint = Vec::new();
+    for root in roots {
+        fingerprint.push((root.clone(), mtime(root)));
+        if let Ok(entries) = fs::read_dir(root) {
+            let mut children = entries
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| path.is_dir())
+                .map(|path| {
+                    let time = mtime(&path);
+                    (path, time)
+                })
+                .collect::<Vec<_>>();
+            children.sort_by(|left, right| left.0.cmp(&right.0));
+            fingerprint.extend(children);
+        }
+    }
+    fingerprint
+}
+
+#[cfg(target_os = "macos")]
+fn cached_open_applications() -> Vec<OpenApplicationOption> {
+    let mut roots = application_search_roots();
+    roots.push(PathBuf::from("/System/Applications/Utilities"));
+    let fingerprint = application_folders_fingerprint(&roots);
+    let mut cache = OPEN_APPLICATION_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if cache.fingerprint == fingerprint {
+        if let Some(applications) = &cache.applications {
+            return applications.clone();
+        }
+    }
+    let paths = discovered_application_paths();
+    let mut inspected = std::collections::HashMap::with_capacity(paths.len());
+    let mut applications = Vec::new();
+    for path in paths {
+        let stamp = fs::metadata(path.join("Contents").join("Info.plist"))
+            .and_then(|meta| meta.modified())
+            .ok();
+        let entry = match cache.inspected.remove(&path) {
+            Some((previous, option)) if previous == stamp && stamp.is_some() => option,
+            _ => inspect_application(&path),
+        };
+        if let Some(option) = &entry {
+            applications.push(option.clone());
+        }
+        inspected.insert(path, (stamp, entry));
+    }
+    applications.sort_by_cached_key(|item| item.name.to_ascii_lowercase());
+    let mut seen = BTreeSet::new();
+    applications.retain(|item| seen.insert(item.id.clone()));
+    cache.inspected = inspected;
+    cache.fingerprint = fingerprint;
+    cache.applications = Some(applications.clone());
+    applications
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod open_application_cache_tests {
+    use super::*;
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "grox-open-apps-{name}-{}-{}",
+            std::process::id(),
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn info_plist_is_read_in_process_for_xml_and_binary() {
+        let dir = temp_dir("plist");
+        let xml = dir.join("Info.plist");
+        fs::write(&xml, r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.todesktop.cursor</string><key>CFBundleName</key><string>Cursor</string><key>LSRequiresNativeExecution</key><true/></dict></plist>"#).unwrap();
+        let value = read_info_plist(&xml).expect("xml plist");
+        assert_eq!(plist_string(&value, "CFBundleIdentifier").as_deref(), Some("com.todesktop.cursor"));
+        assert_eq!(plist_string(&value, "CFBundleName").as_deref(), Some("Cursor"));
+
+        let binary = dir.join("Binary.plist");
+        plist::Value::from_file(&xml).unwrap().to_file_binary(&binary).unwrap();
+        let value = read_info_plist(&binary).expect("binary plist");
+        assert_eq!(plist_string(&value, "CFBundleName").as_deref(), Some("Cursor"));
+        assert!(read_info_plist(&dir.join("missing.plist")).is_none());
+    }
+
+    #[test]
+    fn folder_fingerprint_changes_when_an_app_is_added() {
+        let root = temp_dir("fingerprint");
+        fs::create_dir_all(root.join("Vendor")).unwrap();
+        let before = application_folders_fingerprint(&[root.clone()]);
+        assert_eq!(before, application_folders_fingerprint(&[root.clone()]));
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        fs::create_dir_all(root.join("Vendor").join("Editor.app")).unwrap();
+        assert_ne!(before, application_folders_fingerprint(&[root.clone()]));
+    }
+
+    /// Manual timing on a real Mac: `cargo test open_apps_timing -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn open_apps_timing() {
+        let start = std::time::Instant::now();
+        let first = cached_open_applications();
+        let cold = start.elapsed();
+        let start = std::time::Instant::now();
+        let second = cached_open_applications();
+        let warm = start.elapsed();
+        assert_eq!(first.len(), second.len());
+        println!("open-with apps={} cold={cold:?} warm={warm:?}", first.len());
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn inspect_application(path: &Path) -> Option<OpenApplicationOption> {
-    let plist_path = path.join("Contents").join("Info.plist");
-    let output = std::process::Command::new("/usr/bin/plutil")
-        .args(["-convert", "json", "-o", "-"])
-        .arg(&plist_path)
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let plist = serde_json::from_slice::<serde_json::Value>(&output.stdout).ok()?;
+    let plist = read_info_plist(&path.join("Contents").join("Info.plist"))?;
     let bundle_id = plist_string(&plist, "CFBundleIdentifier")?;
     let name = plist_string(&plist, "CFBundleDisplayName")
         .or_else(|| plist_string(&plist, "CFBundleName"))
@@ -4957,14 +5093,7 @@ fn desktop_command_for_file(path: &Path, file: &Path) -> Result<(String, Vec<Str
 fn list_open_applications_sync() -> Result<Vec<OpenApplicationOption>, String> {
     #[cfg(target_os = "macos")]
     {
-        let mut applications = discovered_application_paths()
-            .iter()
-            .filter_map(|path| inspect_application(path))
-            .collect::<Vec<_>>();
-        applications.sort_by_cached_key(|item| item.name.to_ascii_lowercase());
-        let mut seen = BTreeSet::new();
-        applications.retain(|item| seen.insert(item.id.clone()));
-        return Ok(applications);
+        return Ok(cached_open_applications());
     }
     #[cfg(windows)]
     {
@@ -6133,7 +6262,9 @@ async fn release_history() -> Result<Vec<GitHubRelease>, String> {
         .build()
         .map_err(|error| format!("无法创建更新客户端：{error}"))?
         .get(RELEASES_URL)
-        .query(&[("per_page", "30")])
+        // The dialog shows 8 releases; a few extra cover drafts/prereleases
+        // and the rollback target without downloading the full history.
+        .query(&[("per_page", RELEASE_HISTORY_PAGE)])
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
@@ -6212,11 +6343,11 @@ async fn check_for_update() -> Result<Option<UpdateInfo>, String> {
 
 #[tauri::command]
 async fn get_update_status() -> Result<UpdateStatus, String> {
-    // This desktop target intentionally uses a minimal Tokio feature set, so
-    // keep the two lightweight GitHub requests sequential instead of relying
-    // on `tokio::try_join!` (which is not compiled into this build).
-    let latest = latest_release().await?;
-    let releases = release_history().await?;
+    // Both GitHub requests run at once: the dialog waits for the slower one
+    // instead of their sum (~1.7s sequential on a typical connection).
+    let (latest, releases) = tokio::join!(latest_release(), release_history());
+    let latest = latest?;
+    let releases = releases?;
     let rollback = previous_release(CLIENT_VERSION, &releases).map(release_summary);
     let mut history = releases
         .iter()

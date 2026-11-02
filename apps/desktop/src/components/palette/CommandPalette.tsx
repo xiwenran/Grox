@@ -19,9 +19,14 @@ interface Item {
   run: () => void;
 }
 
+/** Mount the palette (and build its list) only while it is open. */
 export function CommandPalette() {
-  const { language, t } = useI18n();
   const open = useDesktop((s) => s.paletteOpen);
+  return open ? <PaletteBody /> : null;
+}
+
+function PaletteBody() {
+  const { language, t } = useI18n();
   const setOpen = useDesktop((s) => s.setPaletteOpen);
   const sessionIndex = useDesktop((s) => s.sessionIndex);
   const newProject = useDesktop((s) => s.newProject);
@@ -45,12 +50,8 @@ export function CommandPalette() {
   const { onCompositionStart, onCompositionEnd, isImeBlocking } = useImeGuard();
 
   useEffect(() => {
-    if (open) {
-      setQuery("");
-      setIdx(0);
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [open]);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
 
   const items = useMemo<Item[]>(() => {
     const close = (fn: () => void) => () => {
@@ -121,8 +122,6 @@ export function CommandPalette() {
 
   useEffect(() => setIdx(0), [query]);
 
-  if (!open) return null;
-
   const onKey = (e: React.KeyboardEvent) => {
     if (isImeBlocking(e)) return;
     if (e.key === "Escape") setOpen(false);
@@ -143,11 +142,11 @@ export function CommandPalette() {
       role="dialog"
       aria-modal="true"
       aria-label={language === "zh-CN" ? "命令面板" : "Command palette"}
-      className="fixed inset-0 z-50 bg-void/70 backdrop-blur-[2px]"
+      className="plain-overlay fixed inset-0 z-50"
       onMouseDown={() => setOpen(false)}
     >
       <div
-        className="mx-auto mt-[15vh] w-[540px] overflow-hidden rounded-[8px] border border-line3 bg-raise shadow-[0_24px_64px_rgba(0,0,0,0.6)] animate-fade-up"
+        className="mx-auto mt-[15vh] w-[540px] overflow-hidden rounded-[14px] border border-line3 bg-raise shadow-[0_18px_48px_rgba(0,0,0,0.18)]"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 border-b border-line2 px-3.5">
