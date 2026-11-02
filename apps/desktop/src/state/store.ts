@@ -385,6 +385,8 @@ function setSessionFlag(id: string, patch: SessionFlags) {
 /* StrictMode mounts effects twice in dev — subscribe once, ever. */
 let bridgeSubscribed = false;
 let workspaceWatchTimer: number | undefined;
+/** How often a streaming session may bump its sidebar row's updatedAt. */
+const CATALOG_TOUCH_INTERVAL_MS = 10_000;
 let pendingLaunch: { text: string; attachments: PromptAttachment[] } | undefined;
 let providerRestoreGeneration = 0;
 let capabilityLoadPromise: Promise<void> | undefined;
@@ -821,6 +823,19 @@ export const useDesktop = create<DesktopState>((set, get) => {
       if (!touchCatalogue) {
         set({ sessions: { ...state.sessions, [sessionId]: next } });
         if (isSessionTerminal(next.status)) applyQueuedModel(sessionId);
+        return;
+      }
+      const indexRow = state.sessionIndex.find((m) => m.id === sessionId);
+      if (
+        indexRow
+        && completionUnread === undefined
+        && indexRow.lastStatus === next.status
+        && !isSessionTerminal(next.status)
+        && next.updatedAt - indexRow.updatedAt < CATALOG_TOUCH_INTERVAL_MS
+      ) {
+        // Streaming tokens: the sidebar row only shows status + a relative
+        // time, so don't rebuild (and re-sort/re-render) the catalogue per token.
+        set({ sessions: { ...state.sessions, [sessionId]: next } });
         return;
       }
       const nextIndex = state.sessionIndex.map((m) =>
