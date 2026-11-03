@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 describe("更新状态缓存", () => {
-  it("启动检查只请求一次 GitHub，之后直接用缓存", async () => {
+  it("启动只读取一次 Host 版本信息，之后直接用缓存", async () => {
     invoke.mockResolvedValue(STATUS);
     await Promise.all([checkForUpdatesOnLaunch(), checkForUpdatesOnLaunch()]);
     await checkForUpdatesOnLaunch();
@@ -26,6 +26,17 @@ describe("更新状态缓存", () => {
     expect(invoke).toHaveBeenCalledWith("get_update_status");
     expect(useUpdateStatus.getState().status?.currentVersion).toBe("0.3.5");
     expect(useUpdateStatus.getState().checking).toBe(false);
+  });
+
+  it("独立维护版显示本地版本并关闭安装与回退", async () => {
+    invoke.mockResolvedValue({ ...STATUS, updatesDisabled: true, latest: { ...STATUS.latest, installable: false }, rollback: null });
+    await checkForUpdatesOnLaunch();
+    const status = useUpdateStatus.getState().status!;
+    expect(status.updatesDisabled).toBe(true);
+    expect(status.updateAvailable).toBe(false);
+    expect(status.latest.installable).toBe(false);
+    expect(status.rollback).toBeNull();
+    expect(invoke.mock.calls).toEqual([["get_update_status"]]);
   });
 
   it("手动检查会重新请求；同时点两次只发一次", async () => {

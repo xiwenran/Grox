@@ -38,9 +38,8 @@ export function imagePathsInText(text: string): string[] {
 /**
  * Turn image paths named by the operator into normal multimodal attachments.
  *
- * ACP's filesystem callback can only return UTF-8 text. Preparing the image
- * before the turn means the agent receives the same `image` content block it
- * receives for a pasted image, while it retains no broader external-FS access.
+ * 路径图片与粘贴图片使用同一发送流程，Host 在发送前保存原文件并生成视觉预览。
+ * 只读取用户明确提供的路径，保留现有外部文件访问边界。
  */
 export async function attachExplicitPromptImages(
   cwd: string,

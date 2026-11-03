@@ -1199,6 +1199,16 @@ pub(crate) fn acp_read_file(
         return Err("文件不能超过 16 MB".into());
     }
     let bytes = fs::read(&file).map_err(|error| format!("无法读取 {}：{error}", file.display()))?;
+    if prompt_image_mime(&bytes).is_some() {
+        let preview = crate::image_transport::preview(&bytes)?;
+        return Ok(AcpReadFile {
+            size: preview.bytes.len() as u64,
+            content: String::new(),
+            content_base64: Some(BASE64.encode(preview.bytes)),
+            content_type: preview.mime.into(),
+            line_count: None,
+        });
+    }
     Ok(build_acp_read_file(bytes, line, limit))
 }
 
@@ -1366,8 +1376,11 @@ pub(crate) fn acp_rpc_error(method: &str, error: &serde_json::Value) -> AcpHostE
         .unwrap_or_else(|| error.to_string());
     let detail = detail.chars().take(3_500).collect::<String>();
     let stable_code = match code {
+        Some(-32700) => "ACP_RPC_PARSE_ERROR",
+        Some(-32600) => "ACP_RPC_INVALID_REQUEST",
         Some(-32601) => "ACP_RPC_METHOD_NOT_FOUND",
         Some(-32602) => "ACP_RPC_INVALID_PARAMS",
+        Some(-32603) => "ACP_RPC_INTERNAL_ERROR",
         _ => "ACP_RPC_FAILED",
     };
     AcpHostError::protocol(stable_code, format!("{detail} · {method}"))
@@ -1444,7 +1457,7 @@ pub(crate) fn prepare_acp_line(line: String, leases: &McpLeaseStore) -> Result<S
         return Err("ACP 消息必须是单行 JSON".into());
     }
     // 多模态 base64 需要较大上限，但不能允许 WebView 无界占用 Host 内存。
-    const MAX_ACP_LINE_BYTES: usize = 8 * 1024 * 1024;
+    const MAX_ACP_LINE_BYTES: usize = crate::image_transport::MAX_ACP_LINE_BYTES;
     if line.len() > MAX_ACP_LINE_BYTES {
         return Err(format!(
             "ACP 消息过大（{} bytes，上限 {}）",
@@ -1466,6 +1479,9 @@ pub(crate) fn prepare_acp_line(line: String, leases: &McpLeaseStore) -> Result<S
         }
     }
     let line = mcp_leases::inject_mcp_servers(&line, leases)?;
+    if line.len() > MAX_ACP_LINE_BYTES {
+        return Err(format!("ACP 消息过大（{} bytes，上限 {}）", line.len(), MAX_ACP_LINE_BYTES));
+    }
     if line.contains('\n') || line.contains('\r') {
         return Err("ACP 消息必须是单行 JSON".into());
     }
@@ -1510,6 +1526,9 @@ pub(crate) async fn acp_request_inner(
     timeout_ms: u64,
     gate_token: Option<u64>,
 ) -> Result<String, AcpHostError> {
+    if line.len() > crate::image_transport::MAX_ACP_LINE_BYTES {
+        return Err(AcpHostError::request_too_large(line.len(), crate::image_transport::MAX_ACP_LINE_BYTES));
+    }
     let line = prepare_acp_line(line, leases)
         .map_err(|error| AcpHostError::protocol("ACP_INVALID_REQUEST", error))?;
     let message = serde_json::from_str::<serde_json::Value>(&line).map_err(|error| {

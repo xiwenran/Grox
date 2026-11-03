@@ -348,6 +348,8 @@ function VersionAndUpdatesRow() {
     ? t("versionChecking")
     : error && !status
       ? `${t("versionCheckFailed")}${error}`
+      : status?.updatesDisabled
+        ? t("localAppVersionHint")
       : status
         ? status.updateAvailable
           ? `${t("versionUpdateAvailable")} v${status.latest.latestVersion}`
@@ -357,8 +359,8 @@ function VersionAndUpdatesRow() {
     <Row label={t("versionAndUpdates")} hint={hint}>
       <div className="flex items-center gap-2">
         {status && <span className="chip tnum">v{status.currentVersion}</span>}
-        <ActionButton disabled={checking} onClick={() => void checkForUpdates()}>{t("checkForUpdates")}</ActionButton>
-        <ActionButton onClick={() => window.dispatchEvent(new Event("grox:open-update-center"))}>{t("changelog")}</ActionButton>
+        {!status?.updatesDisabled && <ActionButton disabled={checking} onClick={() => void checkForUpdates()}>{t("checkForUpdates")}</ActionButton>}
+        <ActionButton onClick={() => window.dispatchEvent(new Event("grox:open-update-center"))}>{t("versionInformation")}</ActionButton>
       </div>
     </Row>
   );

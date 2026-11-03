@@ -1,8 +1,4 @@
-/* Release status, checked once per app launch.
- *
- * GitHub is asked exactly once when Grox starts; the 更新日志 dialog and the
- * Settings row read the cached answer instantly. Only an explicit 检查更新
- * click asks again. There is no background polling. */
+/* 本地版本信息。独立维护版的 Host 不发起网络检查，也不安装远端应用包。 */
 
 import { create } from "zustand";
 import { getUpdateStatus } from "./hostActions";
@@ -30,6 +26,7 @@ export interface ReleaseSummary {
 
 export interface UpdateStatus {
   currentVersion: string;
+  updatesDisabled?: boolean;
   updateAvailable: boolean;
   latest: UpdateInfo;
   history: ReleaseSummary[];
@@ -53,7 +50,7 @@ export const useUpdateStatus = create<UpdateStatusState>(() => ({
 let inFlight: Promise<UpdateStatus | null> | null = null;
 let launchCheck: Promise<UpdateStatus | null> | null = null;
 
-/** Ask GitHub now. Concurrent callers share one request. */
+/** 读取 Host 管理的版本状态，并发调用共用一个请求。 */
 export function checkForUpdates(): Promise<UpdateStatus | null> {
   if (inFlight) return inFlight;
   useUpdateStatus.setState({ checking: true, error: "" });

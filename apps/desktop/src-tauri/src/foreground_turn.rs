@@ -186,6 +186,7 @@ struct ActiveTurn {
     open_gates: BTreeSet<String>,
     stall_notified: bool,
     cancelled: bool,
+    api_error: Option<AcpHostError>,
 }
 
 #[derive(Default)]
@@ -286,6 +287,7 @@ impl ForegroundTurnRegistry {
                 open_gates: BTreeSet::new(),
                 stall_notified: false,
                 cancelled: false,
+                api_error: None,
             },
         );
         Ok(ForegroundTurnLease {
@@ -370,6 +372,11 @@ impl ForegroundTurnRegistry {
 
         if let Some(update) = event.update.as_ref() {
             observe_tool_state(turn, update);
+            if let Some(error) = api_failure_from_update(update) {
+                turn.api_error = Some(error);
+            } else if update["sessionUpdate"] == "turn_completed" && update["stop_reason"] != "error" {
+                turn.api_error = None;
+            }
         }
         if event.is_gate {
             if let Some(id) = event.rpc_id {
@@ -686,7 +693,7 @@ async fn execute_prepared_foreground_turn(
     session_id: &str,
     turn_id: String,
     generation: u64,
-    prepared: PreparedForegroundTurn,
+    mut prepared: PreparedForegroundTurn,
 ) -> Result<ForegroundTurnResult, AcpHostError> {
     let assistant_count_before = disk_assistant_messages(session_id).len();
     let permit = state
@@ -705,6 +712,8 @@ async fn execute_prepared_foreground_turn(
             .begin_session_turn(session_id, generation);
     }
     let gate_token = permit.token();
+
+    prepared.prompt = crate::image_transport::prepare_session_prompt(app, session_id, prepared.prompt).await?;
 
     let mut effective_effort = bind_model(
         state,
@@ -1100,7 +1109,15 @@ async fn prompt_once(
     tokio::pin!(request);
     loop {
         match tokio::time::timeout(Duration::from_millis(WATCHDOG_POLL_MS), &mut request).await {
-            Ok(result) => return result,
+            Ok(result) => {
+                let api_error = turn.registry.lock().active.get(session_id)
+                    .filter(|active| active.token == turn.token && active.generation == generation)
+                    .and_then(|active| active.api_error.clone());
+                return match (result, api_error) {
+                    (_, Some(error)) => Err(error),
+                    (result, None) => result,
+                };
+            }
             Err(_) => match turn.watchdog_decision(absolute_ms) {
                 WatchdogDecision::Ok => {}
                 WatchdogDecision::SoftStall(silent_for_ms) => {
@@ -1423,6 +1440,18 @@ fn observe_tool_state(turn: &mut ActiveTurn, update: &Value) {
     }
 }
 
+fn api_failure_from_update(update: &Value) -> Option<AcpHostError> {
+    let kind = update.get("sessionUpdate").and_then(Value::as_str)?;
+    let body = update.get("retryState").unwrap_or(update);
+    let terminal_api_failure = kind == "retry_state" && body["type"] == "failed" && body["error_type"] == "api";
+    let terminal_turn_failure = kind == "turn_completed" && body["stop_reason"] == "error";
+    if !terminal_api_failure && !terminal_turn_failure { return None; }
+    let message = ["agent_result", "message", "error", "reason"].iter()
+        .find_map(|key| body.get(key).and_then(Value::as_str))?;
+    if invalid_reasoning_effort_message(message) { return None; }
+    (terminal_api_failure || message.starts_with("API error")).then(|| AcpHostError::api(message))
+}
+
 fn invalid_effort_from_update(update: &Value) -> Option<String> {
     let update_type = update.get("sessionUpdate").and_then(Value::as_str);
     let body = if update_type == Some("retry_state") {
@@ -1505,6 +1534,33 @@ fn channel_replaced() -> AcpHostError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quota_failure_survives_generic_rpc_error_and_is_session_scoped() {
+        let registry = Arc::new(ForegroundTurnRegistry::default());
+        registry.reset(7);
+        let turn = registry.begin("s1".into(), "turn-1".into(), 7).unwrap();
+        turn.request_started(42, "session/prompt").unwrap();
+        let event = r#"{"jsonrpc":"2.0","method":"_x.ai/session/update","params":{"sessionId":"s1","update":{"sessionUpdate":"retry_state","type":"failed","error_type":"api","message":"API error (status 402 Payment Required): Grok Build usage balance exhausted"}}}"#;
+        assert!(registry.observe_inbound(6, event).is_none());
+        assert!(registry.lock().active["s1"].api_error.is_none());
+        assert!(registry.observe_inbound(7, event).is_none());
+        let error = registry.lock().active["s1"].api_error.clone().unwrap();
+        assert_eq!(error.code, "API_QUOTA_EXHAUSTED");
+        assert_eq!(error.domain, "environment");
+        assert!(error.hold_queue);
+        assert!(!error.action.unwrap().contains("升级"));
+        drop(turn);
+        let _next = registry.begin("s1".into(), "turn-2".into(), 7).unwrap();
+        assert!(registry.lock().active["s1"].api_error.is_none());
+    }
+
+    #[test]
+    fn transient_api_retries_do_not_fail_a_successful_turn() {
+        assert!(api_failure_from_update(&json!({"sessionUpdate":"retry_state", "type":"retrying", "error_type":"api", "message":"API error (status 429)"})).is_none());
+        let error = api_failure_from_update(&json!({"sessionUpdate":"turn_completed", "stop_reason":"error", "agent_result":"API error (status 402 Payment Required): Grok Build usage balance exhausted"})).unwrap();
+        assert_eq!(error.code, "API_QUOTA_EXHAUSTED");
+    }
 
     #[test]
     fn invalid_effort_update_targets_only_the_active_prompt_request() {

@@ -9,7 +9,9 @@ Grox 是 [xai-org/grok-build](https://github.com/xai-org/grok-build) 的本机�
 
 ## 下载与首次使用
 
-从 [GitHub Releases](https://github.com/dandandujie/Grox/releases) 下载对应平台的安装包：
+本仓库为独立维护版，应用通过本地构建安装，已关闭在线更新和一键回退。Grok Build CLI 仍由本机独立安装和管理。
+
+本地构建支持以下平台：
 
 | 平台 | 发布资产 |
 |---|---|
@@ -18,7 +20,7 @@ Grox 是 [xai-org/grok-build](https://github.com/xai-org/grok-build) 的本机�
 | macOS Intel | x64 DMG |
 | Linux x64 | AppImage、deb、rpm |
 
-发布页同时提供 `SHA256SUMS`。Grox 首次启动会检测官方 `grok` CLI：未安装时按界面引导安装；已有 CLI 的用户会直接复用同一套配置和历史。账户设置可以稍后完成，但发送第一个任务前需要登录 Grok 或配置 API 服务。
+Grox 首次启动会检测官方 `grok` CLI：未安装时按界面引导安装，已有 CLI 时复用同一套配置和历史。发送第一个任务前需要登录 Grok 或配置 API 服务。
 
 ## 已实现能力
 
@@ -42,10 +44,14 @@ Grox 是 [xai-org/grok-build](https://github.com/xai-org/grok-build) 的本机�
 - 配置同步：账户模块内的 `config.toml`、`system-prompt.md` 与项目 `AGENTS.md` 支持双向编辑和外部变更热同步，不暴露原始环境变量编辑栏
 - 动态模型：OAuth 实时跟随 Grok 模型目录；官方及兼容 API 可拉取模型列表并持久选择常驻模型
 - 桌面安全：Markdown 清洗、CSP、HTTP(S) 外链校验、无控制台子进程；Computer Use 默认开启且可在设置关闭；HTML 文件预览禁用同源沙箱并强制预览令牌
-- 发布链：构建 Windows / macOS / Linux 桌面安装包、Windows 便携包和 SHA-256 校验文件，并提供应用内更新提醒
+- 本地构建：支持 Windows / macOS / Linux 安装包、Windows 便携包和 SHA-256 校验文件，独立维护版不检查或安装远端应用包
 - 离线 Mock：浏览器开发时可完整演示主要界面状态
 
 ## 架构
+
+图片附件、队列提示、插话与工具读图使用受控大小的视觉预览。单张预览最长边为 2000 像素、编码前不超过 512 KiB，最终 JSON-RPC 消息仍受 8 MiB 上限约束。附件原文件保存在 `~/.grok/sessions/grox-attachments/{sessionId}/`，发送内容中提供原文件路径，制作时可继续使用原图。工具读图保留磁盘源文件，图片损坏或仍然超限时返回明确错误。
+
+额度耗尽、认证失败、限流、请求过大与 JSON-RPC 协议错误分别显示，失败回合会保留队列提示并等待确认，避免自动重复发送。
 
 ```text
 React / Zustand

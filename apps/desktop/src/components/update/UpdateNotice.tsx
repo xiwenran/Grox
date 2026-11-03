@@ -19,12 +19,10 @@ const releaseNotes = (notes: string, zh: boolean) => notes.trim() || (
 );
 
 /**
- * Release dialog. GitHub is checked once at launch (updateStatusStore); a new
- * release opens this dialog automatically. Opening 更新日志 shows the cached
- * result instantly; only 检查更新 asks GitHub again.
+ * 版本信息读取 Host 的本地状态，独立维护版不检查或安装远端应用包。
  */
 export function UpdateNotice() {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const zh = language === "zh-CN";
   const [open, setOpen] = useState(false);
   const status = useUpdateStatus((state) => state.status);
@@ -141,12 +139,12 @@ export function UpdateNotice() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 id="grox-update-title" className="text-[16px] font-semibold text-fg">
-                    {status.updateAvailable ? (zh ? "发现新版本" : "A new version is available") : (zh ? "当前已是最新版本" : "You are up to date")}
+                    {status.updatesDisabled ? t("localAppTitle") : status.updateAvailable ? (zh ? "发现新版本" : "A new version is available") : (zh ? "当前已是最新版本" : "You are up to date")}
                   </h2>
                   <p className="mt-1 text-[13px] text-dim">
                     <span className="font-mono text-faint">v{status.currentVersion}</span>
                     {status.updateAvailable && <><span className="mx-2 text-faint">→</span><span className="font-mono font-medium text-acc">v{update.latestVersion}</span></>}
-                    {!status.updateAvailable && <span className="ml-2 text-faint">· {zh ? "最新发布" : "latest release"} v{update.latestVersion}</span>}
+                    {!status.updateAvailable && !status.updatesDisabled && <span className="ml-2 text-faint">· {zh ? "最新发布" : "latest release"} v{update.latestVersion}</span>}
                     {published && <span className="ml-2 text-faint">· {published}</span>}
                   </p>
                 </div>
@@ -159,7 +157,8 @@ export function UpdateNotice() {
                 </div>
               )}
 
-              <div className="mt-6 border-t border-line pt-4">
+              {status.updatesDisabled && <p className="mt-4 text-[13px] leading-relaxed text-dim">{t("localAppUpdatesDisabled")}</p>}
+              {!status.updatesDisabled && <div className="mt-6 border-t border-line pt-4">
                 <div className="mb-2 flex items-center justify-between"><h3 className="lbl !text-[13px]">{zh ? "更新历史" : "RELEASE HISTORY"}</h3><span className="font-mono text-[12px] text-faint">{status.history.length}</span></div>
                 <div className="space-y-1.5">
                   {status.history.map((release) => (
@@ -171,7 +170,7 @@ export function UpdateNotice() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </div>}
             </>
           )}
 
@@ -193,7 +192,7 @@ export function UpdateNotice() {
               {zh ? "跳过此版本" : "Skip this version"}
             </button>
           )}
-          <button disabled={checking || installing || rollingBack} onClick={() => void check(true)} className="flex h-8 items-center gap-2 rounded-[4px] border border-line2 px-3 text-[13px] text-mute hover:border-line3 hover:text-fg2 disabled:opacity-40"><Icon name="refresh" size={11} className={checking ? "animate-orbit" : ""} />{zh ? "手动检查更新" : "Check again"}</button>
+          {!status?.updatesDisabled && <button disabled={checking || installing || rollingBack} onClick={() => void check(true)} className="flex h-8 items-center gap-2 rounded-[4px] border border-line2 px-3 text-[13px] text-mute hover:border-line3 hover:text-fg2 disabled:opacity-40"><Icon name="refresh" size={11} className={checking ? "animate-orbit" : ""} />{zh ? "手动检查更新" : "Check again"}</button>}
           {status?.rollback && <button disabled={!status.rollback.installable || installing || rollingBack} onClick={() => void rollback()} className="flex h-8 items-center gap-2 rounded-[4px] border border-gold/35 bg-gold/5 px-3 text-[13px] text-gold hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-40" title={!status.rollback.installable ? (zh ? "上一版本缺少适用于当前系统的安装包" : "No installer for the previous version on this platform") : undefined}>{rollingBack ? (zh ? "正在回退…" : "Rolling back…") : (zh ? `一键回退到 v${status.rollback.version}` : `Roll back to v${status.rollback.version}`)}<Icon name={rollingBack ? "refresh" : "arrowDown"} size={11} className={rollingBack ? "animate-orbit" : ""} /></button>}
           {status?.updateAvailable && update && <>
             <button disabled={installing || rollingBack} onClick={() => void openExternal(update.releaseUrl)} className="flex h-8 items-center gap-2 rounded-[4px] border border-line2 px-3 text-[13px] text-mute hover:border-line3 hover:text-fg2 disabled:opacity-40">{zh ? "手动下载" : "Manual download"}<Icon name="external" size={11} /></button>

@@ -2578,7 +2578,7 @@ export class AcpBridge implements GrokBridge {
           block: {
             type: "system",
             id: uid(),
-            text: `RETRY · ${string(retry.reason) ?? string(retry.error) ?? string(retry.message) ?? "transient failure"}`,
+            text: `${retry.type === "failed" ? "请求失败" : "RETRY"} · ${string(retry.reason) ?? string(retry.error) ?? string(retry.message) ?? "transient failure"}`,
             ts: Date.now(),
             kind: "info",
           },

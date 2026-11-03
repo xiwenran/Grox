@@ -21,7 +21,31 @@ impl HostError {
         Self::protocol_with_action(
             code,
             message,
-            "若持续出现，请升级 Grok Build CLI 并导出会话诊断",
+            "导出会话诊断并核对具体错误；确认最后一轮结果后再重试",
+        )
+    }
+
+    /// 仅用于 CLI 明确标记为 API 失败的事件，HTTP 状态与 JSON-RPC 错误码分开。
+    pub(crate) fn api(message: &str) -> Self {
+        let (code, summary, action) = if message.contains("status 402") || message.contains("usage balance exhausted") {
+            ("API_QUOTA_EXHAUSTED", "Grok Build 可用额度已耗尽", "在账户中检查可用额度或等待额度恢复后继续")
+        } else if message.contains("status 401") || message.contains("status 403") {
+            ("API_AUTH_FAILED", "模型服务认证失败或无访问权限", "检查当前账户和模型服务授权后继续")
+        } else if message.contains("status 429") {
+            ("API_RATE_LIMITED", "模型服务请求频率或用量受到限制", "等待限制解除，并检查账户额度后继续")
+        } else if message.contains("status 413") {
+            ("API_REQUEST_TOO_LARGE", "模型服务拒绝了过大的请求", "减少本轮附件或上下文后重试")
+        } else {
+            ("API_REQUEST_FAILED", "模型服务请求失败", "检查模型服务返回的详细信息后继续")
+        };
+        Self::environment(code, format!("{summary}：{}", message.chars().take(3_500).collect::<String>()), false, true, action)
+    }
+
+    pub(crate) fn request_too_large(bytes: usize, limit: usize) -> Self {
+        Self::environment(
+            "ATTACHMENT_MESSAGE_TOO_LARGE",
+            format!("本条消息编码后为 {bytes} 字节，超过 Grox 的 {limit} 字节发送上限"),
+            false, true, "减少本轮附件或文字后重试；图片原文件保留",
         )
     }
 
@@ -88,6 +112,17 @@ impl HostError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn api_http_errors_are_distinct_from_rpc_and_attachment_errors() {
+        for (status, code) in [(402, "API_QUOTA_EXHAUSTED"), (401, "API_AUTH_FAILED"), (403, "API_AUTH_FAILED"), (429, "API_RATE_LIMITED"), (413, "API_REQUEST_TOO_LARGE")] {
+            let error = HostError::api(&format!("API error (status {status})"));
+            assert_eq!(error.code, code);
+            assert!(error.hold_queue);
+        }
+        assert_eq!(HostError::request_too_large(9_000_000, 8_388_608).code, "ATTACHMENT_MESSAGE_TOO_LARGE");
+        assert!(!HostError::protocol("ACP_RPC_INTERNAL_ERROR", "Internal error").action.unwrap().contains("升级"));
+    }
 
     #[test]
     fn serializes_the_shared_frontend_contract() {

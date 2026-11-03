@@ -145,14 +145,18 @@ const zh = {
   defaultOpenApp: "文件默认打开方式",
   defaultOpenAppHint: "在 Grox 里打开文件时使用的应用；列表来自本机已安装的编辑器、终端和访达。",
   defaultOpenSystem: "系统默认",
-  versionAndUpdates: "版本与更新",
+  versionAndUpdates: "应用版本",
+  localAppTitle: "Grox 独立维护版",
+  localAppUpdatesDisabled: "应用在线更新与回退已关闭，后续版本使用本地构建的安装包。Grok Build CLI 由本机独立安装和管理。",
+  localAppVersionHint: "独立维护版 · 应用通过本地构建安装，Grok Build CLI 单独管理",
+  versionInformation: "版本信息",
   versionCurrent: "当前版本",
   versionLatest: "最新版本",
   versionUpdateAvailable: "有新版本",
   versionUpToDate: "已是最新",
   versionChecking: "正在检查更新…",
   versionCheckFailed: "检查更新失败：",
-  versionCheckedOnLaunch: "启动时检查一次 GitHub 发布。",
+  versionCheckedOnLaunch: "正在读取本地应用版本。",
   checkForUpdates: "检查更新",
   changelog: "更新日志",
   steerQueued: "引导",
@@ -160,6 +164,10 @@ const zh = {
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
+  localAppTitle: "Locally maintained Grox",
+  localAppUpdatesDisabled: "Online app updates and rollback are disabled. Install future versions from local builds. Grok Build CLI is installed and managed separately.",
+  localAppVersionHint: "Locally maintained app · installed from local builds; Grok Build CLI is managed separately",
+  versionInformation: "Version information",
   navChat: "Chat", navWorkspaces: "Workspaces", addAttachment: "Add attachment",
   newProject: "New project", projects: "Projects", missions: "Missions", archived: "Archived",
   pin: "Pin", unpin: "Unpin", archive: "Archive", unarchive: "Unarchive", rename: "Rename",
@@ -185,7 +193,7 @@ const en: Record<keyof typeof zh, string> = {
   effortXhighHint: "Maximum reasoning for the hardest tasks.", effortHighHint: "Thorough reasoning and quality. Recommended.", effortMediumHint: "Strong quality with a faster turnaround.", effortLowHint: "Fastest responses. Best for simple tasks.", permAsk: "Ask", permAuto: "Auto-review", permAlways: "Always approve", permAskHint: "Ask before running tools (CLI default)", permAutoHint: "Grok reviews tool calls automatically", permAlwaysHint: "Skip all prompts (YOLO)", modeSection: "Mode", modeDefault: "Default", modeDefaultHint: "Work on the task directly", modePlan: "Plan mode", modePlanShort: "Plan", modePlanHint: "Plan first; edit after approval", permSection: "Permissions", effortSection: "Reasoning effort", promptOptionsTitle: "Mode, permissions and reasoning effort", effortSettingHint: "Options come from the official CLI (reasoning_effort).", permSettingHint: "The official CLI's three modes: Ask (CLI default), Auto-review, Always approve. Always approve requires confirmation and cannot run with Computer Use.", permModeLabel: "Permission mode", cliDefault: "CLI default", importCliHistory: "Import CLI history", importCliHistoryHint: "Scan ~/.grok/sessions and add sessions you ran in the terminal to the sidebar.", importCliHistoryFailed: "Import failed: ", importAction: "Import", importing: "Importing…", sessionsSuffix: " sessions", sbTurns: "Turns", sbCost: "Cost", sbOutput: "Output", sbCacheRead: "Of which cached", sbInputHint: "Context is re-sent every turn, so this grows far beyond the context window", sbInput: "Input (cumulative)", sbSessionTitle: "This session's usage", sbSession: "This session", sbContextDetail: "Context window: {used} / {max} tokens used ({pct}%). The CLI compacts automatically near the limit.", sbContext: "Context", providerMarkerTitle: "Not using the default Grok OAuth \u2014 switch in Settings", activeProviderHint: "Account or API provider used when sending", activeProvider: "Active provider", workspacePickerLocked: "This session's project folder (fixed after the first message)", workspacePickerTitle: "Project folder", workspacePickerPick: "Choose folder\u2026", newSessionAction: "New session", filesLoading: "Loading changes\u2026", diffNoLines: "No line diff to show for this file", diffShowMore: "Show more ({n} lines left)",
   imagePreview: "Image preview", closeImagePreview: "Close preview (Esc)", imageMissing: "Image file not found",
   commandPaletteMenu: "Command palette ⌘K", defaultOpenApp: "Default app for files", defaultOpenAppHint: "Used when Grox opens a file; lists installed editors, terminals and Finder.", defaultOpenSystem: "System default",
-  versionAndUpdates: "Version & updates", versionCurrent: "Current version", versionLatest: "latest", versionUpdateAvailable: "Update available", versionUpToDate: "Up to date", versionChecking: "Checking for updates…", versionCheckFailed: "Update check failed: ", versionCheckedOnLaunch: "GitHub releases are checked once at launch.", checkForUpdates: "Check for updates", changelog: "Changelog",
+  versionAndUpdates: "App version", versionCurrent: "Current version", versionLatest: "latest", versionUpdateAvailable: "Update available", versionUpToDate: "Up to date", versionChecking: "Checking for updates…", versionCheckFailed: "Update check failed: ", versionCheckedOnLaunch: "Reading the local app version.", checkForUpdates: "Check for updates", changelog: "Changelog",
   steerQueued: "Steer", steerQueuedHint: "Send into the running turn now (or press Enter again on an empty composer)",
 };
 

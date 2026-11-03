@@ -22,6 +22,7 @@ mod git_confirm;
 mod host_error;
 mod host_logging;
 mod host_prefs;
+mod image_transport;
 mod interaction_service;
 mod mcp_leases;
 mod markdown_images;
@@ -151,9 +152,10 @@ use toml_edit::{value as toml_value, Document, Item, Table, TableLike};
 use worktree_ownership::WorktreeOwnershipStore;
 
 const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/dandandujie/Grox/releases/latest";
+const APP_UPDATES_ENABLED: bool = false;
+const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/xiwenran/Grox/releases/latest";
 const RELEASE_HISTORY_PAGE: &str = "12";
-const RELEASES_URL: &str = "https://api.github.com/repos/dandandujie/Grox/releases";
+const RELEASES_URL: &str = "https://api.github.com/repos/xiwenran/Grox/releases";
 const GROK_INSTALL_PS1_URL: &str = "https://x.ai/cli/install.ps1";
 const GROK_INSTALL_SH_URL: &str = "https://x.ai/cli/install.sh";
 // The upstream built-in workflow has early `complete()` branches for empty
@@ -465,6 +467,7 @@ struct ReleaseSummary {
 #[serde(rename_all = "camelCase")]
 struct UpdateStatus {
     current_version: String,
+    updates_disabled: bool,
     update_available: bool,
     latest: UpdateInfo,
     history: Vec<ReleaseSummary>,
@@ -6112,7 +6115,7 @@ async fn acp_request(
     window: tauri::WebviewWindow,
     state: tauri::State<'_, Arc<AcpState>>,
     leases: tauri::State<'_, Arc<McpLeaseStore>>,
-    line: String,
+    mut line: String,
     request_id: u64,
     generation: u64,
     timeout_ms: u64,
@@ -6120,6 +6123,22 @@ async fn acp_request(
 ) -> Result<String, AcpHostError> {
     ensure_main_acp_owner(window.label())
         .map_err(|error| AcpHostError::operation("ACP_WINDOW_NOT_OWNER", error))?;
+    if line.len() > 48 * 1024 * 1024 {
+        return Err(AcpHostError::request_too_large(line.len(), image_transport::MAX_ACP_LINE_BYTES));
+    }
+    // 插话也携带图片，但不经过 execute_foreground_turn。
+    if let Ok(mut message) = serde_json::from_str::<serde_json::Value>(&line) {
+        if matches!(message["method"].as_str(), Some("x.ai/interject" | "_x.ai/interject")) {
+            if state.ready_generation.load(Ordering::Acquire) != generation {
+                return Err(AcpHostError::operation("ACP_RUNTIME_GENERATION_STALE", "插话所属的运行通道已失效"));
+            }
+            let session_id = message["params"]["sessionId"].as_str().unwrap_or_default().to_string();
+            state.sessions.verify_request("x.ai/interject", &message["params"], gate_token, generation)?;
+            let content = message["params"]["content"].take();
+            message["params"]["content"] = image_transport::prepare_session_prompt(window.app_handle(), &session_id, content).await?;
+            line = message.to_string();
+        }
+    }
     acp_request_inner(
         state.inner(),
         leases.inner(),
@@ -6238,6 +6257,7 @@ fn update_asset(release: &GitHubRelease) -> Option<&GitHubAsset> {
 }
 
 async fn latest_release() -> Result<GitHubRelease, String> {
+    ensure_app_updates_enabled()?;
     reqwest::Client::builder()
         .user_agent(format!("Grox/{CLIENT_VERSION}"))
         .timeout(std::time::Duration::from_secs(30))
@@ -6256,6 +6276,7 @@ async fn latest_release() -> Result<GitHubRelease, String> {
 }
 
 async fn release_history() -> Result<Vec<GitHubRelease>, String> {
+    ensure_app_updates_enabled()?;
     let releases = reqwest::Client::builder()
         .user_agent(format!("Grox/{CLIENT_VERSION}"))
         .timeout(std::time::Duration::from_secs(30))
@@ -6333,6 +6354,7 @@ fn release_summary(release: &GitHubRelease) -> ReleaseSummary {
 
 #[tauri::command]
 async fn check_for_update() -> Result<Option<UpdateInfo>, String> {
+    if !APP_UPDATES_ENABLED { return Ok(None); }
     let release = latest_release().await?;
 
     if !update_available(CLIENT_VERSION, &release.tag_name)? {
@@ -6343,6 +6365,7 @@ async fn check_for_update() -> Result<Option<UpdateInfo>, String> {
 
 #[tauri::command]
 async fn get_update_status() -> Result<UpdateStatus, String> {
+    if !APP_UPDATES_ENABLED { return Ok(local_update_status()); }
     // Both GitHub requests run at once: the dialog waits for the slower one
     // instead of their sum (~1.7s sequential on a typical connection).
     let (latest, releases) = tokio::join!(latest_release(), release_history());
@@ -6359,11 +6382,33 @@ async fn get_update_status() -> Result<UpdateStatus, String> {
     }
     Ok(UpdateStatus {
         current_version: CLIENT_VERSION.to_string(),
+        updates_disabled: false,
         update_available: update_available(CLIENT_VERSION, &latest.tag_name)?,
         latest: update_info(&latest),
         history,
         rollback,
     })
+}
+
+fn ensure_app_updates_enabled() -> Result<(), String> {
+    if APP_UPDATES_ENABLED { Ok(()) } else { Err("独立维护版已关闭应用在线更新与回退，请使用本地构建的安装包".into()) }
+}
+
+fn local_update_status() -> UpdateStatus {
+    let version = format!("{CLIENT_VERSION} ({})", env!("GROX_BUILD_COMMIT"));
+    UpdateStatus {
+        current_version: version.clone(),
+        updates_disabled: true,
+        update_available: false,
+        latest: UpdateInfo {
+            current_version: version.clone(), latest_version: version,
+            title: "Grox 独立维护版".into(),
+            notes: "应用版本通过本地构建安装，Grok Build CLI 由本机独立管理。".into(),
+            release_url: "https://github.com/xiwenran/Grox".into(),
+            published_at: None, installable: false, asset_name: None, requires_xattr: false,
+        },
+        history: Vec::new(), rollback: None,
+    }
 }
 
 fn update_temp_dir(version: &str) -> Result<PathBuf, String> {
@@ -6597,6 +6642,7 @@ async fn install_release(
     version: &str,
     release: &GitHubRelease,
 ) -> Result<(), String> {
+    ensure_app_updates_enabled()?;
     let asset =
         update_asset(release).ok_or_else(|| "此版本没有适用于当前系统的安装包".to_string())?;
     let work = update_temp_dir(version)?;
@@ -6610,6 +6656,7 @@ async fn install_release(
 
 #[tauri::command]
 async fn install_update(app: tauri::AppHandle, version: String) -> Result<(), String> {
+    ensure_app_updates_enabled()?;
     let expected = release_version(&version)?;
     let release = latest_release().await?;
     if release_version(&release.tag_name)? != expected
@@ -6622,6 +6669,7 @@ async fn install_update(app: tauri::AppHandle, version: String) -> Result<(), St
 
 #[tauri::command]
 async fn rollback_update(app: tauri::AppHandle, version: String) -> Result<(), String> {
+    ensure_app_updates_enabled()?;
     let expected = release_version(&version)?;
     let releases = release_history().await?;
     let release = previous_release(CLIENT_VERSION, &releases)
@@ -7824,9 +7872,9 @@ mod tests {
         ));
         fs::create_dir_all(&root).unwrap();
         let file = root.join("diagram.png");
-        let bytes = BASE64
-            .decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLqXQAAAABJRU5ErkJggg==")
-            .unwrap();
+        let mut png = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::new_rgba8(1, 1).write_to(&mut png, image::ImageFormat::Png).unwrap();
+        let bytes = png.into_inner();
         fs::write(&file, &bytes).unwrap();
         let payload = acp_read_file(
             path_for_webview(&root),
@@ -8477,6 +8525,21 @@ api_backend = "responses"
         );
         assert_eq!(cli_version_number("grok"), None);
         assert_eq!(cli_version_number(""), None);
+    }
+
+    #[tokio::test]
+    async fn independent_app_updates_are_local_and_installation_is_disabled() {
+        assert!(ensure_app_updates_enabled().is_err());
+        assert!(check_for_update().await.unwrap().is_none());
+        let status = get_update_status().await.unwrap();
+        assert!(status.updates_disabled);
+        assert!(!status.update_available);
+        assert!(!status.latest.installable);
+        assert!(status.history.is_empty());
+        assert!(status.rollback.is_none());
+        assert!(status.current_version.contains(env!("GROX_BUILD_COMMIT")));
+        assert!(!LATEST_RELEASE_URL.contains("dandandujie"));
+        assert!(!RELEASES_URL.contains("dandandujie"));
     }
 
     #[test]
