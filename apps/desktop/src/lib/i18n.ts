@@ -146,7 +146,7 @@ const zh = {
   defaultOpenAppHint: "在 Grox 里打开文件时使用的应用；列表来自本机已安装的编辑器、终端和访达。",
   defaultOpenSystem: "系统默认",
   versionAndUpdates: "应用版本",
-  localAppTitle: "Grox 独立维护版",
+  localAppTitle: "Grox 独立维护版 · 西里",
   localAppUpdatesDisabled: "应用在线更新与回退已关闭，后续版本使用本地构建的安装包。Grok Build CLI 由本机独立安装和管理。",
   localAppVersionHint: "独立维护版 · 应用通过本地构建安装，Grok Build CLI 单独管理",
   versionInformation: "版本信息",
@@ -164,7 +164,7 @@ const zh = {
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
-  localAppTitle: "Locally maintained Grox",
+  localAppTitle: "Grox · maintained by Xili",
   localAppUpdatesDisabled: "Online app updates and rollback are disabled. Install future versions from local builds. Grok Build CLI is installed and managed separately.",
   localAppVersionHint: "Locally maintained app · installed from local builds; Grok Build CLI is managed separately",
   versionInformation: "Version information",

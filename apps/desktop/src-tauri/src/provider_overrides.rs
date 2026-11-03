@@ -1,7 +1,7 @@
 //! 供应商 config.toml 覆盖域：auth/backend 覆盖存储、`[model.*]` 段改写、
 //! `[grox]` 元数据与默认路由读取。
 //!
-//! 自 main.rs 下沉（PRODUCT_REVIEW.md P1：消除 provider DI 反向依赖）。
+//! 供应商覆盖与配置恢复在此集中处理。
 //! 这些操作全部以 `home: &Path` 为边界、经由 host_core 原子写落盘，
 //! `provider_service::open_current` 以此组装 `ProviderServiceHostOps`。
 

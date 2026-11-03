@@ -1,6 +1,5 @@
 import { createInterface } from "node:readline";
 import { spawn, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const command = process.env.GROK_COMMAND || "grok";
@@ -12,14 +11,9 @@ if (process.env.GROK_SMOKE_ASSERT_CLEAN_ENV === "1") {
   const inherited = forbiddenInheritedConfig.filter((key) => process.env[key] !== undefined);
   if (inherited.length > 0) throw new Error(`hermetic smoke 继承了配置变量：${inherited.join(", ")}`);
 }
-const integrationState = JSON.parse(readFileSync(
-  new URL("../.grox/official-cli.json", import.meta.url),
-  "utf8",
-));
-const expectedVersion = process.env.GROK_EXPECTED_VERSION
-  || integrationState.integrationTarget?.publicVersion;
-if (typeof expectedVersion !== "string" || !expectedVersion) {
-  throw new Error(".grox/official-cli.json 缺少 integrationTarget.publicVersion");
+const expectedVersion = process.env.GROK_EXPECTED_VERSION;
+if (typeof expectedVersion !== "string" || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(expectedVersion)) {
+  throw new Error("请通过 GROK_EXPECTED_VERSION 明确指定本轮要验证的官方 CLI 版本");
 }
 const versionRun = spawnSync(command, ["--version"], { encoding: "utf8", shell: process.platform === "win32" });
 const versionText = `${versionRun.stdout ?? ""}${versionRun.stderr ?? ""}`.trim();

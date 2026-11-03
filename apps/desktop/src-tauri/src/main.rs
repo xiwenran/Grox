@@ -6409,7 +6409,7 @@ fn local_update_status() -> UpdateStatus {
         update_available: false,
         latest: UpdateInfo {
             current_version: version.clone(), latest_version: version,
-            title: "Grox 独立维护版".into(),
+            title: "Grox 独立维护版 · 西里".into(),
             notes: "应用版本通过本地构建安装，Grok Build CLI 由本机独立管理。".into(),
             release_url: "https://github.com/xiwenran/Grox".into(),
             published_at: None, installable: false, asset_name: None, requires_xattr: false,

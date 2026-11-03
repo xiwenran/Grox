@@ -1,6 +1,10 @@
 {
   "name": "grox-desktop",
   "private": true,
+  "author": "西里",
+  "repository": { "type": "git", "url": "https://github.com/xiwenran/Grox.git" },
+  "homepage": "https://github.com/xiwenran/Grox",
+  "license": "Apache-2.0",
   "version": "0.3.5",
   "type": "module",
   "scripts": {

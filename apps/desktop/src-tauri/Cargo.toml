@@ -1,7 +1,11 @@
 [package]
 name = "grox-desktop"
 version = "0.3.5"
-description = "Grox desktop agent powered by Grok Build"
+description = "Grox desktop agent maintained by Xili, powered by Grok Build"
+authors = ["西里"]
+repository = "https://github.com/xiwenran/Grox"
+homepage = "https://github.com/xiwenran/Grox"
+license = "Apache-2.0"
 edition = "2021"
 rust-version = "1.77.2"
 

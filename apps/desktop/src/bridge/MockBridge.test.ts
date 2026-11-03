@@ -28,7 +28,7 @@ const settled = async (events: BridgeEvent[]) => {
   }
 };
 
-describe("MockBridge 任务回显（PRODUCT_REVIEW P5）", () => {
+describe("MockBridge 任务回显", () => {
   it("普通任务回合引用任务文本，不再播放无关演示内容", async () => {
     const bridge = new MockBridge();
     const events = collect(bridge);

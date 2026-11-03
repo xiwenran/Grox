@@ -1,6 +1,6 @@
 //! Host 共享内核：ACP 运行时状态、wire 读写、原子文件写入、路径与 CLI 解析。
 //!
-//! 从 main.rs 下沉（PRODUCT_REVIEW.md A1/P0）。边界规则：
+//! 共享运行内核。边界规则：
 //! - 其他模块依赖内核符号一律 `use crate::host_core::…`，不得引用 main.rs；
 //! - 内核不反向依赖命令编排层（唯一已知残留：`apply_grox_provider_environment` 留在 main.rs）；
 //! - 行为不变：本轮只做搬移与可见性（pub(crate)）调整。

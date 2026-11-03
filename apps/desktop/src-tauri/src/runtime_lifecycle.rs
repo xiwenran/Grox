@@ -1,6 +1,6 @@
 //! Agent 进程与连接生命周期：spawn、stdin/stdout 循环、失败清算与自动重连。
 //!
-//! 从 main.rs 下沉（PRODUCT_REVIEW.md A1/P0）。此模块是 `spawn_acp_process` 拆分的
+//! 此模块负责 `spawn_acp_process` 的
 //! 落点：后续把 spawn / stdin 写循环 / stdout 派发 / 退出清算拆为独立可测单元。
 //! 无 main.rs 依赖：provider 环境注入经 `provider_service`（DI 已下沉 provider_overrides）。
 

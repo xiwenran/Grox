@@ -1,8 +1,8 @@
 <h1><img src="apps/desktop/src-tauri/icons/icon.png" width="48" height="48" align="center" alt="Grox 图标"> Grox</h1>
 
-Grox 是 [xai-org/grok-build](https://github.com/xai-org/grok-build) 的本机桌面工作台。打开应用，选择项目或直接描述任务，Grok Build 会在可恢复的会话中完成分析、代码修改、工具调用和验证；需要批准或补充信息时，Grox 会把决定清楚地交还给你。
+Grox 是由西里独立维护的本机桌面工作台，项目位于 [xiwenran/Grox](https://github.com/xiwenran/Grox)。打开应用，选择项目或直接描述任务，通过本机 Grok Build CLI 完成分析、代码修改、工具调用和验证，在可恢复的会话中查看进度、批准操作和补充信息。
 
-当前仓库只保留 Grox 桌面应用源码。Grox 不分叉、不内置也不维护替代运行时，始终通过官方发布的 `grok` CLI 使用完整的 Agent harness、工具与 ACP 能力。
+当前仓库维护 Grox 桌面应用源码，通过官方发布的 `grok` CLI 使用 Agent、工具与 ACP 能力。应用自身的开发、构建和版本管理由本仓库独立负责。
 
 
 ## 下载与首次使用
@@ -126,4 +126,4 @@ Grox 持续追踪 `xai-org/grok-build` 的官方发布、ACP 协议和功能变�
 
 Windows Computer Use 的交互模型、安全边界和兼容性修复参考并移植自社区项目 [wangyingxuan383-ai/grok-build-desktop](https://github.com/wangyingxuan383-ai/grok-build-desktop)，在 Grox 中按 Tauri/Rust/MCP 架构重新实现。
 
-`.grox/official-cli.json` 记录已完成兼容性审查的官方 commit 与 CLI 版本。每日自动检查发现上游更新后会创建或更新适配 Issue，但不会自动引入未经验证的协议变化。
+官方 CLI 的版本按本机实际安装情况核对，兼容性验证明确指定本轮目标版本。原版的自动追踪、旧发布说明和旧兼容性基线已退役，当前开发状态见 `docs/roadmap.md`。
