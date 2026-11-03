@@ -170,7 +170,7 @@ export function EnvironmentSummary() {
           added: 220,
           removed: 31,
           changedFiles: 4,
-          remoteUrl: "https://github.com/dandandujie/Grox.git",
+          remoteUrl: "https://github.com/xiwenran/Grox.git",
           defaultBranch: "main",
           ahead: 0,
           behind: 0,

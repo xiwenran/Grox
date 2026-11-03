@@ -97,14 +97,14 @@ test("tracks public releases, not source commits or repeated package versions", 
   assert.equal(shouldTrackRelease(state, "1.1.0"), true);
 });
 
-test("records the verified 1.0.5 integration receipt after all release gates pass", () => {
+test("keeps the 1.0.5 compatibility record without depending on a former repository workflow", () => {
   const state = validateIntegrationState(JSON.parse(readFileSync(new URL("../.grox/official-cli.json", import.meta.url))));
   assert.equal(state.verifiedIntegration.publicVersion, "1.0.5");
   assert.equal(state.integrationTarget.publicVersion, "1.0.5");
   assert.equal(state.integrationTarget.status, "complete");
-  assert.deepEqual(state.integrationTarget.issues, [35, 36]);
+  assert.deepEqual(state.integrationTarget.issues, []);
   assert.deepEqual(state.pendingIntegrations, []);
-  assert.match(state.verifiedIntegration.workflowRun, /32036501780$/);
+  assert.equal(state.verifiedIntegration.workflowRun, undefined);
 
   assert.throws(() => validateIntegrationState({
     ...state,

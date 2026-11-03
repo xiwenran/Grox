@@ -3,8 +3,6 @@
 Grox 是 [xai-org/grok-build](https://github.com/xai-org/grok-build) 的本机桌面工作台。打开应用，选择项目或直接描述任务，Grok Build 会在可恢复的会话中完成分析、代码修改、工具调用和验证；需要批准或补充信息时，Grox 会把决定清楚地交还给你。
 
 当前仓库只保留 Grox 桌面应用源码。Grox 不分叉、不内置也不维护替代运行时，始终通过官方发布的 `grok` CLI 使用完整的 Agent harness、工具与 ACP 能力。
-<img width="2160" height="1350" alt="image" src="https://github.com/user-attachments/assets/4ad47a9a-b705-48dd-b20a-6e1f193fae7d" />
-<img width="1226" height="1010" alt="image" src="https://github.com/user-attachments/assets/08fa287b-9822-4bee-ba95-135fe0521c22" />
 
 
 ## 下载与首次使用
@@ -50,6 +48,8 @@ Grox 首次启动会检测官方 `grok` CLI：未安装时按界面引导安装�
 ## 架构
 
 图片附件、队列提示、插话与工具读图使用受控大小的视觉预览。单张预览最长边为 2000 像素、编码前不超过 512 KiB，最终 JSON-RPC 消息仍受 8 MiB 上限约束。附件原文件保存在 `~/.grok/sessions/grox-attachments/{sessionId}/`，发送内容中提供原文件路径，制作时可继续使用原图。工具读图保留磁盘源文件，图片损坏或仍然超限时返回明确错误。
+
+`grox-attachments` 为应用专用归档目录。删除会话时清理对应的归档副本，项目中的源素材保留。目录身份异常、存在未识别条目或文件内容与摘要不符时，应用停止清理并提示核对。
 
 额度耗尽、认证失败、限流、请求过大与 JSON-RPC 协议错误分别显示，失败回合会保留队列提示并等待确认，避免自动重复发送。
 
@@ -127,17 +127,3 @@ Grox 持续追踪 `xai-org/grok-build` 的官方发布、ACP 协议和功能变�
 Windows Computer Use 的交互模型、安全边界和兼容性修复参考并移植自社区项目 [wangyingxuan383-ai/grok-build-desktop](https://github.com/wangyingxuan383-ai/grok-build-desktop)，在 Grox 中按 Tauri/Rust/MCP 架构重新实现。
 
 `.grox/official-cli.json` 记录已完成兼容性审查的官方 commit 与 CLI 版本。每日自动检查发现上游更新后会创建或更新适配 Issue，但不会自动引入未经验证的协议变化。
-
-## 友情链接
-
-- [LINUX DO](https://linux.do)
-
-## Star History
-
-<a href="https://github.com/dandandujie/Grox/stargazers">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/dandandujie/Grox/main/.github/assets/star-history-dark.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/dandandujie/Grox/main/.github/assets/star-history.svg" />
-    <img alt="Grox Star History Chart" src="https://raw.githubusercontent.com/dandandujie/Grox/main/.github/assets/star-history.svg" />
-  </picture>
-</a>

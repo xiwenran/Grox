@@ -1930,6 +1930,7 @@ fn delete_session_data(
     }
     let _delete = storage.begin_delete(&id)?;
     let history = grok_home().and_then(|home| delete_session_history_data(&home, &id));
+    let originals = grok_home().and_then(|home| image_transport::delete_originals(&home, &id));
     let journal = delete_session_journal_files(&app, &id);
     let queue = prompt_queues_path(&app).and_then(|path| {
         queues.delete_sessions(&path, std::slice::from_ref(&id), PROMPT_QUEUES_MAX_BYTES)
@@ -1937,6 +1938,9 @@ fn delete_session_data(
     let removed = history.as_ref().copied().unwrap_or(false);
     let mut errors = Vec::new();
     if let Err(error) = history {
+        errors.push(error);
+    }
+    if let Err(error) = originals {
         errors.push(error);
     }
     if let Err(error) = journal {
@@ -1991,6 +1995,9 @@ fn delete_project_session_data(
     for id in &ids {
         if let Err(error) = delete_session_journal_files(&app, id) {
             errors.push(format!("无法删除会话 {id} 的应用 journal：{error}"));
+        }
+        if let Err(error) = image_transport::delete_originals(&grok_home()?, id) {
+            errors.push(format!("无法删除会话 {id} 的图片归档：{error}"));
         }
     }
     match prompt_queues_path(&app) {
@@ -7202,7 +7209,7 @@ mod tests {
             tag_name: tag_name.to_string(),
             name: None,
             body: None,
-            html_url: format!("https://github.com/dandandujie/Grox/releases/tag/{tag_name}"),
+            html_url: format!("https://github.com/xiwenran/Grox/releases/tag/{tag_name}"),
             published_at: None,
             draft,
             prerelease,
@@ -8538,8 +8545,8 @@ api_backend = "responses"
         assert!(status.history.is_empty());
         assert!(status.rollback.is_none());
         assert!(status.current_version.contains(env!("GROX_BUILD_COMMIT")));
-        assert!(!LATEST_RELEASE_URL.contains("dandandujie"));
-        assert!(!RELEASES_URL.contains("dandandujie"));
+        assert!(LATEST_RELEASE_URL.contains("/xiwenran/Grox/"));
+        assert!(RELEASES_URL.contains("/xiwenran/Grox/"));
     }
 
     #[test]

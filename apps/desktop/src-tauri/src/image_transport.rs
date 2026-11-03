@@ -1,6 +1,9 @@
 //! 模型视觉预览与原文件分开，按编码后的大小约束 ACP 消息。
 
-use std::{io::Cursor, path::Path};
+use std::{
+    io::{Cursor, Read},
+    path::Path,
+};
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use image::{codecs::jpeg::JpegEncoder, DynamicImage, ImageFormat, ImageReader};
@@ -14,6 +17,90 @@ pub(crate) const IMAGE_PREVIEW_BYTES: usize = 512 * 1024;
 const MAX_IMAGE_BYTES: usize = 16 * 1024 * 1024;
 const MAX_PROMPT_IMAGES: usize = 8;
 const MAX_PROMPT_IMAGE_BYTES: usize = 32 * 1024 * 1024;
+
+fn originals_directory(grok: &Path, session_id: &str) -> Result<std::path::PathBuf, String> {
+    crate::safe_session_storage_id(session_id)?;
+    Ok(grok
+        .join("sessions")
+        .join("grox-attachments")
+        .join(session_id))
+}
+
+/// 仅清理本应用按摘要命名的附件副本，调用方持有该会话的删除锁。
+pub(crate) fn delete_originals(grok: &Path, session_id: &str) -> Result<(), String> {
+    let directory = originals_directory(grok, session_id)?;
+    let metadata = match std::fs::symlink_metadata(&directory) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(format!("无法读取会话图片归档：{error}")),
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err("图片归档目录身份异常，已保留原文件".into());
+    }
+    let sessions = grok
+        .join("sessions")
+        .canonicalize()
+        .map_err(|error| error.to_string())?;
+    let canonical = directory
+        .canonicalize()
+        .map_err(|error| error.to_string())?;
+    if canonical != sessions.join("grox-attachments").join(session_id) {
+        return Err("图片归档路径发生变化，已保留原文件".into());
+    }
+    let mut verified = Vec::new();
+    for entry in std::fs::read_dir(&directory).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let file_type = entry.file_type().map_err(|error| error.to_string())?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let owned = name.rsplit_once('.').is_some_and(|(hash, extension)| {
+            hash.len() == 64
+                && hash
+                    .bytes()
+                    .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+                && matches!(extension, "png" | "jpg" | "gif" | "webp" | "bmp")
+        });
+        if !file_type.is_file() || !owned {
+            return Err("图片归档包含非本应用文件，已保留目录等待核对".into());
+        }
+        verify_original_digest(&entry.path())?;
+        verified.push(entry.path());
+    }
+    // 逐项删除本轮核验过的文件，扫描后新增的其他内容会使 remove_dir 失败并保留。
+    for path in verified {
+        if directory
+            .canonicalize()
+            .map_err(|error| error.to_string())?
+            != canonical
+        {
+            return Err("图片归档路径发生变化，已停止清理".into());
+        }
+        verify_original_digest(&path)?;
+        std::fs::remove_file(path).map_err(|error| format!("无法删除已核验的图片副本：{error}"))?;
+    }
+    std::fs::remove_dir(directory)
+        .map_err(|error| format!("图片归档仍有新增内容，已保留目录：{error}"))
+}
+
+fn verify_original_digest(path: &Path) -> Result<(), String> {
+    let metadata = std::fs::symlink_metadata(path).map_err(|error| error.to_string())?;
+    if !metadata.is_file() || metadata.len() > MAX_IMAGE_BYTES as u64 {
+        return Err("图片归档文件身份或大小异常，已停止清理".into());
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .map_err(|error| error.to_string())?
+        .take(MAX_IMAGE_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    let expected = path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .ok_or("图片摘要文件名无效")?;
+    if bytes.len() > MAX_IMAGE_BYTES || format!("{:x}", Sha256::digest(&bytes)) != expected {
+        return Err("图片内容与归档摘要不一致，已保留原文件".into());
+    }
+    Ok(())
+}
 
 pub(crate) struct ImagePreview {
     pub(crate) bytes: Vec<u8>,
@@ -192,11 +279,11 @@ pub(crate) async fn prepare_session_prompt(
     }
     crate::safe_session_storage_id(session_id).map_err(attachment_error)?;
     // 沿用已允许读取的官方会话目录，不扩大 Host 的文件读取权限。
-    let directory = crate::host_core::grok_home()
-        .map_err(attachment_error)?
-        .join("sessions")
-        .join("grox-attachments")
-        .join(session_id);
+    let directory = originals_directory(
+        &crate::host_core::grok_home().map_err(attachment_error)?,
+        session_id,
+    )
+    .map_err(attachment_error)?;
     let app = app.clone();
     let session_id = session_id.to_string();
     tokio::task::spawn_blocking(move || {
@@ -213,6 +300,60 @@ pub(crate) async fn prepare_session_prompt(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn deleting_originals_is_scoped_and_refuses_foreign_files() {
+        let root = std::env::temp_dir().join(format!(
+            "grox-original-delete-{}-{}",
+            std::process::id(),
+            crate::CONFIG_WRITE_NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        let first = originals_directory(&root, "first").unwrap();
+        let second = originals_directory(&root, "second").unwrap();
+        std::fs::create_dir_all(&first).unwrap();
+        std::fs::create_dir_all(&second).unwrap();
+        std::fs::write(
+            first.join(format!("{:x}.png", Sha256::digest(b"image"))),
+            b"image",
+        )
+        .unwrap();
+        std::fs::write(second.join("user-file.txt"), b"keep").unwrap();
+        delete_originals(&root, "first").unwrap();
+        assert!(!first.exists());
+        assert!(delete_originals(&root, "second").is_err());
+        assert_eq!(
+            std::fs::read(second.join("user-file.txt")).unwrap(),
+            b"keep"
+        );
+        std::fs::remove_file(second.join("user-file.txt")).unwrap();
+        let foreign = second.join(format!("{}.png", "a".repeat(64)));
+        std::fs::write(&foreign, b"foreign").unwrap();
+        assert!(delete_originals(&root, "second").is_err());
+        assert_eq!(std::fs::read(foreign).unwrap(), b"foreign");
+        assert!(delete_originals(&root, "../second").is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn deleting_originals_refuses_symlinked_archive_roots() {
+        let root = std::env::temp_dir().join(format!(
+            "grox-original-link-{}-{}",
+            std::process::id(),
+            crate::CONFIG_WRITE_NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(root.join("sessions")).unwrap();
+        std::fs::create_dir_all(root.join("outside/session")).unwrap();
+        let source = root
+            .join("outside/session")
+            .join(format!("{}.png", "a".repeat(64)));
+        std::fs::write(&source, b"keep").unwrap();
+        std::os::unix::fs::symlink(root.join("outside"), root.join("sessions/grox-attachments"))
+            .unwrap();
+        assert!(delete_originals(&root, "session").is_err());
+        assert_eq!(std::fs::read(source).unwrap(), b"keep");
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     fn noisy_png() -> Vec<u8> {
         let mut seed = 0x12345678u32;
