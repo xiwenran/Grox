@@ -1,3 +1,4 @@
+import { displaySessionTitle } from "../lib/sessionTitle";
 import { mergeProjectSessionsPure } from "../lib/sessionCatalogMerge";
 import { mergeDiscoveredProjects as mergeDiscoveredProjectsPure, type ProjectRecord, samePath } from "../lib/projectCatalog";
 
@@ -21,6 +22,7 @@ export function decorateSessionMetas<T extends CatalogSession>(
 ): T[] {
   return metas.map((meta) => ({
     ...meta,
+    ...(typeof meta.title === "string" ? { title: displaySessionTitle(meta.title) } : {}),
     ...flags[meta.id],
     ...(legacyArchivedPaths.some((path) => samePath(path, meta.cwd)) ? { archived: true } : {}),
   }));

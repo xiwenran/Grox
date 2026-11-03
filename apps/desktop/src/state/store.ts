@@ -76,6 +76,7 @@ import {
 } from "../lib/promptQueuePersistence";
 import { formatGroxError, runtimeNoticeFromError, toGroxError } from "../lib/errorModel";
 import { cleanApiError } from "../lib/runtimeNotice";
+import { displaySessionTitle } from "../lib/sessionTitle";
 import type { ErrorFallback } from "../lib/errorModel";
 import { commitComposerSubmission } from "../lib/composerSubmission";
 import {
@@ -1155,13 +1156,17 @@ export const useDesktop = create<DesktopState>((set, get) => {
       }
       case "session_meta": {
         const current = sessions[e.sessionId];
+        const patch = {
+          ...e.patch,
+          ...(e.patch.title !== undefined ? { title: displaySessionTitle(e.patch.title) } : {}),
+        };
         const nextIndex = sessionIndex.map((meta) =>
-          meta.id === e.sessionId ? { ...meta, ...e.patch } : meta,
+          meta.id === e.sessionId ? { ...meta, ...patch } : meta,
         );
         persistSessionCatalog(nextIndex);
         set({
           sessions: current
-            ? { ...sessions, [e.sessionId]: { ...current, ...e.patch } }
+            ? { ...sessions, [e.sessionId]: { ...current, ...patch } }
             : sessions,
           sessionIndex: nextIndex,
         });
@@ -1177,6 +1182,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
         const effectiveBackground = e.background || !attachesForeground;
         const filteredSession = {
           ...e.session,
+          title: displaySessionTitle(e.session.title),
           blocks: e.session.blocks.filter((block) => !isHiddenWorkflowControlPrompt(block)),
           preview: e.preview === true,
         };
