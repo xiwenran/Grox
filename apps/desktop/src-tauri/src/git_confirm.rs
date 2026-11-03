@@ -36,8 +36,8 @@ impl GitConfirmStore {
         self.issue(Kind::Commit, cwd, None)
     }
 
-    pub fn issue_push(&self, cwd: &str) -> Result<String, String> {
-        self.issue(Kind::Push, cwd, None)
+    pub fn issue_push(&self, cwd: &str, target: &str) -> Result<String, String> {
+        self.issue(Kind::Push, cwd, Some(target))
     }
 
     pub fn issue_worktree_remove(&self, cwd: &str, target: &str) -> Result<String, String> {
@@ -48,8 +48,8 @@ impl GitConfirmStore {
         self.consume(Kind::Commit, cwd, token)
     }
 
-    pub fn consume_push(&self, cwd: &str, token: &str) -> Result<(), String> {
-        self.consume(Kind::Push, cwd, token)
+    pub fn consume_push(&self, cwd: &str, target: &str, token: &str) -> Result<(), String> {
+        self.consume_scoped(Kind::Push, cwd, Some(target), token)
     }
 
     pub fn consume_worktree_remove(
@@ -133,9 +133,10 @@ mod tests {
     #[test]
     fn push_token_rejects_commit_consume() {
         let store = GitConfirmStore::default();
-        let token = store.issue_push("/project").unwrap();
+        let token = store.issue_push("/project", "confirmed-target").unwrap();
         assert!(store.consume_commit("/project", &token).is_err());
-        store.consume_push("/project", &token).unwrap();
+        assert!(store.consume_push("/project", "other-target", &token).is_err());
+        store.consume_push("/project", "confirmed-target", &token).unwrap();
     }
 
     #[test]

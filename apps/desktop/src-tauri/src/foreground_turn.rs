@@ -929,30 +929,17 @@ fn queue_prompt_content(entry: &serde_json::Map<String, Value>) -> Result<Value,
         );
         match kind {
             "image" => {
-                if let Some(data) = attachment.get("data").and_then(Value::as_str) {
-                    blocks.push(json!({
-                        "type": "image",
-                        "data": data,
-                        "mimeType": mime,
-                        "uri": uri,
-                    }));
-                }
+                let data = attachment.get("data").and_then(Value::as_str)
+                    .filter(|data| !data.is_empty()).ok_or_else(prompt_queue_invalid)?;
+                blocks.push(json!({ "type": "image", "data": data, "mimeType": mime, "uri": uri }));
             }
             "text" => {
-                if let Some(text) = attachment.get("text").and_then(Value::as_str) {
-                    blocks.push(json!({
-                        "type": "resource",
-                        "resource": { "uri": uri, "mimeType": mime, "text": text },
-                    }));
-                }
+                let text = attachment.get("text").and_then(Value::as_str).ok_or_else(prompt_queue_invalid)?;
+                blocks.push(json!({ "type": "resource", "resource": { "uri": uri, "mimeType": mime, "text": text } }));
             }
             "binary" => {
-                if let Some(data) = attachment.get("data").and_then(Value::as_str) {
-                    blocks.push(json!({
-                        "type": "resource",
-                        "resource": { "uri": uri, "mimeType": mime, "blob": data },
-                    }));
-                }
+                let data = attachment.get("data").and_then(Value::as_str).ok_or_else(prompt_queue_invalid)?;
+                blocks.push(json!({ "type": "resource", "resource": { "uri": uri, "mimeType": mime, "blob": data } }));
             }
             _ => return Err(prompt_queue_invalid()),
         }
@@ -1667,6 +1654,14 @@ mod tests {
             r#"/workflow grox-deep-research {"query":"evidence"}"#
         );
         assert_eq!(prompt[1]["data"], "abc");
+    }
+
+    #[test]
+    fn queued_attachment_without_body_is_rejected() {
+        for kind in ["image", "text", "binary"] {
+            let entry = json!({"text": "look", "attachments": [{"kind":kind,"name":"file","mime":"application/octet-stream"}]});
+            assert!(queue_prompt_content(entry.as_object().unwrap()).is_err());
+        }
     }
 
     #[test]

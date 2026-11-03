@@ -19,6 +19,7 @@ mod draft_store;
 mod file_commands;
 mod foreground_turn;
 mod git_confirm;
+mod git_push;
 mod host_error;
 mod host_logging;
 mod host_prefs;
@@ -3762,8 +3763,9 @@ fn prepare_git_push(
     cwd: String,
 ) -> Result<String, String> {
     let root = checked_workspace(&cwd)?;
-    confirm_destructive_git_action("Grox", "确认将当前分支推送到 origin？")?;
-    confirms.issue_push(&path_for_webview(&root))
+    let target = git_push::resolve_push_target(&root)?;
+    confirm_destructive_git_action("Grox", &target.description())?;
+    confirms.issue_push(&path_for_webview(&root), &target.binding()?)
 }
 
 fn worktree_remove_confirmation(target: &Path, dirty: bool) -> String {
@@ -3831,14 +3833,9 @@ fn git_push(
 ) -> Result<String, String> {
     let root = checked_workspace(&cwd)?;
     let root_key = path_for_webview(&root);
-    confirms.consume_push(&root_key, &confirm_token)?;
-    let branch = git_text(&root, &["branch", "--show-current"])?;
-    if branch.is_empty() {
-        return Err("当前处于 detached HEAD，无法直接推送".into());
-    }
-    // Confirm dialog promises origin; never rely on an arbitrary upstream remote.
-    git_text(&root, &["push", "--set-upstream", "origin", &branch])?;
-    Ok("推送已完成".into())
+    let target = git_push::resolve_push_target(&root)?;
+    confirms.consume_push(&root_key, &target.binding()?, &confirm_token)?;
+    git_push::push_confirmed_target(&root, &target)
 }
 
 fn static_preview_mime(path: &Path) -> &'static str {
@@ -7904,6 +7901,15 @@ mod tests {
         assert_eq!(payload.content_type, "text/plain");
         assert_eq!(payload.size, 14);
         assert_eq!(payload.line_count, Some(3));
+        assert!(payload.content_base64.is_none());
+    }
+
+    #[test]
+    fn svg_read_file_returns_source_text_without_image_base64() {
+        let svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><text>test</text></svg>";
+        let payload = build_acp_read_file(svg.as_bytes().to_vec(), None, None);
+        assert_eq!(payload.content, svg);
+        assert_eq!(payload.content_type, "text/plain");
         assert!(payload.content_base64.is_none());
     }
 

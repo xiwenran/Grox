@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
 const LEGACY_DRAFT_BUFFER_KEY = "grox.draftBuffer.v1";
-const DRAFT_BUFFER_MAX_CHARS = 1_500_000;
 const MAX_DRAFT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type DraftAttachment = {
@@ -61,8 +60,7 @@ function draftStorageKey(cwd: string, scope?: string): string {
 }
 
 /**
- * 附件正文超出恢复预算时只保存元数据；发送路径仍持有原始附件，不能由持久化
- * 限制反向修改当前编辑器内容。
+ * 保留完整附件正文交给原生存储，磁盘索引由 Host 外置正文，恢复时取回完整内容。
  */
 export function compactDraftBuffer(
   cwd: string,
@@ -72,18 +70,7 @@ export function compactDraftBuffer(
 ): DraftBuffer | null {
   const trimmed = text.trimEnd();
   if (!trimmed && attachments.length === 0) return null;
-  const candidates: DraftBuffer[] = [
-    { cwd, text: trimmed, attachments, updatedAt },
-    {
-      cwd,
-      text: trimmed,
-      attachments: attachments.map(({ id, kind, name, mime, size }) => ({ id, kind, name, mime, size })),
-      updatedAt,
-    },
-    { cwd, text: trimmed, attachments: [], updatedAt },
-  ];
-  return candidates.find((candidate) => JSON.stringify(candidate).length <= DRAFT_BUFFER_MAX_CHARS)
-    ?? candidates[candidates.length - 1]!;
+  return { cwd, text: trimmed, attachments, updatedAt };
 }
 
 function parseLegacyDrafts(): Record<string, DraftBuffer> {

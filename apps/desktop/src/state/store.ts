@@ -3118,7 +3118,13 @@ export const useDesktop = create<DesktopState>((set, get) => {
         // 不能把同一个 queue id 再复制成一条新提示。
         if (queueItemId) return false;
         const queue = get().promptQueues[session.id] ?? [];
-        const duplicate = queue.some((item) => item.text.trim() === trimmed && trimmed.length > 0);
+        const duplicate = trimmed.length > 0 && queue.some((item) =>
+          item.text.trim() === trimmed
+          && item.attachments.length === attachments.length
+          && item.attachments.every((attachment, index) => attachment.id === attachments[index].id)
+          && item.model === composer.model && item.effort === composer.effort
+          && item.mode === composer.mode && item.permissionMode === composer.permissionMode,
+        );
         if (duplicate) return false;
         const nextComposers = {
           ...sessionComposers,

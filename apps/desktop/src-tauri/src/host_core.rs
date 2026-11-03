@@ -1136,7 +1136,7 @@ pub(crate) fn build_acp_read_file(
     limit: Option<u32>,
 ) -> AcpReadFile {
     let size = bytes.len() as u64;
-    if let Some(mime) = image_mime(&bytes) {
+    if let Some(mime) = prompt_image_mime(&bytes) {
         return AcpReadFile {
             content: String::new(),
             content_base64: Some(BASE64.encode(bytes)),

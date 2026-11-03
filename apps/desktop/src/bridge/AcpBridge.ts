@@ -75,6 +75,7 @@ import { mapToolKind } from "../lib/toolKind";
 import { displayReplayUserPrompt } from "../lib/replayUserPrompt";
 import { mergeOfflineWithLive } from "../lib/offlineMerge";
 import { AcpRpcError, decodeAcpResponse } from "./acpRpc";
+import { validateAttachmentSet } from "../lib/attachments";
 import { applyToSession } from "./sessionProjection";
 import { decodeWorkflowRun } from "./workflowDecoder";
 
@@ -431,6 +432,7 @@ function attachmentUri(attachment: PromptAttachment): string {
 }
 
 function promptContent(text: string, attachments: PromptAttachment[]): JsonObject[] {
+  validateAttachmentSet(attachments);
   const blocks: JsonObject[] = [{ type: "text", text }];
   for (const attachment of attachments) {
     if (attachment.kind === "image" && attachment.data) {
@@ -453,7 +455,7 @@ function promptContent(text: string, attachments: PromptAttachment[]): JsonObjec
       });
       continue;
     }
-    if (attachment.kind === "binary" && attachment.data) {
+    if (attachment.kind === "binary" && attachment.data !== undefined) {
       blocks.push({
         type: "resource",
         resource: {

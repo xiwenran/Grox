@@ -10,7 +10,7 @@ interface PromptPathImage {
   data: string;
 }
 
-const IMAGE_EXT = "(?:png|jpe?g|gif|webp|svg|bmp)";
+const IMAGE_EXT = "(?:png|jpe?g|gif|webp|bmp)";
 // A path may contain spaces; stop at the image extension instead of whitespace
 // so `/Users/me/reference image.png` works when pasted directly into a prompt.
 const PATH_BOUNDARY = `(?:^|[\\s("'\\x60:=：])`;
@@ -46,6 +46,7 @@ export async function attachExplicitPromptImages(
   text: string,
   attachments: PromptAttachment[],
 ): Promise<PromptAttachment[]> {
+  validateAttachmentSet(attachments);
   const paths = imagePathsInText(text);
   if (paths.length === 0) return attachments;
   // The browser showcase intentionally uses MockBridge and has no Tauri

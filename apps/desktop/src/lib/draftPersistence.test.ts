@@ -47,14 +47,14 @@ describe("draftPersistence browser fallback", () => {
     expect((await loadDraftBuffer("C:/Work/Repo"))?.attachments[0]?.text).toBe("body");
   });
 
-  it("strips attachment bodies when they exceed the recovery budget", () => {
+  it("keeps full attachment bodies above the former recovery budget", () => {
     const huge = "x".repeat(900_000);
     const compacted = compactDraftBuffer("C:/Work/Repo", "keep me", [
       { id: "img", kind: "image", name: "big.png", mime: "image/png", size: huge.length, data: huge },
       { id: "img2", kind: "image", name: "big2.png", mime: "image/png", size: huge.length, data: huge },
     ]);
     expect(compacted?.text).toBe("keep me");
-    expect(compacted?.attachments.some((item) => item.data || item.text)).toBe(false);
+    expect(compacted?.attachments.map((item) => item.data)).toEqual([huge, huge]);
   });
 
   it("clear removes an existing browser-only draft", async () => {

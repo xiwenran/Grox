@@ -7,14 +7,14 @@ export const MAX_TOTAL_BYTES = 32 * 1024 * 1024;
 const TEXT_EXTENSIONS = new Set([
   "txt", "md", "mdx", "json", "jsonl", "toml", "yaml", "yml", "xml", "csv",
   "tsv", "css", "html", "htm", "js", "jsx", "ts", "tsx", "rs", "py", "go",
-  "java", "c", "h", "cpp", "hpp", "sh", "ps1", "sql", "log",
+  "java", "c", "h", "cpp", "hpp", "sh", "ps1", "sql", "log", "svg",
 ]);
 
 const fileMime = (file: File) => file.type || "application/octet-stream";
 
 const isTextFile = (file: File) => {
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-  return file.type.startsWith("text/") || TEXT_EXTENSIONS.has(extension);
+  return file.type.startsWith("text/") || file.type === "image/svg+xml" || TEXT_EXTENSIONS.has(extension);
 };
 
 function readBase64(file: File): Promise<string> {
@@ -33,7 +33,7 @@ export async function prepareAttachment(file: File, fallbackName?: string): Prom
   const name = file.name || fallbackName || `clipboard-${Date.now()}.png`;
   const mime = fileMime(file);
   if (file.size > MAX_ATTACHMENT_BYTES) throw new Error(`${name} exceeds 16 MB`);
-  if (mime.startsWith("image/")) {
+  if (mime.startsWith("image/") && mime !== "image/svg+xml" && !/\.svg$/i.test(name)) {
     return { id: crypto.randomUUID(), kind: "image", name, mime, size: file.size, data: await readBase64(file) };
   }
   if (isTextFile(file)) {
@@ -43,6 +43,9 @@ export async function prepareAttachment(file: File, fallbackName?: string): Prom
 }
 
 export function validateAttachmentSet(items: PromptAttachment[]) {
+  if (items.some((item) => item.kind === "text" ? item.text === undefined : item.kind === "image" ? !item.data : item.data === undefined)) {
+    throw new Error("附件内容缺失，请重新选择对应文件后发送");
+  }
   if (items.length > MAX_ATTACHMENTS) throw new Error("attachment_count");
   if (items.reduce((total, item) => total + item.size, 0) > MAX_TOTAL_BYTES) {
     throw new Error("attachment_size");
