@@ -10,6 +10,7 @@ use crate::{
     browser_mcp,
     host_core::checked_reasoning_effort,
     computer_mcp,
+    session_coordinator::SessionOperation,
     host_core::computer_use_gate_open,
     host_core::config_path,
     host_core::ensure_computer_plugin,
@@ -508,7 +509,11 @@ pub(crate) async fn open_agent_session_inner(
         .trim()
         .to_string();
 
-    let permit = state.sessions.acquire_lifecycle(request.generation).await?;
+    let operation = match session_id.as_ref() {
+        Some(id) => SessionOperation::Load(id.clone()),
+        None => SessionOperation::New,
+    };
+    let permit = state.sessions.acquire_session_operation(operation, request.generation).await?;
     let mut warnings = Vec::new();
     if permission_reduced {
         warnings.push(AcpHostError::operation(
@@ -720,7 +725,9 @@ pub(crate) async fn fork_agent_session(
             "重新选择源会话的项目目录",
         )
     })?;
-    let permit = state.sessions.acquire_lifecycle(request.generation).await?;
+    let permit = state.sessions.acquire_session_operation(
+        SessionOperation::Fork(source_session_id.clone()), request.generation,
+    ).await?;
     let source_text = path_for_webview(&source_cwd);
     let response = request_acp_json(
         state.inner(),
@@ -809,7 +816,9 @@ pub(crate) async fn fork_agent_session_in_worktree(
             "修复应用配置目录权限后重试",
         )
     })?;
-    let permit = state.sessions.acquire_lifecycle(request.generation).await?;
+    let permit = state.sessions.acquire_session_operation(
+        SessionOperation::Fork(source_session_id.clone()), request.generation,
+    ).await?;
     let source_text = path_for_webview(&source_cwd);
     let create_source = source_text.clone();
     let created = tauri::async_runtime::spawn_blocking(move || {

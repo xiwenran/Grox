@@ -83,7 +83,7 @@ describe("buildDraftRestoreAfterSessionNewFailure", () => {
     expect(result.activeId).toBe(draftId);
     expect(result.view).toBe("session");
     expect(result.sessions[pendingId]).toBeUndefined();
-    expect(result.sessions["draft-old"]).toBeUndefined();
+    expect(result.sessions["draft-old"]).toEqual(pendingShell("draft-old"));
     expect(result.sessions[draftId]).toMatchObject({
       id: draftId,
       cwd: "C:/Work/Repo",

@@ -200,7 +200,6 @@ let projectPreviewRequestGeneration = 0;
 // 覆盖新文件，也不能在关闭后重新写入错误/内容。
 let previewRequestGeneration = 0;
 let viewNavigation: ViewNavigationIntent = { generation: 0, sessionId: null };
-let pendingForegroundNavigation: ViewNavigationIntent | null = null;
 
 function persistSessionComposers(states: Record<string, SessionComposerState>) {
   pendingComposerStates = states;
@@ -373,7 +372,8 @@ function dropEphemeralSessions(
   keepId?: string | null,
 ): Record<string, Session> {
   return Object.fromEntries(
-    Object.entries(sessions).filter(([id]) => id === keepId || !isEphemeralSessionId(id)),
+    Object.entries(sessions).filter(([id]) => id === keepId || pendingLaunches.has(id)
+      || launchDraftScope(id) || !isEphemeralSessionId(id)),
   );
 }
 
@@ -388,7 +388,32 @@ let bridgeSubscribed = false;
 let workspaceWatchTimer: number | undefined;
 /** How often a streaming session may bump its sidebar row's updatedAt. */
 const CATALOG_TOUCH_INTERVAL_MS = 10_000;
-let pendingLaunch: { text: string; attachments: PromptAttachment[] } | undefined;
+const pendingLaunches = new Map<string, {
+  text: string;
+  attachments: PromptAttachment[];
+  navigation: ViewNavigationIntent;
+  controls: Pick<SessionComposerState, "model" | "effort" | "mode" | "permissionMode">;
+  scope: string;
+}>();
+const LAUNCH_RECOVERY_KEY = "grox.launchRecovery.v1";
+
+function launchDraftScope(id: string | null): string | undefined {
+  return id?.startsWith("draft-launch-") ? id.slice("draft-".length) : undefined;
+}
+
+function launchRecoveries(): { cwd: string; scope: string }[] {
+  return loadJson<{ cwd: string; scope: string }[]>(LAUNCH_RECOVERY_KEY, [])
+    .filter(item => typeof item?.cwd === "string" && /^launch-[a-f0-9]{24}$/.test(item.scope));
+}
+
+function rememberLaunchRecovery(cwd: string, scope: string): void {
+  const entries = launchRecoveries().filter(item => item.scope !== scope);
+  localStorage.setItem(LAUNCH_RECOVERY_KEY, JSON.stringify([...entries, { cwd, scope }]));
+}
+
+function forgetLaunchRecovery(scope: string): void {
+  localStorage.setItem(LAUNCH_RECOVERY_KEY, JSON.stringify(launchRecoveries().filter(item => item.scope !== scope)));
+}
 let providerRestoreGeneration = 0;
 let capabilityLoadPromise: Promise<void> | undefined;
 
@@ -1174,11 +1199,12 @@ export const useDesktop = create<DesktopState>((set, get) => {
       }
       case "session_ready": {
         if (loadDeletedSessions().has(e.session.id)) break;
-        const issuedNavigation = e.background ? null : pendingForegroundNavigation;
+        const launch = e.background || !e.launchId ? undefined : pendingLaunches.get(e.launchId);
+        const issuedNavigation = launch?.navigation;
         const attachesForeground = !e.background && (
           !issuedNavigation || shouldCommitViewNavigation(issuedNavigation, viewNavigation)
         );
-        if (!e.background) pendingForegroundNavigation = null;
+        if (e.launchId) pendingLaunches.delete(e.launchId);
         const effectiveBackground = e.background || !attachesForeground;
         const filteredSession = {
           ...e.session,
@@ -1216,11 +1242,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
             : e.background && existing && existing.blocks.length > filteredSession.blocks.length
               ? { ...filteredSession, blocks: existing.blocks }
             : filteredSession;
-        const launch = e.background ? undefined : pendingLaunch;
-        if (!e.background) pendingLaunch = undefined;
-        const optimistic = e.background
-          ? undefined
-          : Object.values(sessions).find((item) => item.id.startsWith("pending-"));
+        const optimistic = launch && e.launchId ? sessions[e.launchId] : undefined;
         const nextSession = launch && optimistic
           ? {
               ...readySession,
@@ -1255,24 +1277,29 @@ export const useDesktop = create<DesktopState>((set, get) => {
         const composer: SessionComposerState = existingComposer ?? {
           text: "",
           attachments: [],
-          model: state.models.some((item) => item.id === readySession.model)
+          model: launch?.controls.model ?? (state.models.some((item) => item.id === readySession.model)
             ? readySession.model
-            : state.model,
-          effort: state.effort,
-          mode: state.mode,
-          permissionMode: state.permissionMode,
+            : state.model),
+          effort: launch?.controls.effort ?? state.effort,
+          mode: launch?.controls.mode ?? state.mode,
+          permissionMode: launch?.controls.permissionMode ?? state.permissionMode,
         };
         // Drop ephemeral draft/pending composer shells once a real session binds.
         const sessionComposers = Object.fromEntries(
           Object.entries({ ...state.sessionComposers, [readySession.id]: composer })
-            .filter(([id]) => !isEphemeralSessionId(id)),
+            .filter(([id]) => id !== (launch ? `draft-${launch.scope}` : undefined)
+              && (!isEphemeralSessionId(id) || pendingLaunches.has(id) || launchDraftScope(id)
+              || (!attachesForeground && id === state.activeId && id !== e.launchId))),
         );
         persistSessionComposers(sessionComposers);
         const remainsActive = state.activeId === readySession.id && state.view === "session";
         if (attachesForeground || remainsActive) bridge.setPermissionMode(composer.permissionMode);
         const nextSessions = e.background
           ? sessions
-          : Object.fromEntries(Object.entries(sessions).filter(([id]) => !isEphemeralSessionId(id)));
+          : Object.fromEntries(Object.entries(sessions).filter(([id]) => id !== (launch ? `draft-${launch.scope}` : undefined)
+            && (!isEphemeralSessionId(id)
+            || pendingLaunches.has(id) || launchDraftScope(id)
+            || (!attachesForeground && id === state.activeId && id !== e.launchId))));
         const readyProjectId = projects.some((project) => samePath(project.path, readySession.cwd))
           ? projectId(readySession.cwd)
           : null;
@@ -1301,8 +1328,9 @@ export const useDesktop = create<DesktopState>((set, get) => {
           } : {}),
         });
         if (launch) {
-          // Create path succeeded — crash buffer is no longer needed.
-          void clearDraftBuffer(readySession.cwd).catch(() => {});
+          // 只清除此创建的缓冲，保留同一目录里其它未发送或失败的草稿。
+          void clearDraftBuffer(readySession.cwd, launch.scope)
+            .then(() => forgetLaunchRecovery(launch.scope)).catch(() => {});
           void bridge.prompt(readySession.id, launch.text, {
             model: composer.model,
             effort: composer.effort,
@@ -2082,14 +2110,25 @@ export const useDesktop = create<DesktopState>((set, get) => {
       // session/new or insert an "Untitled mission" into the sidebar until the
       // operator actually sends the first message.
       if (!hasLaunch) {
-        pendingLaunch = undefined;
-        const draftId = `draft-${uid()}`;
+        let draftId = `draft-${uid()}`;
         viewNavigation = nextViewNavigation(viewNavigation, draftId, beforeNew.workspace);
+        const navigation = viewNavigation;
         const now = Date.now();
         const workspace = get().workspace;
         let recovered: Awaited<ReturnType<typeof loadDraftBuffer>> = null;
         try {
           recovered = await loadDraftBuffer(workspace);
+          if (!recovered) {
+            const activeScopes = new Set([...pendingLaunches.values()].map(item => item.scope));
+            for (const entry of launchRecoveries().filter(item => samePath(item.cwd, workspace) && !activeScopes.has(item.scope))) {
+              recovered = await loadDraftBuffer(workspace, entry.scope);
+              if (recovered) {
+                draftId = `draft-${entry.scope}`;
+                break;
+              }
+              forgetLaunchRecovery(entry.scope);
+            }
+          }
         } catch (cause) {
           publishRuntimeError(cause, {
             domain: "environment",
@@ -2100,6 +2139,8 @@ export const useDesktop = create<DesktopState>((set, get) => {
             severity: "warning",
           });
         }
+        if (!shouldCommitViewNavigation(navigation, viewNavigation)) return;
+        viewNavigation = { ...navigation, sessionId: draftId };
         const recoveredText = recovered?.text ?? "";
         const recoveredAttachments = (recovered?.attachments ?? []).map((item) => ({
           id: item.id,
@@ -2119,10 +2160,10 @@ export const useDesktop = create<DesktopState>((set, get) => {
                 [draftId]: {
                   text: recoveredText,
                   attachments: recoveredAttachments,
-                  model: state.model,
-                  effort: state.effort,
-                  mode: state.mode,
-                  permissionMode: state.permissionMode,
+                  model: state.sessionComposers[draftId]?.model ?? state.model,
+                  effort: state.sessionComposers[draftId]?.effort ?? state.effort,
+                  mode: state.sessionComposers[draftId]?.mode ?? state.mode,
+                  permissionMode: state.sessionComposers[draftId]?.permissionMode ?? state.permissionMode,
                 },
               }
             : baseComposers;
@@ -2159,13 +2200,22 @@ export const useDesktop = create<DesktopState>((set, get) => {
         return;
       }
 
-      pendingLaunch = {
+      const pendingId = `pending-${uid()}`;
+      const workspace = beforeNew.workspace;
+      viewNavigation = nextViewNavigation(viewNavigation, pendingId, workspace);
+      const pending = {
         text: launch!.text,
         attachments: launchAttachments,
+        navigation: viewNavigation,
+        controls: {
+          model: beforeNew.model,
+          effort: beforeNew.effort,
+          mode: beforeNew.mode,
+          permissionMode: beforeNew.permissionMode,
+        },
+        scope: launchDraftScope(beforeNew.activeId) ?? `launch-${uid().replaceAll("-", "").slice(0, 24)}`,
       };
-      const pendingId = `pending-${uid()}`;
-      viewNavigation = nextViewNavigation(viewNavigation, pendingId, beforeNew.workspace);
-      pendingForegroundNavigation = viewNavigation;
+      pendingLaunches.set(pendingId, pending);
       const now = Date.now();
       set((state) => ({
         view: "session",
@@ -2202,40 +2252,40 @@ export const useDesktop = create<DesktopState>((set, get) => {
         },
       }));
       try {
-        await bridge.newSession(get().workspace);
+        rememberLaunchRecovery(workspace, pending.scope);
+        const persisted = saveDraftBuffer(workspace, pending.text, pending.attachments, pending.scope).then(async () => {
+          // 独立缓冲保存成功且仍停在本次交接时，才消费原默认草稿。
+          if (currentId?.startsWith("draft-") && !launchDraftScope(currentId)
+            && shouldCommitViewNavigation(pending.navigation, viewNavigation)) {
+            await clearDraftBuffer(workspace);
+          }
+        });
+        await bridge.newSession(workspace, pendingId, persisted);
         set({ startupError: null });
       } catch (error) {
         // Keep the just-sent draft recoverable: session/new (CLI boot, auth,
         // or ACP) can fail after we already left the draft shell.
-        const failedLaunch = pendingLaunch;
-        pendingLaunch = undefined;
-        pendingForegroundNavigation = null;
-        const draftId = `draft-${uid()}`;
-        const workspace = get().workspace;
+        pendingLaunches.delete(pendingId);
+        const remainsForeground = shouldCommitViewNavigation(pending.navigation, viewNavigation);
+        const draftId = `draft-${pending.scope}`;
         const restored = buildDraftRestoreAfterSessionNewFailure({
           pendingId,
           draftId,
           workspace,
-          launch: failedLaunch,
+          launch: pending,
           sessions: get().sessions,
           sessionComposers: get().sessionComposers,
-          controls: {
-            model: get().model,
-            effort: get().effort,
-            mode: get().mode,
-            permissionMode: get().permissionMode,
-          },
+          controls: pending.controls,
           now: Date.now(),
         });
         if (restored.draftText.trim() || restored.draftAttachments.length > 0) {
-          void saveDraftBuffer(workspace, restored.draftText, restored.draftAttachments).catch(() => {});
+          void saveDraftBuffer(workspace, restored.draftText, restored.draftAttachments, pending.scope).catch(() => {});
         }
         persistSessionComposers(restored.sessionComposers);
         set({
           sessions: restored.sessions,
           sessionComposers: restored.sessionComposers,
-          activeId: restored.activeId,
-          view: restored.view,
+          ...(remainsForeground ? { activeId: restored.activeId, view: restored.view } : {}),
           startupError: errorText(error),
         });
         // 调用方（首页、并行任务面板）只有收到拒绝，才能保留自己的输入
@@ -2266,7 +2316,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
         const composer = draftId ? before.sessionComposers[draftId] : undefined;
         const text = composer?.text ?? "";
         const attachments = composer?.attachments ?? [];
-        if (draftId) void clearDraftBuffer(before.workspace).catch(() => {});
+        if (draftId) void clearDraftBuffer(before.workspace, launchDraftScope(draftId)).catch(() => {});
         await get().setWorkspace(target, { restoreProject: true });
         if (!draftId) return;
         await get().newSession();
@@ -3102,7 +3152,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
       if (!shouldRetainDraftBufferUntilSessionReady(session.id) && submission) {
         void clearDraftBuffer(cwd).catch(() => {});
       } else if (shouldRetainDraftBufferUntilSessionReady(session.id)) {
-        void saveDraftBuffer(cwd, trimmed, attachments).catch(() => {});
+        void saveDraftBuffer(cwd, trimmed, attachments, launchDraftScope(session.id)).catch(() => {});
       }
 
       // Promote a local draft into a real ACP session on first send only.
@@ -3608,7 +3658,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
       const session = sessions[activeId];
       const cwd = session?.cwd || workspace;
       if (isDraftSessionId(activeId) || !session || isSessionTerminal(session.status)) {
-        void saveDraftBuffer(cwd, text, current.attachments).catch(() => {});
+        void saveDraftBuffer(cwd, text, current.attachments, launchDraftScope(activeId)).catch(() => {});
       }
     },
     setComposerAttachments(attachments) {
@@ -3620,7 +3670,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
       const session = sessions[activeId];
       const cwd = session?.cwd || workspace;
       if (isDraftSessionId(activeId) || !session || isSessionTerminal(session.status)) {
-        void saveDraftBuffer(cwd, current.text, attachments).catch(() => {});
+        void saveDraftBuffer(cwd, current.text, attachments, launchDraftScope(activeId)).catch(() => {});
       }
     },
     flushDurableState() {
@@ -3653,7 +3703,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
         const attachments = composer?.attachments ?? [];
         const cwd = state.sessions[activeId]?.cwd || state.workspace;
         if (isDraftSessionId(activeId) || isSessionTerminal(state.sessions[activeId]?.status ?? "idle")) {
-          void saveDraftBuffer(cwd, text, attachments).catch(() => {});
+          void saveDraftBuffer(cwd, text, attachments, launchDraftScope(activeId)).catch(() => {});
         }
       }
       flushDraftPersistence();

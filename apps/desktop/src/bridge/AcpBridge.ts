@@ -3255,14 +3255,17 @@ export class AcpBridge implements GrokBridge {
     return sessions;
   }
 
-  async newSession(cwd: string): Promise<void> {
-    // A home-screen send creates the ACP session before it can register the
-    // real session id in `prompt`. Keep that short gap visible to provider
-    // switching so a restart cannot kill a request the user has just sent.
+  async newSession(cwd: string, launchId?: string, preparation?: Promise<void>): Promise<void> {
+    // 保存首条消息前固定运行时代次；发生切换时保留草稿并拒绝跨账号创建。
     const creationLock = `session/new:${++this.requestId}`;
+    const generation = this.acpGeneration;
     this.activePromptSessions.add(creationLock);
     try {
-      await this.createSession(cwd, false);
+      await preparation;
+      if (generation !== this.acpGeneration || this.runtimeReconfigureInFlight) {
+        throw new Error("创建期间运行环境已切换，请确认当前账号后重试；草稿已保留");
+      }
+      await this.createSession(cwd, false, launchId, generation);
     } finally {
       this.markPromptFinished(creationLock);
     }
@@ -3379,13 +3382,13 @@ export class AcpBridge implements GrokBridge {
     return true;
   }
 
-  private async createSession(cwd: string, background: boolean): Promise<string> {
+  private async createSession(cwd: string, background: boolean, launchId?: string, generation = this.acpGeneration): Promise<string> {
     const preferredModel = localStorage.getItem("grok.model")?.trim();
     const reasoningEffort = storedEffort();
     const opened = await invoke<OpenAgentSessionResult>("open_agent_session", {
       request: {
         cwd,
-        generation: this.acpGeneration,
+        generation,
         preferredModel,
         reasoningEffort,
         permissionMode: this.permissionMode,
@@ -3424,7 +3427,7 @@ export class AcpBridge implements GrokBridge {
     });
     this.catalogue.set(sessionId, meta);
     this.usage.set(sessionId, { ...EMPTY_USAGE });
-    this.emit({ type: "session_ready", session: emptySession(meta), background });
+    this.emit({ type: "session_ready", session: emptySession(meta), background, launchId });
     this.emit({ type: "available_commands", sessionId, commands: this.runtimeCommands });
     return sessionId;
   }
@@ -3473,8 +3476,7 @@ export class AcpBridge implements GrokBridge {
       }
     }
 
-    // 后台打开先用本地历史完成切换。Host 可能正等另一个会话的活动回合
-    // 释放生命周期许可，此时展示“正在恢复”会把正常排队伪装成卡死。
+    // 后台打开先用本地历史完成切换。Host 只在当前目标会话或绑定过程冲突时排队。
     // 只有显式恢复（例如切换供应商）才需要锁住编辑器并显示连接状态。
     if (!background) this.emit({ type: "status", sessionId: id, status: "connecting" });
     this.replaying.set(id, emptySession(meta));

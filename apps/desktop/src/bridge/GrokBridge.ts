@@ -97,7 +97,7 @@ export interface GrokBridge {
   setSessionMode(sessionId: string, mode: AgentMode): Promise<void>;
 
   /** ACP: session/new — emits session_ready. */
-  newSession(cwd: string): Promise<void>;
+  newSession(cwd: string, launchId?: string, preparation?: Promise<void>): Promise<void>;
 
   /** 为自动化创建不抢占当前视图的会话，并返回 Agent 会话 ID。 */
   newBackgroundSession(cwd: string): Promise<string>;

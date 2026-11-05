@@ -61,4 +61,26 @@ describe("AcpBridge config documents", () => {
     const request = invoke.mock.calls[0][1].request as Record<string, unknown>;
     expect(request).not.toHaveProperty("preferredModel");
   });
+
+  it("持久化首条消息期间切换运行时，不会在新账号下创建会话", async () => {
+    const bridge = new AcpBridge();
+    const internal = bridge as unknown as { acpGeneration: number };
+    internal.acpGeneration = 7;
+    let finish!: () => void;
+    const preparation = new Promise<void>(resolve => { finish = resolve; });
+    const creating = bridge.newSession("/project-a", "pending-a", preparation);
+    const rejected = expect(creating).rejects.toThrow("运行环境已切换");
+    expect(invoke).not.toHaveBeenCalled();
+    internal.acpGeneration = 8;
+    finish();
+    await rejected;
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("首条消息保存失败时不创建会话", async () => {
+    const bridge = new AcpBridge();
+    await expect(bridge.newSession("/project-a", "pending-a", Promise.reject(new Error("磁盘写入失败"))))
+      .rejects.toThrow("磁盘写入失败");
+    expect(invoke).not.toHaveBeenCalled();
+  });
 });

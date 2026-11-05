@@ -1,8 +1,7 @@
 //! 共享 ACP 进程的会话并发协调器。
 //!
-//! `session/new`、`session/load` 与原生会话 fork 会改变进程级上下文；`session/prompt` 则占用
-//! 一个具体会话。许可必须由原生 Host 签发并校验，WebView 只负责在操作结束时
-//! 归还 token，不能自行声明运行时是否空闲。
+//! 会话创建、恢复和分叉只串行绑定过程，并与目标会话的回合互斥；其它会话可继续工作。
+//! 全局运行时切换才等待全部绑定和回合结束。许可由原生 Host 签发并校验。
 
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -30,6 +29,29 @@ struct CoordinatorState {
     active_turns: BTreeMap<String, u64>,
     lifecycle_active: Option<u64>,
     lifecycle_queue: VecDeque<u64>,
+    operation_active: Option<SessionOperationLease>,
+    operation_queue: VecDeque<SessionOperationLease>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum SessionOperation {
+    New,
+    Load(String),
+    Fork(String),
+}
+
+impl SessionOperation {
+    fn session_id(&self) -> Option<&str> {
+        match self {
+            Self::New => None,
+            Self::Load(id) | Self::Fork(id) => Some(id),
+        }
+    }
+}
+
+struct SessionOperationLease {
+    token: u64,
+    operation: SessionOperation,
 }
 
 pub(crate) struct SessionCoordinator {
@@ -88,6 +110,8 @@ impl SessionCoordinator {
         state.active_turns.clear();
         state.lifecycle_active = None;
         state.lifecycle_queue.clear();
+        state.operation_active = None;
+        state.operation_queue.clear();
         self.publish_locked(&state);
     }
 
@@ -116,7 +140,15 @@ impl SessionCoordinator {
                         format!("会话已有活动回合：{session_id}"),
                     ));
                 }
-                if state.lifecycle_active.is_none() && state.lifecycle_queue.is_empty() {
+                let session_is_opening = state
+                    .operation_active
+                    .iter()
+                    .chain(state.operation_queue.iter())
+                    .any(|lease| lease.operation.session_id() == Some(session_id.as_str()));
+                if state.lifecycle_active.is_none()
+                    && state.lifecycle_queue.is_empty()
+                    && !session_is_opening
+                {
                     let token = self.issue_token();
                     state.active_turns.insert(session_id, token);
                     self.publish_locked(&state);
@@ -164,7 +196,11 @@ impl SessionCoordinator {
                 let mut state = self.lock_state();
                 Self::ensure_generation(&state, generation)?;
                 let is_front = state.lifecycle_queue.front().copied() == Some(ticket);
-                if is_front && state.lifecycle_active.is_none() && state.active_turns.is_empty() {
+                if is_front
+                    && state.lifecycle_active.is_none()
+                    && state.active_turns.is_empty()
+                    && state.operation_active.is_none()
+                {
                     state.lifecycle_queue.pop_front();
                     state.lifecycle_active = Some(ticket);
                     queued.active = false;
@@ -176,11 +212,98 @@ impl SessionCoordinator {
         }
     }
 
+    #[cfg(test)]
     pub(crate) async fn acquire_lifecycle(
         self: &Arc<Self>,
         generation: u64,
     ) -> Result<SessionPermit, AcpHostError> {
         let token = self.enter_lifecycle(generation).await?;
+        Ok(SessionPermit {
+            coordinator: Arc::clone(self),
+            token,
+            generation,
+        })
+    }
+
+    async fn enter_session_operation(
+        self: &Arc<Self>,
+        operation: SessionOperation,
+        generation: u64,
+    ) -> Result<u64, AcpHostError> {
+        if operation
+            .session_id()
+            .is_some_and(|id| id.trim().is_empty())
+        {
+            return Err(AcpHostError::operation(
+                "SESSION_GATE_INVALID_SESSION",
+                "会话操作缺少 sessionId",
+            ));
+        }
+        let ticket = self.issue_token();
+        {
+            let mut state = self.lock_state();
+            Self::ensure_generation(&state, generation)?;
+            state.operation_queue.push_back(SessionOperationLease {
+                token: ticket,
+                operation,
+            });
+            self.publish_locked(&state);
+        }
+        let mut queued = QueuedSessionOperation {
+            coordinator: Arc::clone(self),
+            generation,
+            ticket,
+            active: true,
+        };
+        loop {
+            let changed = self.changed.notified();
+            {
+                let mut state = self.lock_state();
+                Self::ensure_generation(&state, generation)?;
+                // 正在工作的目标只阻挡自己的恢复；其它目录的新建可先执行。
+                let next = state.operation_queue.iter().position(|lease| {
+                    !lease
+                        .operation
+                        .session_id()
+                        .is_some_and(|id| state.active_turns.contains_key(id))
+                });
+                if state.lifecycle_active.is_none()
+                    && state.lifecycle_queue.is_empty()
+                    && state.operation_active.is_none()
+                {
+                    if let Some(index) =
+                        next.filter(|index| state.operation_queue[*index].token == ticket)
+                    {
+                        state.operation_active = state.operation_queue.remove(index);
+                        queued.active = false;
+                        self.publish_locked(&state);
+                        return Ok(ticket);
+                    }
+                }
+            }
+            changed.await;
+        }
+    }
+
+    pub(crate) async fn acquire_session_operation(
+        self: &Arc<Self>,
+        operation: SessionOperation,
+        generation: u64,
+    ) -> Result<SessionPermit, AcpHostError> {
+        let token = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            self.enter_session_operation(operation, generation),
+        )
+        .await
+        .map_err(|_| {
+            AcpHostError::environment(
+                "SESSION_OPEN_WAIT_TIMEOUT",
+                "会话操作排队超过 30 秒",
+                false,
+                false,
+                "等待当前会话操作或运行时切换结束后重试",
+            )
+        })??;
         Ok(SessionPermit {
             coordinator: Arc::clone(self),
             token,
@@ -195,6 +318,13 @@ impl SessionCoordinator {
         }
         let removed = if state.lifecycle_active == Some(token) {
             state.lifecycle_active = None;
+            true
+        } else if state
+            .operation_active
+            .as_ref()
+            .is_some_and(|lease| lease.token == token)
+        {
+            state.operation_active = None;
             true
         } else {
             let session = state
@@ -226,9 +356,13 @@ impl SessionCoordinator {
             .map(|suffix| format!("x.ai/{suffix}"))
             .unwrap_or_else(|| method.to_string());
         let requirement = match method.as_str() {
-            "session/new" | "session/load" | "x.ai/session/fork" => {
-                GateRequirement::Lifecycle
-            }
+            "session/new" => GateRequirement::Operation(SessionOperation::New),
+            "session/load" => GateRequirement::Operation(SessionOperation::Load(
+                required_session_id(params, "sessionId")?.to_string(),
+            )),
+            "x.ai/session/fork" => GateRequirement::Operation(SessionOperation::Fork(
+                required_session_id(params, "sourceSessionId")?.to_string(),
+            )),
             "session/prompt" => {
                 let session_id = params
                     .get("sessionId")
@@ -254,7 +388,10 @@ impl SessionCoordinator {
         let state = self.lock_state();
         Self::ensure_generation(&state, generation)?;
         let valid = match requirement {
-            GateRequirement::Lifecycle => state.lifecycle_active == Some(token),
+            GateRequirement::Operation(operation) => state
+                .operation_active
+                .as_ref()
+                .is_some_and(|lease| lease.token == token && lease.operation == operation),
             GateRequirement::Turn(session_id) => {
                 state.active_turns.get(session_id).copied() == Some(token)
             }
@@ -285,6 +422,21 @@ impl SessionCoordinator {
         self.publish_locked(&state);
     }
 
+    fn cancel_operation_waiter(&self, generation: u64, ticket: u64) {
+        let mut state = self.lock_state();
+        if state.generation != generation {
+            return;
+        }
+        if let Some(index) = state
+            .operation_queue
+            .iter()
+            .position(|lease| lease.token == ticket)
+        {
+            state.operation_queue.remove(index);
+            self.publish_locked(&state);
+        }
+    }
+
     fn issue_token(&self) -> u64 {
         self.next_token.fetch_add(1, Ordering::Relaxed) + 1
     }
@@ -312,8 +464,8 @@ impl SessionCoordinator {
     fn snapshot_locked(state: &CoordinatorState) -> SessionRuntimeOccupancy {
         SessionRuntimeOccupancy {
             active_turn_session_ids: state.active_turns.keys().cloned().collect(),
-            lifecycle_active: state.lifecycle_active.is_some(),
-            pending_lifecycle: state.lifecycle_queue.len(),
+            lifecycle_active: state.lifecycle_active.is_some() || state.operation_active.is_some(),
+            pending_lifecycle: state.lifecycle_queue.len() + state.operation_queue.len(),
         }
     }
 
@@ -325,7 +477,37 @@ impl SessionCoordinator {
 
 enum GateRequirement<'a> {
     Turn(&'a str),
-    Lifecycle,
+    Operation(SessionOperation),
+}
+
+fn required_session_id<'a>(
+    params: &'a serde_json::Value,
+    field: &str,
+) -> Result<&'a str, AcpHostError> {
+    params
+        .get(field)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| {
+            AcpHostError::protocol("ACP_INVALID_REQUEST", format!("会话操作缺少 {field}"))
+        })
+}
+
+struct QueuedSessionOperation {
+    coordinator: Arc<SessionCoordinator>,
+    generation: u64,
+    ticket: u64,
+    active: bool,
+}
+
+impl Drop for QueuedSessionOperation {
+    fn drop(&mut self) {
+        if self.active {
+            self.coordinator
+                .cancel_operation_waiter(self.generation, self.ticket);
+        }
+    }
 }
 
 struct QueuedLifecycle {
@@ -514,7 +696,10 @@ mod tests {
             let coordinator = Arc::new(SessionCoordinator::default());
             coordinator.reset(6);
             {
-                let permit = coordinator.acquire_lifecycle(6).await.unwrap();
+                let permit = coordinator
+                    .acquire_session_operation(SessionOperation::New, 6)
+                    .await
+                    .unwrap();
                 assert!(coordinator
                     .verify_request(
                         "session/new",
@@ -526,13 +711,202 @@ mod tests {
                 assert!(coordinator
                     .verify_request(
                         "_x.ai/session/fork",
-                        &serde_json::json!({}),
+                        &serde_json::json!({"sourceSessionId": "source"}),
                         Some(permit.token()),
                         6
                     )
-                    .is_ok());
+                    .is_err());
             }
             assert!(!coordinator.snapshot().lifecycle_active);
+        });
+    }
+
+    #[test]
+    fn opening_new_session_and_other_turn_do_not_wait_for_active_turn() {
+        tauri::async_runtime::block_on(async {
+            let coordinator = Arc::new(SessionCoordinator::default());
+            coordinator.reset(1);
+            let a = coordinator.acquire_turn("a".into(), 1).await.unwrap();
+            let opening = tokio::time::timeout(
+                std::time::Duration::from_secs(1),
+                coordinator.acquire_session_operation(SessionOperation::New, 1),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            let b = tokio::time::timeout(
+                std::time::Duration::from_secs(1),
+                coordinator.acquire_turn("b".into(), 1),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            assert_eq!(coordinator.snapshot().active_turn_session_ids, ["a", "b"]);
+            drop((a, opening, b));
+            assert_eq!(coordinator.snapshot(), SessionRuntimeOccupancy::default());
+        });
+    }
+
+    #[test]
+    fn load_waits_only_for_its_target_and_does_not_block_new_session() {
+        tauri::async_runtime::block_on(async {
+            let coordinator = Arc::new(SessionCoordinator::default());
+            coordinator.reset(1);
+            let a = coordinator.acquire_turn("a".into(), 1).await.unwrap();
+            let c = Arc::clone(&coordinator);
+            let loading = tauri::async_runtime::spawn(async move {
+                c.acquire_session_operation(SessionOperation::Load("a".into()), 1)
+                    .await
+                    .unwrap()
+            });
+            while coordinator.snapshot().pending_lifecycle == 0 {
+                tokio::task::yield_now().await;
+            }
+            let b = coordinator
+                .acquire_session_operation(SessionOperation::New, 1)
+                .await
+                .unwrap();
+            assert!(!loading.inner().is_finished());
+            drop(b);
+            let b_turn = coordinator.acquire_turn("b".into(), 1).await.unwrap();
+            drop(a);
+            let load = loading.await.unwrap();
+            let c = Arc::clone(&coordinator);
+            let a_turn =
+                tauri::async_runtime::spawn(
+                    async move { c.acquire_turn("a".into(), 1).await.unwrap() },
+                );
+            tokio::task::yield_now().await;
+            assert!(!a_turn.inner().is_finished());
+            drop(load);
+            drop(a_turn.await.unwrap());
+            drop(b_turn);
+        });
+    }
+
+    #[test]
+    fn global_switch_waits_for_open_and_blocks_new_operations() {
+        tauri::async_runtime::block_on(async {
+            let coordinator = Arc::new(SessionCoordinator::default());
+            coordinator.reset(1);
+            let opening = coordinator
+                .acquire_session_operation(SessionOperation::New, 1)
+                .await
+                .unwrap();
+            let c = Arc::clone(&coordinator);
+            let switching =
+                tauri::async_runtime::spawn(async move { c.acquire_lifecycle(1).await.unwrap() });
+            while coordinator.snapshot().pending_lifecycle == 0 {
+                tokio::task::yield_now().await;
+            }
+            let c = Arc::clone(&coordinator);
+            let next = tauri::async_runtime::spawn(async move {
+                c.acquire_session_operation(SessionOperation::New, 1)
+                    .await
+                    .unwrap()
+            });
+            while coordinator.snapshot().pending_lifecycle < 2 {
+                tokio::task::yield_now().await;
+            }
+            assert!(!switching.inner().is_finished());
+            drop(opening);
+            let switch = switching.await.unwrap();
+            assert!(!next.inner().is_finished());
+            drop(switch);
+            drop(next.await.unwrap());
+        });
+    }
+
+    #[test]
+    fn operation_permit_is_bound_to_method_session_and_generation() {
+        tauri::async_runtime::block_on(async {
+            let coordinator = Arc::new(SessionCoordinator::default());
+            coordinator.reset(1);
+            let load = coordinator
+                .acquire_session_operation(SessionOperation::Load("a".into()), 1)
+                .await
+                .unwrap();
+            assert!(coordinator
+                .verify_request(
+                    "session/load",
+                    &serde_json::json!({"sessionId":"a"}),
+                    Some(load.token()),
+                    1
+                )
+                .is_ok());
+            for (method, params) in [
+                ("session/new", serde_json::json!({})),
+                ("session/load", serde_json::json!({"sessionId":"b"})),
+                (
+                    "_x.ai/session/fork",
+                    serde_json::json!({"sourceSessionId":"a"}),
+                ),
+            ] {
+                assert_eq!(
+                    coordinator
+                        .verify_request(method, &params, Some(load.token()), 1)
+                        .unwrap_err()
+                        .code,
+                    "SESSION_GATE_MISMATCH"
+                );
+            }
+            coordinator.reset(2);
+            assert_eq!(
+                coordinator
+                    .verify_request(
+                        "session/load",
+                        &serde_json::json!({"sessionId":"a"}),
+                        Some(load.token()),
+                        1
+                    )
+                    .unwrap_err()
+                    .code,
+                "ACP_CHANNEL_REPLACED"
+            );
+            drop(load);
+            let fork = coordinator
+                .acquire_session_operation(SessionOperation::Fork("a".into()), 2)
+                .await
+                .unwrap();
+            assert!(coordinator
+                .verify_request(
+                    "_x.ai/session/fork",
+                    &serde_json::json!({"sourceSessionId":"a"}),
+                    Some(fork.token()),
+                    2
+                )
+                .is_ok());
+        });
+    }
+
+    #[test]
+    fn cancelled_operation_and_generation_reset_release_waiters() {
+        tauri::async_runtime::block_on(async {
+            let coordinator = Arc::new(SessionCoordinator::default());
+            coordinator.reset(1);
+            let a = coordinator.acquire_turn("a".into(), 1).await.unwrap();
+            assert!(tokio::time::timeout(
+                std::time::Duration::from_millis(10),
+                coordinator.enter_session_operation(SessionOperation::Load("a".into()), 1)
+            )
+            .await
+            .is_err());
+            assert_eq!(coordinator.snapshot().pending_lifecycle, 0);
+            let c = Arc::clone(&coordinator);
+            let pending = tauri::async_runtime::spawn(async move {
+                c.acquire_session_operation(SessionOperation::Load("a".into()), 1)
+                    .await
+            });
+            while coordinator.snapshot().pending_lifecycle == 0 {
+                tokio::task::yield_now().await;
+            }
+            coordinator.reset(2);
+            assert_eq!(
+                pending.await.unwrap().err().unwrap().code,
+                "ACP_CHANNEL_REPLACED"
+            );
+            drop(a);
+            assert_eq!(coordinator.snapshot(), SessionRuntimeOccupancy::default());
         });
     }
 }

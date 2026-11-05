@@ -257,8 +257,9 @@ export class MockBridge implements GrokBridge {
     this.emit({ type: "mode_state", sessionId, mode });
   }
 
-  async newSession(cwd: string): Promise<void> {
-    await this.createSession(cwd, false);
+  async newSession(cwd: string, launchId?: string, preparation?: Promise<void>): Promise<void> {
+    await preparation;
+    await this.createSession(cwd, false, launchId);
   }
 
   async newBackgroundSession(cwd: string): Promise<string> {
@@ -314,7 +315,7 @@ export class MockBridge implements GrokBridge {
     };
   }
 
-  private async createSession(cwd: string, background: boolean): Promise<string> {
+  private async createSession(cwd: string, background: boolean, launchId?: string): Promise<string> {
     const now = Date.now();
     const session: Session = {
       id: uid(),
@@ -328,7 +329,7 @@ export class MockBridge implements GrokBridge {
       status: "idle",
     };
     this.sessions.set(session.id, session);
-    this.emit({ type: "session_ready", session, background });
+    this.emit({ type: "session_ready", session, background, launchId });
     return session.id;
   }
 

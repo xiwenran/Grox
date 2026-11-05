@@ -55,11 +55,6 @@ export function buildDraftRestoreAfterSessionNewFailure(input: {
   const draftAttachments = input.launch?.attachments ?? [];
   const nextSessions = { ...input.sessions };
   delete nextSessions[input.pendingId];
-  for (const id of Object.keys(nextSessions)) {
-    if (id.startsWith("pending-") || id.startsWith("draft-")) {
-      delete nextSessions[id];
-    }
-  }
 
   const emptyUsage = {
     inputTokens: 0,
