@@ -39,6 +39,21 @@ describe("preferRicherSession", () => {
     const incoming = base([{ type: "user", id: "u1", text: "hi", ts: 1 }], true);
     expect(preferRicherSession(shell, incoming).blocks).toHaveLength(1);
   });
+
+  it("prefers a cleaner windowed session over a fatter raw transcript", () => {
+    const fat = base(Array.from({ length: 20 }, (_, index) => ({
+      type: "assistant" as const,
+      id: `a${index}`,
+      text: "x".repeat(100),
+      ts: index,
+    })));
+    const clean = {
+      ...base([{ type: "assistant" as const, id: "a19", text: "tail", ts: 19 }], true),
+      window: { earlierBlocks: 19, earlierTurns: 5, totalBlocks: 20, oldestVisibleId: "a19" },
+    };
+    expect(preferRicherSession(fat, clean)).toBe(clean);
+    expect(preferRicherSession(clean, fat)).toBe(clean);
+  });
 });
 
 describe("sessionFromDiskPreview", () => {

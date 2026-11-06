@@ -15,10 +15,12 @@ import type {
   PermissionMode,
   PromptAttachment,
   Session,
+  SessionBlock,
   SessionMeta,
   PreviewFile,
   ProjectPreview,
   GrokRuntimeInfo,
+  ToolCall,
   WorkspaceEntry,
   WorkflowRun,
 } from "../bridge/types";
@@ -127,6 +129,8 @@ import {
   hydrateSessionOfflineDetailed,
   preferRicherSession,
 } from "../lib/offlineSessionHydrate";
+import { windowSessionForLive } from "../lib/sessionWindow";
+import { getSessionPage, getToolBody } from "../lib/hostActions";
 import {
   POST_TURN_RECONCILE_DELAYS_MS,
   resumeInterruptedSessionIfHostActive,
@@ -1231,18 +1235,19 @@ export const useDesktop = create<DesktopState>((set, get) => {
         ) {
           spineMerged = mergeOfflineWithLive(filteredSession, existing);
         }
+        // Prefer a cleaner windowed payload over a fatter raw transcript.
         const readySession = e.preview && existing
-          ? mergeOfflineWithLive(filteredSession, existing)
+          ? preferRicherSession(existing, mergeOfflineWithLive(filteredSession, existing))
           : spineMerged
-            ? spineMerged
+            ? preferRicherSession(existing, spineMerged)
           : localPreviewSuffix.length > 0
             ? {
                 ...filteredSession,
                 blocks: [...filteredSession.blocks, ...localPreviewSuffix],
                 status: existing?.status ?? filteredSession.status,
               }
-            : e.background && existing && existing.blocks.length > filteredSession.blocks.length
-              ? { ...filteredSession, blocks: existing.blocks }
+            : e.background && existing
+              ? preferRicherSession(existing, filteredSession)
             : filteredSession;
         const optimistic = launch && e.launchId ? sessions[e.launchId] : undefined;
         const nextSession = launch && optimistic
@@ -1309,7 +1314,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
           viewNavigation = nextViewNavigation(viewNavigation, readySession.id, readySession.cwd);
         }
         set({
-          sessions: { ...nextSessions, [readySession.id]: capLiveSession(nextSession) },
+          sessions: { ...nextSessions, [readySession.id]: windowSessionForLive(capLiveSession(nextSession)) },
           sessionIndex: nextIndex,
           projects,
           sessionComposers,
@@ -2117,6 +2122,93 @@ export const useDesktop = create<DesktopState>((set, get) => {
             });
           })();
         });
+      }
+    },
+
+    async loadSessionEarlierPage(id) {
+      const current = get().sessions[id];
+      if (!current?.window || current.window.earlierBlocks <= 0) return;
+      const beforeId = current.window.oldestVisibleId ?? current.blocks[0]?.id;
+      try {
+        const page = await getSessionPage(id, beforeId, 40);
+        if (!page.blocks.length) {
+          set((state) => {
+            const live = state.sessions[id];
+            if (!live?.window) return state;
+            return {
+              sessions: {
+                ...state.sessions,
+                [id]: {
+                  ...live,
+                  window: {
+                    ...live.window,
+                    earlierBlocks: 0,
+                    earlierTurns: 0,
+                  },
+                },
+              },
+            };
+          });
+          return;
+        }
+        set((state) => {
+          const live = state.sessions[id];
+          if (!live) return state;
+          const existingIds = new Set(live.blocks.map((block) => block.id));
+          const prepend = (page.blocks as SessionBlock[]).filter((block) => !existingIds.has(block.id));
+          if (prepend.length === 0) return state;
+          return {
+            sessions: {
+              ...state.sessions,
+              [id]: {
+                ...live,
+                blocks: [...prepend, ...live.blocks],
+                window: {
+                  earlierBlocks: page.earlierBlocks,
+                  earlierTurns: page.earlierTurns,
+                  totalBlocks: page.totalBlocks,
+                  oldestVisibleId: page.oldestVisibleId ?? prepend[0]?.id,
+                },
+              },
+            },
+          };
+        });
+      } catch (cause) {
+        set({ startupError: `加载更早记录失败：${String(cause)}` });
+      }
+    },
+
+    async expandSessionBlockBody(sessionId, blockId) {
+      try {
+        const body = await getToolBody(sessionId, blockId);
+        if (!body) return;
+        set((state) => {
+          const live = state.sessions[sessionId];
+          if (!live) return state;
+          const blocks = live.blocks.map((block) => {
+            if (block.id !== blockId) return block;
+            if (block.type === "tool") {
+              const call: ToolCall = {
+                ...block.call,
+                input: typeof body.input === "string" ? body.input : block.call.input,
+                output: typeof body.output === "string" ? body.output : block.call.output,
+                diff: (body.diff as ToolCall["diff"]) ?? block.call.diff,
+                terminal: (body.terminal as ToolCall["terminal"]) ?? block.call.terminal,
+                images: (body.images as ToolCall["images"]) ?? block.call.images,
+                bodyDeferred: false,
+              };
+              return { ...block, call };
+            }
+            if (block.type === "thinking" || block.type === "assistant") {
+              const text = typeof body.output === "string" ? body.output : block.text;
+              return { ...block, text, bodyDeferred: false };
+            }
+            return block;
+          });
+          return { sessions: { ...state.sessions, [sessionId]: { ...live, blocks } } };
+        });
+      } catch (cause) {
+        set({ startupError: `展开工具正文失败：${String(cause)}` });
       }
     },
 

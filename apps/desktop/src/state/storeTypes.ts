@@ -84,6 +84,8 @@ export interface DesktopState extends CapabilityState {
   dismissRuntimeNotice(id: string): void;
   goHome(): void;
   openSession(id: string): Promise<void>;
+  loadSessionEarlierPage(id: string): Promise<void>;
+  expandSessionBlockBody(sessionId: string, blockId: string): Promise<void>;
   newSession(launch?: { text: string; attachments?: PromptAttachment[] }): Promise<void>;
   newProject(): Promise<void>;
   /** Composer folder picker: move the unsent draft (text + attachments) to

@@ -1592,6 +1592,254 @@ fn write_session_journal(
     Ok(())
 }
 
+
+const SESSION_PAGE_MAX_BLOCKS: usize = 40;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SessionToolBody {
+    block_id: String,
+    input: Option<String>,
+    output: Option<String>,
+    diff: Option<serde_json::Value>,
+    terminal: Option<serde_json::Value>,
+    images: Option<serde_json::Value>,
+    detail: Option<String>,
+    title: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SessionPage {
+    blocks: Vec<serde_json::Value>,
+    earlier_blocks: usize,
+    earlier_turns: usize,
+    total_blocks: usize,
+    oldest_visible_id: Option<String>,
+}
+
+fn journal_session_blocks(content: &str) -> Result<Vec<serde_json::Value>, String> {
+    let value: serde_json::Value = serde_json::from_str(content)
+        .map_err(|error| format!("应用会话 journal 必须是 JSON：{error}"))?;
+    let blocks = if value.get("version").and_then(|v| v.as_u64()) == Some(1) {
+        value
+            .get("session")
+            .and_then(|session| session.get("blocks"))
+            .cloned()
+    } else {
+        value.get("blocks").cloned()
+    };
+    let Some(serde_json::Value::Array(blocks)) = blocks else {
+        return Err("应用会话 journal 缺少 blocks".into());
+    };
+    Ok(blocks)
+}
+
+fn stub_journal_block(mut block: serde_json::Value) -> serde_json::Value {
+    let block_type = block
+        .get("type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    match block_type.as_str() {
+        "tool" => {
+            if let Some(call) = block.get_mut("call") {
+                if let Some(obj) = call.as_object_mut() {
+                    let input_clip = obj
+                        .get("input")
+                        .and_then(|v| v.as_str())
+                        .filter(|text| text.len() > 240)
+                        .map(|text| format!("{}\n…[已折叠，展开可加载全文]", &text[..240]));
+                    if let Some(clipped) = input_clip {
+                        obj.insert("input".into(), serde_json::Value::String(clipped));
+                    }
+                    let output_clip = obj
+                        .get("output")
+                        .and_then(|v| v.as_str())
+                        .filter(|text| text.len() > 240)
+                        .map(|text| format!("{}\n…[已折叠，展开可加载全文]", &text[..240]));
+                    if let Some(clipped) = output_clip {
+                        obj.insert("output".into(), serde_json::Value::String(clipped));
+                    }
+                    obj.insert("bodyDeferred".into(), serde_json::Value::Bool(true));
+                    obj.remove("diff");
+                    if let Some(terminal) = obj.get_mut("terminal") {
+                        if let Some(lines) = terminal.get_mut("lines").and_then(|v| v.as_array_mut()) {
+                            let keep = lines.len().saturating_sub(12);
+                            if keep > 0 {
+                                lines.drain(0..keep);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        "thinking" | "assistant" | "system" => {
+            let clipped = block
+                .get("text")
+                .and_then(|v| v.as_str())
+                .filter(|text| text.len() > 280)
+                .map(|text| format!("{}\n…[已折叠，展开可加载全文]", &text[..280]));
+            if let Some(clipped) = clipped {
+                if let Some(obj) = block.as_object_mut() {
+                    obj.insert("text".into(), serde_json::Value::String(clipped));
+                    if block_type != "system" {
+                        obj.insert("bodyDeferred".into(), serde_json::Value::Bool(true));
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    block
+}
+
+fn count_primary_user_turns(blocks: &[serde_json::Value]) -> usize {
+    blocks
+        .iter()
+        .filter(|block| {
+            block.get("type").and_then(|v| v.as_str()) == Some("user")
+                && block
+                    .get("interjected")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false)
+                    == false
+        })
+        .count()
+}
+
+fn read_journal_content(app: &tauri::AppHandle, id: &str) -> Result<Option<String>, HostError> {
+    safe_session_storage_id(id)
+        .map_err(|error| HostError::operation("SESSION_ID_INVALID", error))?;
+    let path = session_journal_path(app, id)
+        .map_err(|error| session_persistence_error("SESSION_JOURNAL_READ_FAILED", error))?;
+    let source = if path.is_file() {
+        path
+    } else {
+        let legacy = legacy_session_cache_path(app, id)
+            .map_err(|error| session_persistence_error("SESSION_JOURNAL_READ_FAILED", error))?;
+        if !legacy.is_file() {
+            return Ok(None);
+        }
+        legacy
+    };
+    SessionJournalStore
+        .read(&source, id, SESSION_JOURNAL_MAX_BYTES)
+        .map_err(|error| session_persistence_error("SESSION_JOURNAL_READ_FAILED", error))
+}
+
+/// Expand a deferred tool/thinking/assistant body from the on-disk journal.
+#[tauri::command]
+fn get_tool_body(
+    app: tauri::AppHandle,
+    id: String,
+    block_id: String,
+) -> Result<Option<SessionToolBody>, HostError> {
+    let Some(content) = read_journal_content(&app, &id)? else {
+        return Ok(None);
+    };
+    let blocks = journal_session_blocks(&content)
+        .map_err(|error| HostError::protocol("SESSION_JOURNAL_INVALID", error))?;
+    for block in blocks {
+        let Some(this_id) = block.get("id").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        if this_id != block_id {
+            continue;
+        }
+        let block_type = block.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        if block_type == "tool" {
+            let call = block.get("call").cloned().unwrap_or(serde_json::Value::Null);
+            return Ok(Some(SessionToolBody {
+                block_id,
+                input: call
+                    .get("input")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                output: call
+                    .get("output")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                diff: call.get("diff").cloned(),
+                terminal: call.get("terminal").cloned(),
+                images: call.get("images").cloned(),
+                detail: call
+                    .get("detail")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                title: call
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+            }));
+        }
+        // Non-tool: return text via output field for the frontend expander.
+        return Ok(Some(SessionToolBody {
+            block_id,
+            input: None,
+            output: block
+                .get("text")
+                .and_then(|v| v.as_str())
+                .map(str::to_string),
+            diff: None,
+            terminal: None,
+            images: None,
+            detail: None,
+            title: None,
+        }));
+    }
+    Ok(None)
+}
+
+/// Page earlier stubbed blocks from the journal (before the live window).
+#[tauri::command]
+fn get_session_page(
+    app: tauri::AppHandle,
+    id: String,
+    before_id: Option<String>,
+    limit: Option<usize>,
+) -> Result<SessionPage, HostError> {
+    let limit = limit.unwrap_or(SESSION_PAGE_MAX_BLOCKS).clamp(1, SESSION_PAGE_MAX_BLOCKS);
+    let Some(content) = read_journal_content(&app, &id)? else {
+        return Ok(SessionPage {
+            blocks: Vec::new(),
+            earlier_blocks: 0,
+            earlier_turns: 0,
+            total_blocks: 0,
+            oldest_visible_id: None,
+        });
+    };
+    let blocks = journal_session_blocks(&content)
+        .map_err(|error| HostError::protocol("SESSION_JOURNAL_INVALID", error))?;
+    let total_blocks = blocks.len();
+    let end = match before_id.as_deref() {
+        Some(before) => blocks
+            .iter()
+            .position(|block| block.get("id").and_then(|v| v.as_str()) == Some(before))
+            .unwrap_or(total_blocks),
+        None => total_blocks,
+    };
+    let start = end.saturating_sub(limit);
+    let page = blocks[start..end]
+        .iter()
+        .cloned()
+        .map(stub_journal_block)
+        .collect::<Vec<_>>();
+    let earlier = &blocks[..start];
+    Ok(SessionPage {
+        oldest_visible_id: page.first().and_then(|block| {
+            block
+                .get("id")
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        }),
+        earlier_blocks: start,
+        earlier_turns: count_primary_user_turns(earlier),
+        total_blocks,
+        blocks: page,
+    })
+}
+
 fn delete_session_journal_files(app: &tauri::AppHandle, id: &str) -> Result<(), String> {
     let dir = session_journal_dir(app, id)?;
     if dir.is_dir() {
@@ -6917,6 +7165,8 @@ fn main() {
             search_session_history,
             read_session_journal,
             write_session_journal,
+            get_tool_body,
+            get_session_page,
             persist_session_tool_images,
             resolve_markdown_images,
             delete_session_journal,

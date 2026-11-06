@@ -181,4 +181,33 @@ describe("capLiveSession", () => {
     expect(settled.status).toBe("idle");
     expect(settled.preview).toBe(true);
   });
+
+  it("parkInactiveSession：大会话卸成 stub 窗口而不是 600 满正文", () => {
+    const blocks = Array.from({ length: 120 }, (_, index) => (
+      index % 4 === 0
+        ? { type: "user" as const, id: `u${index}`, text: `q${index}`, ts: index }
+        : {
+            type: "tool" as const,
+            id: `t${index}`,
+            ts: index,
+            call: {
+              id: `c${index}`,
+              kind: "read" as const,
+              title: "read_file",
+              status: "done" as const,
+              startedAt: index,
+              output: "x".repeat(4_000),
+            },
+          }
+    ));
+    const parked = parkInactiveSession(session(blocks, "idle"));
+    expect(parked.blocks.length).toBeLessThan(100);
+    expect(parked.window?.totalBlocks).toBe(120);
+    const tool = parked.blocks.find((block) => block.type === "tool");
+    expect(tool?.type).toBe("tool");
+    if (tool?.type === "tool") {
+      expect(tool.call.bodyDeferred).toBe(true);
+      expect((tool.call.output?.length ?? 0)).toBeLessThan(500);
+    }
+  });
 });

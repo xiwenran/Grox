@@ -101,6 +101,8 @@ export interface ToolCall {
   terminal?: TerminalIO;
   locations?: string[];
   images?: ToolImage[];
+  /** Full input/output lives in the on-disk journal; expand fetches via Host. */
+  bodyDeferred?: boolean;
 }
 
 export type PlanStepStatus = "pending" | "in_progress" | "completed";
@@ -239,13 +241,21 @@ export type QuestionResponse =
 
 export type SessionBlock =
   | { type: "user"; id: string; text: string; attachments?: PromptAttachmentSummary[]; ts: number; interjected?: boolean }
-  | { type: "assistant"; id: string; text: string; ts: number; streaming?: boolean }
-  | { type: "thinking"; id: string; text: string; ts: number; live?: boolean; elapsedMs?: number }
+  | { type: "assistant"; id: string; text: string; ts: number; streaming?: boolean; bodyDeferred?: boolean }
+  | { type: "thinking"; id: string; text: string; ts: number; live?: boolean; elapsedMs?: number; bodyDeferred?: boolean }
   | { type: "tool"; id: string; call: ToolCall; ts: number }
   | { type: "plan"; id: string; steps: PlanStep[]; ts: number }
   | { type: "permission"; id: string; req: PermissionRequest; resolved?: PermissionOption; ts: number }
   | { type: "question"; id: string; req: QuestionRequest; response?: QuestionResponse; ts: number }
   | { type: "system"; id: string; text: string; ts: number; kind: "info" | "compact" | "rewind" | "error" };
+
+/** Live WebView only keeps a tail window; earlier turns stay on disk until paged in. */
+export interface SessionWindowMeta {
+  earlierTurns: number;
+  earlierBlocks: number;
+  totalBlocks: number;
+  oldestVisibleId?: string;
+}
 
 export interface Usage {
   inputTokens: number;
@@ -331,6 +341,8 @@ export interface SessionForkResult {
 
 export interface Session extends SessionMeta {
   blocks: SessionBlock[];
+  /** Present when the in-memory transcript is a windowed/stubbed view of a larger journal. */
+  window?: SessionWindowMeta;
   usage: Usage;
   status: SessionStatus;
   /** A fast local transcript while canonical ACP history is still binding. */

@@ -425,7 +425,7 @@ function renderBlock(block: SessionBlock, sessionId: string, processing = false)
     case "user": return <UserMsg key={block.id} block={block} />;
     case "assistant": return <AssistantMsg key={block.id} block={block} process={processing} />;
     case "thinking": return <ThinkingBlock key={block.id} block={block} processing={processing} />;
-    case "tool": return <ToolCallCard key={block.id} block={block} />;
+    case "tool": return <ToolCallCard key={block.id} block={block} sessionId={sessionId} />;
     case "plan": return <PlanCard key={block.id} block={block} />;
     case "permission": return block.req.purpose === "plan" ? null : <PermissionCard key={block.id} block={block} sessionId={sessionId} />;
     case "question": return <QuestionCard key={block.id} block={block} />;
@@ -433,7 +433,7 @@ function renderBlock(block: SessionBlock, sessionId: string, processing = false)
   }
 }
 
-function ToolBatch({ blocks }: { blocks: Extract<SessionBlock, { type: "tool" }>[] }) {
+function ToolBatch({ blocks, sessionId }: { blocks: Extract<SessionBlock, { type: "tool" }>[]; sessionId: string }) {
   const { language } = useI18n();
   const [open, setOpen] = useState(true);
   const commands = blocks.filter((block) => block.call.kind === "execute" || block.call.kind === "terminal").length;
@@ -452,7 +452,7 @@ function ToolBatch({ blocks }: { blocks: Extract<SessionBlock, { type: "tool" }>
         {busy && <span className="lbl lbl-acc shrink-0 !text-[12px]">{language === "zh-CN" ? "执行中" : "RUNNING"}</span>}
         <Icon name="chevronRight" size={9} className={`shrink-0 text-faint transition-transform ${open ? "rotate-90" : ""}`} />
       </button>
-      {open && <div className="ml-[6px] max-h-56 overflow-y-auto border-l border-line2 pb-1 pl-4 pt-1">{blocks.map((block) => <ToolCallCard key={block.id} block={block} />)}</div>}
+      {open && <div className="ml-[6px] max-h-56 overflow-y-auto border-l border-line2 pb-1 pl-4 pt-1">{blocks.map((block) => <ToolCallCard key={block.id} block={block} sessionId={sessionId} />)}</div>}
     </div>
   );
 }
@@ -470,7 +470,7 @@ function RenderSequence({ blocks, sessionId, processing }: { blocks: SessionBloc
       tools.push(blocks[index] as Extract<SessionBlock, { type: "tool" }>);
       index += 1;
     }
-    output.push(<ToolBatch key={`tools-${tools[0].id}`} blocks={tools} />);
+    output.push(<ToolBatch key={`tools-${tools[0].id}`} blocks={tools} sessionId={sessionId} />);
   }
   return <>{output}</>;
 }
@@ -644,6 +644,7 @@ function isNearBottom(el: HTMLElement, slack = FOLLOW_BOTTOM_PX): boolean {
 export function Timeline({ session }: { session: Session }) {
   const { language } = useI18n();
   const workflows = useDesktop((state) => state.workflows[session.id] ?? EMPTY_WORKFLOWS);
+  const loadSessionEarlierPage = useDesktop((state) => state.loadSessionEarlierPage);
   const scrollerRef = useRef<HTMLDivElement>(null);
   // Native scroller + turn window (not Virtuoso): expanding process used to make
   // Virtuoso re-range and yank scrollTop to 0 / stick-to-bottom thrash so the
@@ -865,6 +866,19 @@ export function Timeline({ session }: { session: Session }) {
         onScroll={onScrollerScroll}
       >
         <div className="h-9 shrink-0" />
+        {(session.window?.earlierTurns ?? 0) > 0 && (
+          <div className="timeline-content mx-auto mb-4">
+            <button
+              type="button"
+              className="w-full rounded-[5px] border border-line2 bg-raise/40 px-3 py-2 text-center font-mono text-[13px] tracking-[0.06em] text-dim transition-colors hover:border-acc/40 hover:text-fg2"
+              onClick={() => { void loadSessionEarlierPage(session.id); }}
+            >
+              {language === "zh-CN"
+                ? `还有更早 ${session.window!.earlierTurns} 轮（磁盘，点击加载）`
+                : `${session.window!.earlierTurns} earlier turns on disk — load`}
+            </button>
+          </div>
+        )}
         {hiddenCount > 0 && (
           <div className="timeline-content mx-auto mb-4">
             <button

@@ -5,7 +5,7 @@
    edit → inline diff, terminal → console, read/search → locations.
    ───────────────────────────────────────────────────────────────────────── */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { ImageLightbox } from "../common/ImageLightbox";
 import type { SessionBlock, ToolCall, ToolKind } from "../../bridge/types";
@@ -75,11 +75,26 @@ const kindMeta: Partial<Record<ToolKind, { icon: IconProps["name"]; tone: string
   other: { icon: "bolt", tone: "text-dim" },
 };
 
-export function ToolCallCard({ block }: { block: ToolBlock }) {
+export function ToolCallCard({ block, sessionId }: { block: ToolBlock; sessionId?: string }) {
   const { language } = useI18n();
+  const expandSessionBlockBody = useDesktop((state) => state.expandSessionBlockBody);
   const { call } = block;
   const busy = call.status === "running" || call.status === "awaiting_permission";
   const [open, setOpen] = useState(false);
+  const [loadingBody, setLoadingBody] = useState(false);
+
+  useEffect(() => {
+    if (!open || !call.bodyDeferred || !sessionId) return;
+    let cancelled = false;
+    setLoadingBody(true);
+    void expandSessionBlockBody(sessionId, block.id)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingBody(false);
+      });
+    return () => { cancelled = true; };
+    // bodyDeferred clearing after fetch re-runs harmlessly (guarded by !call.bodyDeferred).
+  }, [open, call.bodyDeferred, sessionId, block.id, expandSessionBlockBody]);
   const searchTools = useMemo(() => parseSearchTools(call.output), [call.output]);
   const meta = kindMeta[call.kind] ?? { icon: "bolt" as const, tone: "text-dim" };
   const duration = call.endedAt ? call.endedAt - call.startedAt : Date.now() - call.startedAt;
@@ -126,6 +141,11 @@ export function ToolCallCard({ block }: { block: ToolBlock }) {
         {/* body */}
         {open && (
           <div className="mb-1 border-t border-line px-1 py-2 animate-fade-up">
+            {loadingBody && call.bodyDeferred && (
+              <p className="mb-2 font-mono text-[13px] text-faint">
+                {language === "zh-CN" ? "正在加载工具正文…" : "Loading tool body…"}
+              </p>
+            )}
             {call.diff && <DiffView diff={call.diff} />}
             {call.terminal && <TerminalView call={call} />}
             {!call.diff && !call.terminal && call.locations && <Locations paths={call.locations} />}

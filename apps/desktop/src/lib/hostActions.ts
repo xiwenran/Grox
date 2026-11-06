@@ -44,3 +44,28 @@ export const openMediaArtifact = (cwd: string, id: string, artifactIndex: number
 export const startMediaGeneration = <T>(request: Record<string, unknown>) => invoke<T>("start_media_generation", { request });
 export const cancelMediaGeneration = <T>(cwd: string, id: string) => invoke<T>("cancel_media_generation", { cwd, id });
 export const saveMediaReference = <T>(cwd: string, name: string, data: string) => invoke<T>("save_media_reference", { cwd, name, data });
+
+export type SessionToolBody = {
+  blockId: string;
+  input?: string;
+  output?: string;
+  diff?: unknown;
+  terminal?: unknown;
+  images?: unknown;
+  detail?: string;
+  title?: string;
+};
+
+export type SessionPage = {
+  blocks: import("../bridge/types").SessionBlock[];
+  earlierBlocks: number;
+  earlierTurns: number;
+  totalBlocks: number;
+  oldestVisibleId?: string;
+};
+
+export const getToolBody = (id: string, blockId: string) =>
+  invoke<SessionToolBody | null>("get_tool_body", { id, blockId });
+
+export const getSessionPage = (id: string, beforeId?: string, limit?: number) =>
+  invoke<SessionPage>("get_session_page", { id, beforeId, limit });

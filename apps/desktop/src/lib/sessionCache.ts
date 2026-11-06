@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Session, SessionBlock, ToolImage } from "../bridge/types";
 import { isSessionTerminal } from "../bridge/types";
 import { displayReplayUserPrompt } from "./replayUserPrompt";
+import { mergeSessionForJournal, parkToStubIndex, windowSessionForLive } from "./sessionWindow";
 
 export const MAX_JOURNAL_BLOCKS = 600;
 export const MAX_BODY_TEXT = 64_000;
@@ -138,12 +139,18 @@ export function capLiveSession(session: Session): Session {
 }
 
 /** Drop heavy transcript bodies for sessions that are no longer on screen.
- * Running turns stay live (status/streaming intact) so the sidebar and Host
- * updates keep working; only settled sessions become a journal-style preview.
+ * Running turns stay windowed (status/streaming intact) so the sidebar and Host
+ * updates keep working; settled sessions become a stub index (harsher than the
+ * old 600-block truncated preview).
  */
 export function parkInactiveSession(session: Session): Session {
-  if (!isSessionTerminal(session.status)) return capLiveSession(session);
-  return compactSession(session);
+  if (!isSessionTerminal(session.status)) {
+    // Keep status live; do not mark preview so a background running turn
+    // is not mistaken for a disk-only shell.
+    const windowed = windowSessionForLive(capLiveSession(session));
+    return windowed.preview ? { ...windowed, preview: false } : windowed;
+  }
+  return parkToStubIndex(session);
 }
 
 function freezeBlock(block: SessionBlock): SessionBlock {
@@ -364,8 +371,20 @@ export function rememberSessionJournalSnapshot(snapshot: SessionJournalSnapshot)
 
 const pendingSessions = new Map<string, Session>();
 
-function writeSnapshot(session: Session): Promise<void> {
-  const snapshot = nextSessionJournalSnapshot(session);
+async function writeSnapshot(session: Session): Promise<void> {
+  let toPersist = session;
+  if (session.window || session.blocks.some((block) => (
+    (block.type === "tool" && block.call.bodyDeferred)
+    || ((block.type === "thinking" || block.type === "assistant") && block.bodyDeferred)
+  ))) {
+    try {
+      const existing = await loadSessionJournal(session.id);
+      toPersist = mergeSessionForJournal(existing?.session, session);
+    } catch {
+      toPersist = mergeSessionForJournal(null, session);
+    }
+  }
+  const snapshot = nextSessionJournalSnapshot(toPersist);
   return writePayload(session.id, JSON.stringify(snapshot), snapshot.hostEvents);
 }
 

@@ -73,7 +73,7 @@ import {
 import { reconcileSessionJournal } from "../lib/sessionJournalReconcile";
 import { mapToolKind } from "../lib/toolKind";
 import { displayReplayUserPrompt } from "../lib/replayUserPrompt";
-import { mergeOfflineWithLive } from "../lib/offlineMerge";
+import { windowSessionForLive } from "../lib/sessionWindow";
 import { AcpRpcError, decodeAcpResponse } from "./acpRpc";
 import { validateAttachmentSet } from "../lib/attachments";
 import { applyToSession } from "./sessionProjection";
@@ -3591,25 +3591,15 @@ export class AcpBridge implements GrokBridge {
               : block,
         ),
       };
-      if (background) {
-        try {
-          const disk = await invoke<SessionDiskPreview | null>("preview_session_from_disk", { id });
-          if (disk?.entries.length) {
-            finalized = {
-              ...mergeOfflineWithLive(sessionFromDiskPreview(meta, disk), finalized),
-              preview: false,
-            };
-          }
-        } catch (cause) {
-          this.diagnostics.push(`会话磁盘历史合并失败：${cleanApiError(cause)}`);
-          this.diagnostics = this.diagnostics.slice(-20);
-        }
-      }
+      // Plan B: ACP session/load only binds the runtime. Do not merge the full
+      // on-disk history into zustand — offline hydrate already painted a window.
       this.replaying.delete(id);
       this.knownSessions.add(id);
       // Drop sticky model/effort so the next prompt re-binds via set_model
       // (resume after shell upgrade / effort change must not reuse dead options).
       this.sessionOptions.delete(id);
+      // Emit the full bind result so session_ready can journal it; the store
+      // windows what enters zustand. Skipping disk merge keeps ACP load as bind-only.
       this.emit({ type: "session_ready", session: finalized, background });
       const visibleBlocks = new Set(finalized.blocks.map((block) => block.id));
       for (const interaction of this.hostInteractions.values()) {
@@ -3640,7 +3630,7 @@ export class AcpBridge implements GrokBridge {
     if (!disk?.entries.length) return false;
     this.emit({
       type: "session_ready",
-      session: sessionFromDiskPreview(meta, disk),
+      session: windowSessionForLive(sessionFromDiskPreview(meta, disk)),
       background: true,
       preview,
     });
