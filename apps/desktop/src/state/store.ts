@@ -1950,17 +1950,18 @@ export const useDesktop = create<DesktopState>((set, get) => {
       viewNavigation = navigation;
       const currentId = beforeOpen.activeId;
       const current = currentId ? beforeOpen.sessions[currentId] : undefined;
-      // Keep only a compact preview of the session we are leaving so long
-      // transcripts do not accumulate unbounded in the WebView heap.
-      if (currentId && currentId !== id && current && !isEphemeralSessionId(currentId)) {
-        const parked = parkInactiveSession(current);
-        if (parked !== current) {
-          set({ sessions: { ...beforeOpen.sessions, [currentId]: parked } });
-        }
-        try { localStorage.setItem("grox.lastActiveSessionId", id); } catch { /* ignore */ }
-      } else {
-        try { localStorage.setItem("grox.lastActiveSessionId", id); } catch { /* ignore */ }
+      // Park the session we are leaving using the latest store snapshot so a
+      // concurrent withSession patch cannot be clobbered by beforeOpen.
+      if (currentId && currentId !== id && !isEphemeralSessionId(currentId)) {
+        set((state) => {
+          const live = state.sessions[currentId];
+          if (!live) return state;
+          const parked = parkInactiveSession(live);
+          if (parked === live) return state;
+          return { sessions: { ...state.sessions, [currentId]: parked } };
+        });
       }
+      try { localStorage.setItem("grox.lastActiveSessionId", id); } catch { /* ignore */ }
       if (shouldCloseDetachedSession({ currentId, nextId: id, status: current?.status })) {
         void bridge.closeSession(currentId!).catch(() => {});
       }

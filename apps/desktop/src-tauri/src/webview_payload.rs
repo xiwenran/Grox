@@ -1,17 +1,28 @@
 //! Prepare Host session events for the WebView and recover from content-process death.
 
-use std::{fs, io::Write, path::PathBuf};
+use std::{
+    fs,
+    io::Write,
+    path::PathBuf,
+    sync::atomic::Ordering,
+    time::{Duration, Instant},
+};
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::host_core::{replace_file_atomic, CONFIG_WRITE_NONCE};
 use crate::path_sandbox::path_for_webview;
 use crate::session_event_journal::HostSessionEvent;
 
 const MIN_INLINE_IMAGE_BYTES: usize = 2_048;
 const TOOL_IMAGE_MAX_BYTES: usize = 8 * 1024 * 1024;
+const WATCHDOG_POLL_SECS: u64 = 2;
+const WATCHDOG_FAILS_BEFORE_RELOAD: u32 = 2;
+const WATCHDOG_BASE_COOLDOWN_SECS: u64 = 30;
+const WATCHDOG_MAX_COOLDOWN_SECS: u64 = 300;
 
 fn safe_session_id(id: &str) -> Option<&str> {
     if id.is_empty()
@@ -54,6 +65,38 @@ fn detect_image_mime(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
+fn write_inline_image_atomic(path: &PathBuf, bytes: &[u8]) -> Option<()> {
+    if path.is_file() {
+        if let Ok(existing) = fs::read(path) {
+            if existing == bytes {
+                return Some(());
+            }
+        }
+    }
+    let parent = path.parent()?;
+    fs::create_dir_all(parent).ok()?;
+    let nonce = CONFIG_WRITE_NONCE.fetch_add(1, Ordering::Relaxed);
+    let temp = parent.join(format!(".tool-media-inline-{}-{nonce}.tmp", std::process::id()));
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(0o600);
+    }
+    let mut file = options.open(&temp).ok()?;
+    if file.write_all(bytes).and_then(|_| file.sync_all()).is_err() {
+        let _ = fs::remove_file(&temp);
+        return None;
+    }
+    drop(file);
+    if replace_file_atomic(&temp, path).is_err() {
+        let _ = fs::remove_file(&temp);
+        return None;
+    }
+    Some(())
+}
+
 fn persist_inline_image(app: &AppHandle, session_id: &str, mime: &str, data: &str) -> Option<String> {
     if data.len() < MIN_INLINE_IMAGE_BYTES {
         return None;
@@ -65,7 +108,7 @@ fn persist_inline_image(app: &AppHandle, session_id: &str, mime: &str, data: &st
     let detected = detect_image_mime(&bytes)?;
     let declared_owned = mime.trim().to_ascii_lowercase();
     let declared = match declared_owned.as_str() {
-        "" => detected,
+        "" | "image" => detected,
         "image/jpg" => "image/jpeg",
         other => other,
     };
@@ -83,10 +126,10 @@ fn persist_inline_image(app: &AppHandle, session_id: &str, mime: &str, data: &st
     let media_dir = session_media_dir(app, session_id)?;
     let name = format!("{:x}.{extension}", Sha256::digest(&bytes));
     let path = media_dir.join(name);
-    if !path.is_file() {
-        let mut file = fs::File::create(&path).ok()?;
-        file.write_all(&bytes).ok()?;
-    }
+    // Atomic replace (same quality as persist_session_tool_images). Skip the
+    // session write lease here: emit runs on the ACP reader and must not block
+    // on journal writers. Content-addressed names make concurrent writers safe.
+    write_inline_image_atomic(&path, &bytes)?;
     let _ = app.asset_protocol_scope().allow_file(&path);
     Some(path_for_webview(&path))
 }
@@ -117,8 +160,11 @@ pub(crate) fn install_webview_watchdog(app: AppHandle) {
         .spawn(move || {
             let mut saw_alive = false;
             let mut recovering = false;
+            let mut consecutive_failures: u32 = 0;
+            let mut recovery_streak: u32 = 0;
+            let mut cooldown_until = Instant::now();
             loop {
-                std::thread::sleep(std::time::Duration::from_secs(2));
+                std::thread::sleep(Duration::from_secs(WATCHDOG_POLL_SECS));
                 let Some(window) = app.get_webview_window("main") else {
                     continue;
                 };
@@ -126,15 +172,36 @@ pub(crate) fn install_webview_watchdog(app: AppHandle) {
                     Ok(()) => {
                         saw_alive = true;
                         recovering = false;
+                        consecutive_failures = 0;
+                        // Decay streak after a healthy poll so a one-off blip
+                        // does not keep the long cooldown forever.
+                        if recovery_streak > 0 && Instant::now() >= cooldown_until {
+                            recovery_streak = recovery_streak.saturating_sub(1);
+                        }
                     }
                     Err(error) => {
+                        consecutive_failures = consecutive_failures.saturating_add(1);
                         if !saw_alive || recovering {
                             continue;
                         }
+                        if Instant::now() < cooldown_until {
+                            continue;
+                        }
+                        if consecutive_failures < WATCHDOG_FAILS_BEFORE_RELOAD {
+                            continue;
+                        }
                         recovering = true;
+                        recovery_streak = recovery_streak.saturating_add(1);
+                        let shift = recovery_streak.saturating_sub(1).min(3);
+                        let cooldown_secs = (WATCHDOG_BASE_COOLDOWN_SECS << shift)
+                            .min(WATCHDOG_MAX_COOLDOWN_SECS);
+                        cooldown_until = Instant::now() + Duration::from_secs(cooldown_secs);
                         tracing::warn!(
                             target: "grox::webview",
                             error = %error,
+                            consecutive_failures,
+                            recovery_streak,
+                            cooldown_secs,
                             "main WebView became unresponsive; reloading"
                         );
                         let _ = app.emit(
@@ -144,11 +211,6 @@ pub(crate) fn install_webview_watchdog(app: AppHandle) {
                                 "message": "界面因内存过大已自动恢复",
                             }),
                         );
-                        // Persist a one-shot flag the reloaded page can read.
-                        let _ = app.emit(
-                            "webview-memory-recovery-pending",
-                            json!({ "reason": "memory" }),
-                        );
                         if let Ok(config_dir) = app.path().app_config_dir() {
                             let marker = config_dir.join("webview-recovery.json");
                             let _ = fs::write(
@@ -156,6 +218,7 @@ pub(crate) fn install_webview_watchdog(app: AppHandle) {
                                 serde_json::to_vec(&json!({
                                     "reason": "memory",
                                     "at": chrono::Utc::now().timestamp_millis(),
+                                    "streak": recovery_streak,
                                 }))
                                 .unwrap_or_default(),
                             );

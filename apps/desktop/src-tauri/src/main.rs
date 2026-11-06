@@ -254,7 +254,8 @@ fn replay_session_events(
         .replay(stream_id.as_deref(), after_sequence.unwrap_or(0), limit)
         .map_events(|events| {
             webview_payload::prepare_host_session_events_for_webview(&app, events)
-        }))
+        })
+        .sanitize_active_blocks_for_webview())
 }
 
 #[tauri::command]

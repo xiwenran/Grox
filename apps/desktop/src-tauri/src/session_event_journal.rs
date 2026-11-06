@@ -122,6 +122,16 @@ impl HostSessionEventReplay {
         self.events = map(self.events);
         self
     }
+
+    /// Bound active snapshot text the same way SessionUpdate strings are.
+    pub(crate) fn sanitize_active_blocks_for_webview(mut self) -> Self {
+        for block in &mut self.active_blocks {
+            if block.text.len() > MAX_WEBVIEW_STRING_BYTES {
+                block.text = truncate_webview_string(&block.text);
+            }
+        }
+        self
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1000,17 +1010,31 @@ fn sanitize_json_value<F>(
                     .or_else(|| object.get("content_base64"))
                     .and_then(Value::as_str)
                     .map(str::to_string);
+                let mut persisted = object.get("path").and_then(Value::as_str).is_some();
                 if let (Some(session_id), Some(data)) = (session_id, data) {
                     if data.len() >= MIN_STRIP_INLINE_BYTES {
                         if let Some(path) = persist_image(session_id, &mime, &data) {
                             object.insert("mimeType".into(), Value::String(mime));
                             object.insert("path".into(), Value::String(path));
+                            persisted = true;
+                        } else {
+                            // Keep inline data so the WebView can retry via
+                            // persist_session_tool_images; only strip after a path exists.
+                            tracing::warn!(
+                                target: "grox::webview",
+                                session_id,
+                                mime = %mime,
+                                bytes = data.len(),
+                                "inline tool image persist failed; leaving data for frontend retry"
+                            );
                         }
                     }
                 }
-                object.remove("data");
-                object.remove("contentBase64");
-                object.remove("content_base64");
+                if persisted {
+                    object.remove("data");
+                    object.remove("contentBase64");
+                    object.remove("content_base64");
+                }
             }
             for key in ["data", "contentBase64", "content_base64"] {
                 if let Some(Value::String(text)) = object.get(key) {

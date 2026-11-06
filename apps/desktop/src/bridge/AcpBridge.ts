@@ -914,6 +914,8 @@ export class AcpBridge implements GrokBridge {
   private toolImagePersistGeneration = new Map<string, number>();
   private toolImagePersistCheckpoints = new Map<string, HostSessionEvent[]>();
   private toolImagePersistFailures = new Set<string>();
+  /** Last known durable path refs per tool block — never wipe these on persist failure. */
+  private toolImagePaths = new Map<string, Array<{ mime: string; path: string }>>();
   private diagnostics: string[] = [];
   private requestId = 0;
   /** 与原生 ACP 子进程绑定，防止旧异步请求写入新子进程。 */
@@ -1079,6 +1081,23 @@ export class AcpBridge implements GrokBridge {
     }
   }
 
+  private mergeToolImagePaths(
+    key: string,
+    images: Array<{ mime: string; path?: string; data?: string }> | undefined,
+  ): Array<{ mime: string; path: string }> {
+    const incoming = (images ?? []).flatMap((image) => (
+      image.path && !image.data ? [{ mime: image.mime, path: image.path }] : []
+    ));
+    const previous = this.toolImagePaths.get(key) ?? [];
+    if (incoming.length === 0 && previous.length === 0) return [];
+    const merged = [...previous];
+    for (const image of incoming) {
+      if (!merged.some((item) => item.path === image.path)) merged.push(image);
+    }
+    this.toolImagePaths.set(key, merged);
+    return merged;
+  }
+
   private persistToolImages(
     sessionId: string,
     blockId: string,
@@ -1087,13 +1106,14 @@ export class AcpBridge implements GrokBridge {
   ): boolean {
     if (!images || images.length === 0) return false;
     const key = `${sessionId}:${blockId}`;
+    const knownPaths = this.mergeToolImagePaths(key, images);
     const alreadyPathed = images.every((image) => Boolean(image.path) && !image.data);
     if (alreadyPathed) {
       this.emit({
         type: "tool_patch",
         sessionId,
         blockId,
-        call: { images: images.map(({ mime, path }) => ({ mime, path: path! })) },
+        call: { images: knownPaths.length > 0 ? knownPaths : images.map(({ mime, path }) => ({ mime, path: path! })) },
       });
       if (checkpoint) this.queueHostEventCheckpoint(checkpoint);
       return false;
@@ -1102,6 +1122,9 @@ export class AcpBridge implements GrokBridge {
       image.data ? [{ mime: image.mime, data: image.data }] : []
     ));
     if (pendingData.length === 0) {
+      if (knownPaths.length > 0) {
+        this.emit({ type: "tool_patch", sessionId, blockId, call: { images: knownPaths } });
+      }
       if (checkpoint) this.queueHostEventCheckpoint(checkpoint);
       return false;
     }
@@ -1123,8 +1146,9 @@ export class AcpBridge implements GrokBridge {
       if (this.toolImagePersistGeneration.get(key) !== generation) return;
       if (!references?.length) throw new Error("Host 未返回可持久化的工具图片引用");
       this.flushToolPatches(sessionId);
+      const merged = this.mergeToolImagePaths(key, references);
       // Never leave base64 in the store — only durable path references.
-      this.emit({ type: "tool_patch", sessionId, blockId, call: { images: references } });
+      this.emit({ type: "tool_patch", sessionId, blockId, call: { images: merged } });
       for (const event of this.toolImagePersistCheckpoints.get(key) ?? []) {
         this.queueHostEventCheckpoint(event);
       }
@@ -1134,8 +1158,14 @@ export class AcpBridge implements GrokBridge {
       this.diagnostics.push(`工具图片持久化失败：${errorText(error)}`);
       this.diagnostics = this.diagnostics.slice(-20);
       this.flushToolPatches(sessionId);
-      // Strip any inline data that may have leaked into the store.
-      this.emit({ type: "tool_patch", sessionId, blockId, call: { images: undefined } });
+      // Keep any previously durable paths; never wipe them with undefined.
+      const kept = this.toolImagePaths.get(key) ?? knownPaths;
+      this.emit({
+        type: "tool_patch",
+        sessionId,
+        blockId,
+        call: { images: kept.length > 0 ? kept : undefined },
+      });
       this.toolImagePersistCheckpoints.delete(key);
       if (this.toolImagePersistFailures.has(key)) return;
       this.toolImagePersistFailures.add(key);
@@ -1160,6 +1190,10 @@ export class AcpBridge implements GrokBridge {
       if (!key.startsWith(`${sessionId}:`)) continue;
       this.toolImagePersistGeneration.delete(key);
       this.toolImagePersistCheckpoints.delete(key);
+      this.toolImagePaths.delete(key);
+    }
+    for (const key of [...this.toolImagePaths.keys()]) {
+      if (key.startsWith(`${sessionId}:`)) this.toolImagePaths.delete(key);
     }
     for (const key of this.toolImagePersistFailures) {
       if (key.startsWith(`${sessionId}:`)) this.toolImagePersistFailures.delete(key);
@@ -1205,6 +1239,7 @@ export class AcpBridge implements GrokBridge {
     this.hostSessionEventCursor = { streamId, sequence: 0 };
     this.pendingHostEventCheckpoints.clear();
     this.toolImagePersistGeneration.clear();
+    this.toolImagePaths.clear();
     this.toolImagePersistCheckpoints.clear();
     this.toolImagePersistFailures.clear();
     this.recoveredReplaySessions.clear();

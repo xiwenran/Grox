@@ -163,6 +163,14 @@ describe("capLiveSession", () => {
     }
   });
 
+  it("未超限时 capLiveSession 保持 block 引用", () => {
+    const blocks = [{ type: "assistant" as const, id: "a", text: "hello", ts: 1, streaming: true }];
+    const source = session(blocks, "running");
+    const result = capLiveSession(source);
+    expect(result).toBe(source);
+    expect(result.blocks[0]).toBe(source.blocks[0]);
+  });
+
   it("parkInactiveSession：运行中只截断，已结束才压成预览", () => {
     const running = parkInactiveSession(session([{ type: "assistant", id: "a", text: "hello", ts: 1, streaming: true }], "running"));
     expect(running.status).toBe("running");

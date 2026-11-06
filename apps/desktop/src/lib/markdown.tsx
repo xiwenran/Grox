@@ -209,24 +209,48 @@ function escapePlain(text: string): string {
 }
 
 export const Markdown = memo(function Markdown({ text, className = "", streaming = false }: { text: string; className?: string; streaming?: boolean }) {
-  // While tokens stream, avoid re-running marked+hljs on every flush: keep the
-  // last full render and only refresh on a timer (or immediately when settled).
+  // Stream throttle: render at most once per STREAMING_MARKDOWN_MS (leading +
+  // trailing). Settled messages always render immediately in full.
   const [html, setHtml] = useState(() => (streaming ? escapePlain(text) : renderMarkdownHtml(text)));
   const latestText = useRef(text);
   const latestStreaming = useRef(streaming);
+  const lastRenderAt = useRef(0);
+  const trailingTimer = useRef<number | undefined>(undefined);
   latestText.current = text;
   latestStreaming.current = streaming;
 
   useEffect(() => {
     if (!streaming) {
+      if (trailingTimer.current !== undefined) {
+        window.clearTimeout(trailingTimer.current);
+        trailingTimer.current = undefined;
+      }
       setHtml(renderMarkdownHtml(text));
+      lastRenderAt.current = performance.now();
       return;
     }
-    const timer = window.setTimeout(() => {
-      if (latestStreaming.current) setHtml(renderMarkdownHtml(latestText.current));
-    }, STREAMING_MARKDOWN_MS);
-    return () => window.clearTimeout(timer);
+    const now = performance.now();
+    const elapsed = now - lastRenderAt.current;
+    if (lastRenderAt.current === 0 || elapsed >= STREAMING_MARKDOWN_MS) {
+      setHtml(renderMarkdownHtml(text));
+      lastRenderAt.current = now;
+      return;
+    }
+    if (trailingTimer.current !== undefined) return;
+    trailingTimer.current = window.setTimeout(() => {
+      trailingTimer.current = undefined;
+      if (!latestStreaming.current) return;
+      setHtml(renderMarkdownHtml(latestText.current));
+      lastRenderAt.current = performance.now();
+    }, Math.max(0, STREAMING_MARKDOWN_MS - elapsed));
   }, [text, streaming]);
+
+  useEffect(() => () => {
+    if (trailingTimer.current !== undefined) {
+      window.clearTimeout(trailingTimer.current);
+      trailingTimer.current = undefined;
+    }
+  }, []);
 
   const scope = useContext(MarkdownImageScopeContext);
   const { t } = useI18n();

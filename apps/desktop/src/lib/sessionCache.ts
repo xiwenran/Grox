@@ -71,21 +71,59 @@ function capDiffHunks(diff: NonNullable<Extract<SessionBlock, { type: "tool" }>[
 }
 
 function capLiveBlock(block: SessionBlock): SessionBlock {
-  if (block.type === "assistant") return { ...block, text: truncate(block.text, MAX_BODY_TEXT) ?? "" };
-  if (block.type === "thinking") return { ...block, text: truncate(block.text, MAX_BODY_TEXT) ?? "" };
-  if (block.type === "user") return { ...block, text: truncate(block.text, MAX_BODY_TEXT) ?? "" };
-  if (block.type === "system") return { ...block, text: truncate(block.text, MAX_TOOL_TEXT) ?? "" };
-  if (block.type === "tool") return {
-    ...block,
-    call: {
-      ...block.call,
-      input: truncate(block.call.input, MAX_TOOL_TEXT),
-      output: truncate(block.call.output, MAX_TOOL_TEXT),
-      images: durableToolImages(block.call.images),
-      diff: capDiffHunks(block.call.diff),
-      terminal: block.call.terminal ? { ...block.call.terminal, lines: block.call.terminal.lines.slice(-80) } : undefined,
-    },
-  };
+  if (block.type === "assistant" || block.type === "thinking" || block.type === "user") {
+    const text = truncate(block.text, MAX_BODY_TEXT) ?? "";
+    return text === block.text ? block : { ...block, text };
+  }
+  if (block.type === "system") {
+    const text = truncate(block.text, MAX_TOOL_TEXT) ?? "";
+    return text === block.text ? block : { ...block, text };
+  }
+  if (block.type === "tool") {
+    const input = truncate(block.call.input, MAX_TOOL_TEXT);
+    const output = truncate(block.call.output, MAX_TOOL_TEXT);
+    const images = durableToolImages(block.call.images);
+    const diff = capDiffHunks(block.call.diff);
+    const terminalLines = block.call.terminal ? block.call.terminal.lines.slice(-80) : undefined;
+    const terminalUnchanged = !block.call.terminal
+      || (terminalLines !== undefined && terminalLines.length === block.call.terminal.lines.length
+        && terminalLines.every((line, index) => line === block.call.terminal!.lines[index]));
+    const imagesUnchanged = images === block.call.images
+      || (
+        Boolean(images)
+        && Boolean(block.call.images)
+        && images!.length === block.call.images!.length
+        && images!.every((image, index) => (
+          image.mime === block.call.images![index]?.mime
+          && image.path === block.call.images![index]?.path
+          && !block.call.images![index]?.data
+        ))
+      );
+    const diffUnchanged = diff === block.call.diff
+      || (diff === undefined && (block.call.diff === undefined || block.call.diff.length === 0));
+    if (
+      input === block.call.input
+      && output === block.call.output
+      && imagesUnchanged
+      && diffUnchanged
+      && terminalUnchanged
+    ) {
+      return block;
+    }
+    return {
+      ...block,
+      call: {
+        ...block.call,
+        input,
+        output,
+        images,
+        diff,
+        terminal: block.call.terminal
+          ? { ...block.call.terminal, lines: terminalLines ?? block.call.terminal.lines }
+          : undefined,
+      },
+    };
+  }
   return block;
 }
 
