@@ -31,6 +31,8 @@ import {
   scheduleSaveSessionJournal,
   scrubSessionJournalOrphans,
   setSessionJournalFailureHandler,
+  capLiveSession,
+  parkInactiveSession,
 } from "../lib/sessionCache";
 import {
   clearDraftBuffer,
@@ -842,7 +844,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
       const state = get();
       const s = state.sessions[sessionId];
       if (!s) return;
-      const next = { ...fn(s), updatedAt: Date.now() };
+      const next = capLiveSession({ ...fn(s), updatedAt: Date.now() });
       // Terminal turns flush cache immediately (BSOD window); live turns debounce.
       if (isSessionTerminal(next.status)) flushSessionJournal(next);
       else scheduleSaveSessionJournal(next);
@@ -1307,7 +1309,7 @@ export const useDesktop = create<DesktopState>((set, get) => {
           viewNavigation = nextViewNavigation(viewNavigation, readySession.id, readySession.cwd);
         }
         set({
-          sessions: { ...nextSessions, [readySession.id]: nextSession },
+          sessions: { ...nextSessions, [readySession.id]: capLiveSession(nextSession) },
           sessionIndex: nextIndex,
           projects,
           sessionComposers,
@@ -1717,6 +1719,30 @@ export const useDesktop = create<DesktopState>((set, get) => {
         set({ projects: migration.projects, sessionIndex: visibleSessionIndex, ready: true });
       }
 
+      // WebView OOM auto-reload leaves a one-shot Host marker; reopen the last
+      // session from journal and tell the operator what happened.
+      void invoke<{ reason?: string; at?: number } | null>("consume_webview_recovery_marker")
+        .then((marker) => {
+          if (!marker) return;
+          const notice = runtimeNoticeFromError(toGroxError(new Error("webview-memory-recovery"), {
+            domain: "environment",
+            code: "WEBVIEW_MEMORY_RECOVERY",
+            message: "界面因内存过大已自动恢复",
+            recoverable: true,
+            severity: "warning",
+            action: "已从本地缓存重新打开上次会话；若内容不完整请再点一次该会话",
+          }), "warning");
+          set((state) => ({
+            runtimeNotices: [...state.runtimeNotices.filter((item) => item.id !== notice.id), notice],
+          }));
+          let lastId = "";
+          try { lastId = localStorage.getItem("grox.lastActiveSessionId")?.trim() || ""; } catch { /* ignore */ }
+          if (lastId && !isEphemeralSessionId(lastId)) {
+            window.setTimeout(() => { void get().openSession(lastId); }, 400);
+          }
+        })
+        .catch(() => {});
+
       // Deep links / agent boot are scheduled after a real interaction window.
       const params = new URLSearchParams(window.location.search);
       const open = params.get("open");
@@ -1924,6 +1950,17 @@ export const useDesktop = create<DesktopState>((set, get) => {
       viewNavigation = navigation;
       const currentId = beforeOpen.activeId;
       const current = currentId ? beforeOpen.sessions[currentId] : undefined;
+      // Keep only a compact preview of the session we are leaving so long
+      // transcripts do not accumulate unbounded in the WebView heap.
+      if (currentId && currentId !== id && current && !isEphemeralSessionId(currentId)) {
+        const parked = parkInactiveSession(current);
+        if (parked !== current) {
+          set({ sessions: { ...beforeOpen.sessions, [currentId]: parked } });
+        }
+        try { localStorage.setItem("grox.lastActiveSessionId", id); } catch { /* ignore */ }
+      } else {
+        try { localStorage.setItem("grox.lastActiveSessionId", id); } catch { /* ignore */ }
+      }
       if (shouldCloseDetachedSession({ currentId, nextId: id, status: current?.status })) {
         void bridge.closeSession(currentId!).catch(() => {});
       }

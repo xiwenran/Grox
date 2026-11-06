@@ -22,6 +22,9 @@ const MAX_REPLAY_EVENTS: usize = 1_000;
 const MAX_RETAINED_EVENT_BYTES: usize = 2 * 1024 * 1024;
 const MAX_ACTIVE_BLOCK_TEXT_BYTES: usize = 1024 * 1024;
 const MAX_CONTENT_DEPTH: usize = 16;
+const MAX_WEBVIEW_STRING_BYTES: usize = 128 * 1024;
+const MIN_STRIP_INLINE_BYTES: usize = 2_048;
+
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -112,6 +115,13 @@ pub(crate) struct HostSessionEventReplay {
     reset: bool,
     has_more: bool,
     active_blocks: Vec<HostActiveBlockSnapshot>,
+}
+
+impl HostSessionEventReplay {
+    pub(crate) fn map_events(mut self, map: impl FnOnce(Vec<HostSessionEvent>) -> Vec<HostSessionEvent>) -> Self {
+        self.events = map(self.events);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -887,6 +897,133 @@ fn update_operation(
 impl HostSessionEvent {
     pub(crate) fn unsupported_response(&self) -> Option<&str> {
         self.unsupported_response.as_deref()
+    }
+
+    pub(crate) fn session_id_ref(&self) -> Option<&str> {
+        self.session_id.as_deref()
+    }
+
+    /// Mutate the projection payload before it crosses into the WebView.
+    pub(crate) fn map_projection<F>(&mut self, mut map: F)
+    where
+        F: FnMut(&mut HostSessionProjection),
+    {
+        map(&mut self.projection);
+    }
+
+    /// Drop inline base64 / truncate huge strings. `persist_image` may replace
+    /// an image blob with a durable path; returning None strips the blob.
+    pub(crate) fn sanitize_for_webview<F>(&mut self, mut persist_image: F)
+    where
+        F: FnMut(&str, &str, &str) -> Option<String>,
+    {
+        let session_id = self.session_id.clone();
+        match &mut self.projection {
+            HostSessionProjection::SessionUpdate {
+                session_id: update_session,
+                update,
+                ..
+            } => {
+                let sid = session_id.as_deref().unwrap_or(update_session.as_str());
+                sanitize_json_value(update, Some(sid), &mut persist_image, 0);
+            }
+            HostSessionProjection::Notification { params, .. } => {
+                sanitize_json_value(params, session_id.as_deref(), &mut persist_image, 0);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn truncate_webview_string(value: &str) -> String {
+    if value.len() <= MAX_WEBVIEW_STRING_BYTES {
+        return value.to_string();
+    }
+    let mut end = MAX_WEBVIEW_STRING_BYTES;
+    while end > 0 && !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!(
+        "{}
+… [Grox 已截断发往界面的过大内容，共 {} 字符]",
+        &value[..end],
+        value.chars().count()
+    )
+}
+
+fn looks_like_image_object(object: &serde_json::Map<String, Value>) -> bool {
+    let type_name = object.get("type").and_then(Value::as_str).unwrap_or_default();
+    let mime = object
+        .get("mimeType")
+        .or_else(|| object.get("mime_type"))
+        .or_else(|| object.get("mime"))
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    type_name == "image" || type_name.starts_with("image/") || mime.starts_with("image/")
+}
+
+fn sanitize_json_value<F>(
+    value: &mut Value,
+    session_id: Option<&str>,
+    persist_image: &mut F,
+    depth: usize,
+) where
+    F: FnMut(&str, &str, &str) -> Option<String>,
+{
+    if depth > 24 {
+        return;
+    }
+    match value {
+        Value::String(text) => {
+            if text.len() > MAX_WEBVIEW_STRING_BYTES {
+                *text = truncate_webview_string(text);
+            }
+        }
+        Value::Array(items) => {
+            for item in items.iter_mut() {
+                sanitize_json_value(item, session_id, persist_image, depth + 1);
+            }
+        }
+        Value::Object(object) => {
+            if looks_like_image_object(object) {
+                let mime = object
+                    .get("mimeType")
+                    .or_else(|| object.get("mime_type"))
+                    .or_else(|| object.get("mime"))
+                    .or_else(|| object.get("type"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("image/png")
+                    .to_string();
+                let data = object
+                    .get("data")
+                    .or_else(|| object.get("contentBase64"))
+                    .or_else(|| object.get("content_base64"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                if let (Some(session_id), Some(data)) = (session_id, data) {
+                    if data.len() >= MIN_STRIP_INLINE_BYTES {
+                        if let Some(path) = persist_image(session_id, &mime, &data) {
+                            object.insert("mimeType".into(), Value::String(mime));
+                            object.insert("path".into(), Value::String(path));
+                        }
+                    }
+                }
+                object.remove("data");
+                object.remove("contentBase64");
+                object.remove("content_base64");
+            }
+            for key in ["data", "contentBase64", "content_base64"] {
+                if let Some(Value::String(text)) = object.get(key) {
+                    if text.len() >= MIN_STRIP_INLINE_BYTES {
+                        object.remove(key);
+                    }
+                }
+            }
+            for child in object.values_mut() {
+                sanitize_json_value(child, session_id, persist_image, depth + 1);
+            }
+        }
+        _ => {}
     }
 }
 

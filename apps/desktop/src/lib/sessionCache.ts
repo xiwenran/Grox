@@ -3,9 +3,9 @@ import type { Session, SessionBlock, ToolImage } from "../bridge/types";
 import { isSessionTerminal } from "../bridge/types";
 import { displayReplayUserPrompt } from "./replayUserPrompt";
 
-const MAX_JOURNAL_BLOCKS = 600;
-const MAX_BODY_TEXT = 64_000;
-const MAX_TOOL_TEXT = 16_000;
+export const MAX_JOURNAL_BLOCKS = 600;
+export const MAX_BODY_TEXT = 64_000;
+export const MAX_TOOL_TEXT = 16_000;
 /**
  * Live checkpoint interval while a turn streams. This journal is only a UI
  * cache — the official CLI already appends every update to its own
@@ -49,6 +49,63 @@ const truncate = (value: string | undefined, limit: number) => {
 export function durableToolImages(images: ToolImage[] | undefined): ToolImage[] | undefined {
   const durable = images?.flatMap((image) => image.path ? [{ mime: image.mime, path: image.path }] : []);
   return durable && durable.length > 0 ? durable : undefined;
+}
+
+const MAX_DIFF_LINES = 400;
+
+function capDiffHunks(diff: NonNullable<Extract<SessionBlock, { type: "tool" }>["call"]["diff"]> | undefined) {
+  if (!diff || diff.length === 0) return undefined;
+  let remaining = MAX_DIFF_LINES;
+  const capped = [];
+  for (const hunk of diff) {
+    if (remaining <= 0) break;
+    if (hunk.lines.length <= remaining) {
+      capped.push(hunk);
+      remaining -= hunk.lines.length;
+      continue;
+    }
+    capped.push({ ...hunk, lines: hunk.lines.slice(0, remaining) });
+    remaining = 0;
+  }
+  return capped.length > 0 ? capped : undefined;
+}
+
+function capLiveBlock(block: SessionBlock): SessionBlock {
+  if (block.type === "assistant") return { ...block, text: truncate(block.text, MAX_BODY_TEXT) ?? "" };
+  if (block.type === "thinking") return { ...block, text: truncate(block.text, MAX_BODY_TEXT) ?? "" };
+  if (block.type === "user") return { ...block, text: truncate(block.text, MAX_BODY_TEXT) ?? "" };
+  if (block.type === "system") return { ...block, text: truncate(block.text, MAX_TOOL_TEXT) ?? "" };
+  if (block.type === "tool") return {
+    ...block,
+    call: {
+      ...block.call,
+      input: truncate(block.call.input, MAX_TOOL_TEXT),
+      output: truncate(block.call.output, MAX_TOOL_TEXT),
+      images: durableToolImages(block.call.images),
+      diff: capDiffHunks(block.call.diff),
+      terminal: block.call.terminal ? { ...block.call.terminal, lines: block.call.terminal.lines.slice(-80) } : undefined,
+    },
+  };
+  return block;
+}
+
+/** Keep the live zustand transcript bounded the same way journal writes are. */
+export function capLiveSession(session: Session): Session {
+  const blocks = sliceCacheBlocks(session.blocks, MAX_JOURNAL_BLOCKS).map(capLiveBlock);
+  if (blocks.length === session.blocks.length
+    && blocks.every((block, index) => block === session.blocks[index])) {
+    return session;
+  }
+  return { ...session, blocks };
+}
+
+/** Drop heavy transcript bodies for sessions that are no longer on screen.
+ * Running turns stay live (status/streaming intact) so the sidebar and Host
+ * updates keep working; only settled sessions become a journal-style preview.
+ */
+export function parkInactiveSession(session: Session): Session {
+  if (!isSessionTerminal(session.status)) return capLiveSession(session);
+  return compactSession(session);
 }
 
 function freezeBlock(block: SessionBlock): SessionBlock {

@@ -7,7 +7,7 @@ import markedKatex from "marked-katex-extension";
 import "katex/dist/katex.min.css";
 import { invoke } from "@tauri-apps/api/core";
 import type { MouseEvent } from "react";
-import { memo, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useContext, useEffect, useRef, useState } from "react";
 import { ImageLightbox } from "../components/common/ImageLightbox";
 import { cachedImageUrl, classifyImageSource, MarkdownImageScopeContext, resolveLocalImages } from "./markdownImages";
 import { useI18n } from "./i18n";
@@ -197,8 +197,37 @@ function showMissing(image: HTMLImageElement, label: string) {
   image.replaceWith(placeholder);
 }
 
+const STREAMING_MARKDOWN_MS = 280;
+
+function escapePlain(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/\n/g, "<br>");
+}
+
 export const Markdown = memo(function Markdown({ text, className = "", streaming = false }: { text: string; className?: string; streaming?: boolean }) {
-  const html = useMemo(() => renderMarkdownHtml(text), [text]);
+  // While tokens stream, avoid re-running marked+hljs on every flush: keep the
+  // last full render and only refresh on a timer (or immediately when settled).
+  const [html, setHtml] = useState(() => (streaming ? escapePlain(text) : renderMarkdownHtml(text)));
+  const latestText = useRef(text);
+  const latestStreaming = useRef(streaming);
+  latestText.current = text;
+  latestStreaming.current = streaming;
+
+  useEffect(() => {
+    if (!streaming) {
+      setHtml(renderMarkdownHtml(text));
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (latestStreaming.current) setHtml(renderMarkdownHtml(latestText.current));
+    }, STREAMING_MARKDOWN_MS);
+    return () => window.clearTimeout(timer);
+  }, [text, streaming]);
+
   const scope = useContext(MarkdownImageScopeContext);
   const { t } = useI18n();
   const missingLabel = t("imageMissing");

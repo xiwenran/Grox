@@ -614,8 +614,8 @@ function extractDiffs(value: unknown): DiffHunk[] | undefined {
   return diffs.length > 0 ? diffs : undefined;
 }
 
-function extractImages(value: unknown): Array<{ mime: string; data: string }> | undefined {
-  const images: Array<{ mime: string; data: string }> = [];
+function extractImages(value: unknown): Array<{ mime: string; data?: string; path?: string }> | undefined {
+  const images: Array<{ mime: string; data?: string; path?: string }> = [];
   const seen = new Set<string>();
   walkJson(value, (object) => {
     const type = string(object.type);
@@ -625,9 +625,19 @@ function extractImages(value: unknown): Array<{ mime: string; data: string }> | 
       // together with `contentBase64`, rather than an MCP image block.
       ?? (type?.startsWith("image/") ? type : undefined);
     const data = string(object.data) ?? string(object.contentBase64) ?? string(object.content_base64);
+    const path = string(object.path);
     if (type !== "image" && !mime?.startsWith("image/")) return;
-    const signature = data && mime ? `${mime}:${data.slice(0, 96)}:${data.length}` : undefined;
-    if (data && mime && signature && !seen.has(signature)) {
+    if (!mime) return;
+    if (path) {
+      const signature = `path:${mime}:${path}`;
+      if (!seen.has(signature)) {
+        seen.add(signature);
+        images.push({ mime, path });
+      }
+      return;
+    }
+    const signature = data ? `${mime}:${data.slice(0, 96)}:${data.length}` : undefined;
+    if (data && signature && !seen.has(signature)) {
       seen.add(signature);
       images.push({ data, mime });
     }
@@ -1072,11 +1082,29 @@ export class AcpBridge implements GrokBridge {
   private persistToolImages(
     sessionId: string,
     blockId: string,
-    images: Array<{ mime: string; data: string }> | undefined,
+    images: Array<{ mime: string; data?: string; path?: string }> | undefined,
     checkpoint?: HostSessionEvent,
   ): boolean {
     if (!images || images.length === 0) return false;
     const key = `${sessionId}:${blockId}`;
+    const alreadyPathed = images.every((image) => Boolean(image.path) && !image.data);
+    if (alreadyPathed) {
+      this.emit({
+        type: "tool_patch",
+        sessionId,
+        blockId,
+        call: { images: images.map(({ mime, path }) => ({ mime, path: path! })) },
+      });
+      if (checkpoint) this.queueHostEventCheckpoint(checkpoint);
+      return false;
+    }
+    const pendingData = images.flatMap((image) => (
+      image.data ? [{ mime: image.mime, data: image.data }] : []
+    ));
+    if (pendingData.length === 0) {
+      if (checkpoint) this.queueHostEventCheckpoint(checkpoint);
+      return false;
+    }
     if (checkpoint) {
       const pending = this.toolImagePersistCheckpoints.get(key) ?? [];
       if (!pending.some((event) => (
@@ -1088,11 +1116,14 @@ export class AcpBridge implements GrokBridge {
     }
     const generation = (this.toolImagePersistGeneration.get(key) ?? 0) + 1;
     this.toolImagePersistGeneration.set(key, generation);
-    void invoke<ToolCall["images"]>("persist_session_tool_images", { sessionId, images }).then((references) => {
+    void invoke<ToolCall["images"]>("persist_session_tool_images", {
+      sessionId,
+      images: pendingData,
+    }).then((references) => {
       if (this.toolImagePersistGeneration.get(key) !== generation) return;
       if (!references?.length) throw new Error("Host 未返回可持久化的工具图片引用");
-      // 先提交可能仍在节流队列中的 base64 patch，再用持久引用替换它。
       this.flushToolPatches(sessionId);
+      // Never leave base64 in the store — only durable path references.
       this.emit({ type: "tool_patch", sessionId, blockId, call: { images: references } });
       for (const event of this.toolImagePersistCheckpoints.get(key) ?? []) {
         this.queueHostEventCheckpoint(event);
@@ -1102,6 +1133,10 @@ export class AcpBridge implements GrokBridge {
     }).catch((error) => {
       this.diagnostics.push(`工具图片持久化失败：${errorText(error)}`);
       this.diagnostics = this.diagnostics.slice(-20);
+      this.flushToolPatches(sessionId);
+      // Strip any inline data that may have leaked into the store.
+      this.emit({ type: "tool_patch", sessionId, blockId, call: { images: undefined } });
+      this.toolImagePersistCheckpoints.delete(key);
       if (this.toolImagePersistFailures.has(key)) return;
       this.toolImagePersistFailures.add(key);
       this.emit({
@@ -2387,6 +2422,9 @@ export class AcpBridge implements GrokBridge {
     const canonicalKind = toolCanonicalKind(update);
     const kind = mapToolKind(canonicalKind ?? update.kind, update.title);
     const images = extractImages([content, update.rawOutput]);
+    const durableImages = images?.flatMap((image) => (
+      image.path && !image.data ? [{ mime: image.mime, path: image.path }] : []
+    ));
     const call: ToolCall = {
       id: toolCallId,
       kind,
@@ -2399,7 +2437,7 @@ export class AcpBridge implements GrokBridge {
       input: jsonText(update.rawInput),
       output: toolOutputText(update.rawOutput, content),
       diff: extractDiffs([content, update.rawInput, update.rawOutput]),
-      images,
+      images: durableImages && durableImages.length > 0 ? durableImages : undefined,
       terminal: extractTerminal(
         kind,
         update.title,
@@ -2476,6 +2514,9 @@ export class AcpBridge implements GrokBridge {
     const images = content.length > 0 || update.rawOutput !== undefined
       ? extractImages([content, update.rawOutput])
       : undefined;
+    const durableImages = images?.flatMap((image) => (
+      image.path && !image.data ? [{ mime: image.mime, path: image.path }] : []
+    ));
     this.queueToolPatch({
       type: "tool_patch",
       sessionId,
@@ -2492,7 +2533,7 @@ export class AcpBridge implements GrokBridge {
         ...(content.length > 0 || update.rawInput !== undefined || update.rawOutput !== undefined
           ? { diff: extractDiffs([content, update.rawInput, update.rawOutput]) }
           : {}),
-        ...(images ? { images } : {}),
+        ...(durableImages && durableImages.length > 0 ? { images: durableImages } : {}),
         ...(terminal ? { terminal } : {}),
         ...(locations ? { locations } : {}),
       },

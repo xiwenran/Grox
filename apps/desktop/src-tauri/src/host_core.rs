@@ -1355,6 +1355,7 @@ pub(crate) fn ensure_main_acp_owner(window_label: &str) -> Result<(), String> {
 }
 
 pub(crate) fn emit_host_session_event(app: &tauri::AppHandle, event: HostSessionEvent) {
+    let event = crate::webview_payload::prepare_host_session_event_for_webview(app, event);
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.emit("host-session-event", event);
     }

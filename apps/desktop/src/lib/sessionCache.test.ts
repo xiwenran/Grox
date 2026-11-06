@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Session } from "../bridge/types";
 import {
   compactSession,
+  capLiveSession,
+  parkInactiveSession,
   nextSessionJournalSavedAt,
   parseSessionJournal,
   recordSessionJournalHostEvent,
@@ -123,5 +125,52 @@ describe("sliceCacheBlocks", () => {
     const sliced = sliceCacheBlocks(blocks, 2);
     // Prefer starting at user u1 rather than tool-only tail when over budget.
     expect(sliced[0].type === "user" || sliced.length <= 2).toBe(true);
+  });
+});
+
+describe("capLiveSession", () => {
+  it("截断过长正文并丢掉工具图的 base64", () => {
+    const long = "字".repeat(70_000);
+    const result = capLiveSession(session([{
+      type: "assistant",
+      id: "a",
+      text: long,
+      ts: 1,
+      streaming: true,
+    }, {
+      type: "tool",
+      id: "t",
+      ts: 2,
+      call: {
+        id: "c",
+        kind: "computer",
+        title: "shot",
+        status: "done",
+        startedAt: 2,
+        images: [{ mime: "image/png", data: "AAAA" }, { mime: "image/png", path: "/tmp/x.png" }],
+      },
+    }]));
+    expect(result.status).toBe("running");
+    expect(result.blocks[0]).toMatchObject({ type: "assistant" });
+    if (result.blocks[0].type === "assistant") {
+      expect(result.blocks[0].text.length).toBeLessThan(long.length);
+      expect(result.blocks[0].text).toContain("缓存已截断");
+    }
+    const tool = result.blocks[1];
+    expect(tool.type).toBe("tool");
+    if (tool.type === "tool") {
+      expect(tool.call.images).toEqual([{ mime: "image/png", path: "/tmp/x.png" }]);
+    }
+  });
+
+  it("parkInactiveSession：运行中只截断，已结束才压成预览", () => {
+    const running = parkInactiveSession(session([{ type: "assistant", id: "a", text: "hello", ts: 1, streaming: true }], "running"));
+    expect(running.status).toBe("running");
+    expect(running.preview).not.toBe(true);
+    expect(running.blocks[0]).toMatchObject({ type: "assistant", streaming: true });
+
+    const settled = parkInactiveSession(session([{ type: "assistant", id: "a", text: "hello", ts: 1, streaming: false }], "idle"));
+    expect(settled.status).toBe("idle");
+    expect(settled.preview).toBe(true);
   });
 });

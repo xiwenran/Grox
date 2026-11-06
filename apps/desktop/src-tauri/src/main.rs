@@ -52,6 +52,7 @@ mod tray;
 mod turn_runtime;
 mod worktree_ownership;
 mod host_core;
+mod webview_payload;
 mod runtime_lifecycle;
 
 use host_core::{
@@ -227,7 +228,19 @@ struct HostSessionBinding {
 }
 
 #[tauri::command]
+fn consume_webview_recovery_marker(app: tauri::AppHandle) -> Option<serde_json::Value> {
+    let Ok(config_dir) = app.path().app_config_dir() else {
+        return None;
+    };
+    let marker = config_dir.join("webview-recovery.json");
+    let raw = fs::read_to_string(&marker).ok()?;
+    let _ = fs::remove_file(&marker);
+    serde_json::from_str(&raw).ok()
+}
+
+#[tauri::command]
 fn replay_session_events(
+    app: tauri::AppHandle,
     window: tauri::WebviewWindow,
     state: tauri::State<'_, Arc<AcpState>>,
     stream_id: Option<String>,
@@ -238,7 +251,10 @@ fn replay_session_events(
         .map_err(|error| HostError::operation("ACP_WINDOW_NOT_OWNER", error))?;
     Ok(state
         .session_events
-        .replay(stream_id.as_deref(), after_sequence.unwrap_or(0), limit))
+        .replay(stream_id.as_deref(), after_sequence.unwrap_or(0), limit)
+        .map_events(|events| {
+            webview_payload::prepare_host_session_events_for_webview(&app, events)
+        }))
 }
 
 #[tauri::command]
@@ -6844,6 +6860,7 @@ fn main() {
                 window.set_icon(icon)?;
             }
             tray::setup(app.handle()).map_err(std::io::Error::other)?;
+            webview_payload::install_webview_watchdog(app.handle().clone());
             register_computer_emergency_shortcut(app.handle().clone());
             // 「已安排」入口已从 UI 移除（非官方 grok CLI 能力）：不再启动 Host
             // 后台调度循环。automations.json 等用户数据保持不动。
@@ -6888,6 +6905,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             desktop_environment,
             agent_runtime_status,
+            consume_webview_recovery_marker,
             replay_session_events,
             host_session_bindings,
             session_runtime_status,
