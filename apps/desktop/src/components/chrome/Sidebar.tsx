@@ -83,6 +83,7 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
   const sessionSearchIdsKey = sessionIndex.map((session) => session.id).join("\n");
   const normalizedQuery = normalizeSessionQuery(sessionQuery);
   const sidebarSessions = orderedSessions.filter((session) => !session.archived);
+  const pinnedSessions = normalizedQuery ? [] : sidebarSessions.filter((session) => session.pinned);
   const matchedSessions = normalizedQuery
     ? sidebarSessions.filter((meta) =>
         historyMatches.has(meta.id) || sessionMatchesLoadedContent(meta, useDesktop.getState().sessions[meta.id], normalizedQuery)
@@ -165,6 +166,23 @@ export function Sidebar({ onRequestHide }: { onRequestHide?: () => void } = {}) 
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+        {pinnedSessions.length > 0 && (
+          <div className="mb-2" data-section="pinned">
+            <SectionTitle label={t("pinnedSessions")} count={pinnedSessions.length} />
+            {pinnedSessions.map((meta) => (
+              <MissionRow
+                key={meta.id}
+                compact
+                meta={meta}
+                status={(sessions[meta.id]?.split("|")[0] as SessionStatus | undefined) ?? meta.lastStatus ?? "idle"}
+                completionUnread={Boolean(meta.completionUnread)}
+                active={meta.id === activeId}
+                tokens={0}
+                onOpen={() => void openSession(meta.id)}
+              />
+            ))}
+          </div>
+        )}
         <SectionTitle label={normalizedQuery ? (language === "zh-CN" ? "搜索结果" : "SEARCH RESULTS") : t("projects")} count={normalizedQuery ? matchedSessions.length : projects.length} />
         {activeProjects.map((project) => (
           <ProjectGroup
@@ -477,7 +495,7 @@ function missionTitle(meta: SessionMeta, language: string): string {
   return language === "zh-CN" ? `无标题会话（${shortId}）` : `Untitled (${shortId})`;
 }
 
-function MissionRow({ meta, status, completionUnread, active, tokens, onOpen }: { meta: SessionMeta; status: SessionStatus; completionUnread: boolean; active: boolean; tokens: number; onOpen(): void }) {
+function MissionRow({ meta, status, completionUnread, active, tokens, onOpen, compact = false }: { meta: SessionMeta; status: SessionStatus; completionUnread: boolean; active: boolean; tokens: number; onOpen(): void; compact?: boolean }) {
   const { t, language } = useI18n();
   const renameSession = useDesktop((state) => state.renameSession);
   const pinSession = useDesktop((state) => state.pinSession);
@@ -505,7 +523,8 @@ function MissionRow({ meta, status, completionUnread, active, tokens, onOpen }: 
       role="button"
       tabIndex={0}
       aria-label={displayTitle}
-      className={`group relative mb-px cursor-pointer rounded-[10px] px-2.5 py-1.5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-acc ${active ? "bg-raise shadow-[var(--sh3)]" : "hover:bg-raise/70"}`}
+      data-session-place={compact ? "pinned" : "project"}
+      className={`group relative mb-px cursor-pointer rounded-[10px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-acc ${compact ? "px-2" : "px-2.5 py-1.5"} ${active ? "bg-raise shadow-[var(--sh3)]" : "hover:bg-raise/70"}`}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -520,9 +539,9 @@ function MissionRow({ meta, status, completionUnread, active, tokens, onOpen }: 
         setMenu(true);
       }}
     >
-      <div className="flex items-center gap-2">
+      <div className={`flex items-center gap-2 ${compact ? "h-8" : ""}`}>
         <SessionStatusLight status={status} completionUnread={completionUnread} />
-        <span className={status === "idle" || status === "failed" || status === "cancelled" ? "opacity-55" : ""}><BlackHole size={11} spin={status === "running" ? true : status === "idle" || status === "failed" || status === "cancelled" || status === "disconnected" ? false : "slow"} /></span>
+        {!compact && <span className={status === "idle" || status === "failed" || status === "cancelled" ? "opacity-55" : ""}><BlackHole size={11} spin={status === "running" ? true : status === "idle" || status === "failed" || status === "cancelled" || status === "disconnected" ? false : "slow"} /></span>}
         {editing ? (
           <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onCompositionStart={onCompositionStart} onCompositionEnd={onCompositionEnd} onKeyDown={(event) => { if (isImeBlocking(event)) return; if (event.key === "Enter") commit(); }} onClick={(event) => event.stopPropagation()} className="min-w-0 flex-1 border border-line3 bg-void px-1 text-[13px] text-fg outline-none" />
         ) : (
@@ -539,13 +558,15 @@ function MissionRow({ meta, status, completionUnread, active, tokens, onOpen }: 
           <Icon name="more" size={12} />
         </button>
       </div>
-      {meta.summary && meta.summary !== meta.title && (
+      {!compact && meta.summary && meta.summary !== meta.title && (
         <p className="mt-0.5 truncate pl-3.5 text-[13px] leading-tight text-mute" title={meta.summary}>{meta.summary}</p>
       )}
-      <div className="mt-0.5 flex items-center justify-between pl-3.5">
-        <span className="text-[13px] text-faint">{fmtRelTime(meta.updatedAt)}</span>
-        {tokens > 0 && <span className="tnum text-[13px] text-faint">{fmtTokens(tokens)} tokens</span>}
-      </div>
+      {!compact && (
+        <div className="mt-0.5 flex items-center justify-between pl-3.5">
+          <span className="text-[13px] text-faint">{fmtRelTime(meta.updatedAt)}</span>
+          {tokens > 0 && <span className="tnum text-[13px] text-faint">{fmtTokens(tokens)} tokens</span>}
+        </div>
+      )}
       {menu && (
         <ContextMenu close={() => setMenu(false)}>
           <MenuButton icon="pin" label={meta.pinned ? t("unpin") : t("pin")} onClick={() => pinSession(meta.id)} />

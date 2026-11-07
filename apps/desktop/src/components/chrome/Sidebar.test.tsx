@@ -224,6 +224,105 @@ describe("Sidebar", () => {
     await act(async () => root.unmount());
   });
 
+  it("单独置顶的会话进入置顶区，取消置顶后仍留在项目里", async () => {
+    const openSession = vi.fn(async () => {});
+    useDesktop.setState({
+      activeProjectId: "project-existing",
+      projects: [{
+        id: "project-existing",
+        path: "C:/workspace/existing",
+        name: "已有项目",
+        pinned: false,
+        archived: false,
+        createdAt: 1,
+        lastOpenedAt: 2,
+      }],
+      sessionIndex: [
+        {
+          id: "session-newer",
+          title: "较新置顶",
+          summary: "较新摘要不进置顶行",
+          cwd: "C:/workspace/existing",
+          createdAt: 1,
+          updatedAt: 20,
+          model: "grok-build",
+          pinned: true,
+        },
+        {
+          id: "session-older",
+          title: "较早置顶",
+          cwd: "C:/workspace/existing",
+          createdAt: 1,
+          updatedAt: 10,
+          model: "grok-build",
+          pinned: true,
+        },
+        {
+          id: "session-plain",
+          title: "普通会话",
+          cwd: "C:/workspace/existing",
+          createdAt: 1,
+          updatedAt: 30,
+          model: "grok-build",
+        },
+        {
+          id: "session-archived",
+          title: "已归档置顶",
+          cwd: "C:/workspace/existing",
+          createdAt: 1,
+          updatedAt: 40,
+          model: "grok-build",
+          pinned: true,
+          archived: true,
+        },
+      ],
+      openSession,
+    });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<Sidebar />));
+
+    const pinned = container.querySelector<HTMLElement>('[data-section="pinned"]');
+    expect(pinned?.textContent).toContain("置顶");
+    const pinnedTitles = [...(pinned?.querySelectorAll<HTMLElement>('[data-session-place="pinned"]') ?? [])]
+      .map((row) => row.getAttribute("aria-label"));
+    expect(pinnedTitles).toEqual(["较新置顶", "较早置顶"]);
+    expect(pinned?.textContent).not.toContain("较新摘要不进置顶行");
+    expect(pinned?.textContent).not.toContain("普通会话");
+    expect(pinned?.textContent).not.toContain("已归档置顶");
+    expect(container.textContent).toContain("普通会话");
+    expect(container.textContent).toContain("较新摘要不进置顶行");
+
+    const newer = pinned?.querySelector<HTMLElement>('[aria-label="较新置顶"]');
+    await act(async () => newer?.click());
+    expect(openSession).toHaveBeenCalledWith("session-newer");
+
+    await act(async () => newer?.querySelector<HTMLButtonElement>('button[aria-label="会话操作"]')?.click());
+    const unpin = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "取消置顶");
+    await act(async () => unpin?.click());
+
+    const pinnedAfter = container.querySelector<HTMLElement>('[data-section="pinned"]');
+    const pinnedAfterTitles = [...(pinnedAfter?.querySelectorAll<HTMLElement>('[data-session-place="pinned"]') ?? [])]
+      .map((row) => row.getAttribute("aria-label"));
+    expect(pinnedAfterTitles).toEqual(["较早置顶"]);
+    expect(container.textContent).toContain("较新置顶");
+    expect(useDesktop.getState().sessionIndex.find((session) => session.id === "session-newer")?.pinned).toBe(false);
+
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="搜索会话标题与内容"]');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "较早");
+      input!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(container.querySelector('[data-section="pinned"]')).toBeNull();
+    expect(container.textContent).toContain("搜索结果");
+    expect(container.textContent).toContain("较早置顶");
+
+    await act(async () => root.unmount());
+  });
+
   it("本地支持包在读取完整对话 trace 前明确说明隐私边界", async () => {
     useDesktop.setState({
       activeProjectId: "c:/workspace/existing",
